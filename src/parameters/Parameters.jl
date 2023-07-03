@@ -1,17 +1,20 @@
-export Parameters, PhysicalParameters, SimulationParameters
+export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters
 
 abstract type AbstractParameters end
+
+const AbstractEmptyParams = Union{AbstractParameters,Nothing}
 
 include("PhysicalParameters.jl")
 include("SimulationParameters.jl")
 
-struct Parameters{P <: AbstractParameters}
-    simulation::Union{P,Nothing}
-    physical::Union{P,Nothing}
-    hyper::Union{P,Nothing}
-    solver::Union{P,Nothing}
-    UDE::Union{P,Nothing} 
-    OGGM::Union{P,Nothing}
+struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
+                  PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams}
+    physical::PPHY
+    simulation::PSIM
+    hyper::PHY
+    solver::PSOL
+    UDE::PUDE
+    OGGM::POGGM
 end
 
 """
@@ -26,13 +29,13 @@ Keyword arguments
     
 """
 function Parameters(;
-            simulation::SimulationParameters = SimulationParameters(),
-            physical::PhysicalParameters = PhysicalParameters()
-            )
+            physical::PhysicalParameters = PhysicalParameters(),
+            simulation::SimulationParameters = SimulationParameters()
+            ) 
 
     # Build the parameters based on all the subtypes of parameters
-    parameters = Parameters(simulation, physical, nothing, nothing,
-                            nothing, nothing)
+    parameters = Parameters(physical, simulation, 
+                            nothing, nothing,nothing, nothing)
 
     return parameters
 end

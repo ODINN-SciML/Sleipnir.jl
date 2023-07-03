@@ -26,15 +26,22 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             workers = 10)
 
 
-    params = Parameters(simulation=simulation_params,
-                        physical=physical_params
-                        )
+    params = Parameters(physical=physical_params,
+                        simulation=simulation_params)
 
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"); simulation_params)
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2"); physical_params)
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/params_specified.jld2"); params)
     end
+
+    simulation_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"))["simulation_params"]
+    physical_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2"))["physical_params"]
+    params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/params_specified.jld2"))["params"]
+
+    @test physical_params == physical_params_ref
+    @test simulation_params == simulation_params_ref
+    @test params == params_ref
                     
 
 end
@@ -55,5 +62,13 @@ function params_constructor_default(; save_refs::Bool = false)
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_default.jld2"); physical_params)
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/params_default.jld2"); params)
     end
+
+    simulation_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2"))["simulation_params"]
+    physical_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_default.jld2"))["physical_params"]
+    params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/params_default.jld2"))["params"]
+
+    @test physical_params == physical_params_ref
+    @test simulation_params == simulation_params_ref
+    @test params == params_ref
 
 end
