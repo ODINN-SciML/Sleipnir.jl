@@ -1,6 +1,7 @@
 name = "Sleipnir"
 authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>"]
 version = "0.1.0"
+uuid = "f5e6c550-199f-11ee-3608-394420200519"
 
 [deps]
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
