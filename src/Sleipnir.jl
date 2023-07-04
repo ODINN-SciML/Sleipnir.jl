@@ -9,6 +9,9 @@ using Base: @kwdef
 using Infiltrator
 import Pkg
 using PyCall
+using JLD2
+using Distributed
+using Statistics
 
 # ##############################################
 # ############    PARAMETERS     ###############
@@ -21,28 +24,28 @@ const global root_dir::String = dirname(Base.current_project())
 # ############  PYTHON LIBRARIES  ##############
 # ##############################################
 
-# const netCDF4::PyObject = PyNULL()
-# const cfg::PyObject = PyNULL()
-# const utils::PyObject = PyNULL()
-# const workflow::PyObject = PyNULL()
-# const tasks::PyObject = PyNULL()
-# const global_tasks::PyObject = PyNULL()
-# const graphics::PyObject = PyNULL()
-# const bedtopo::PyObject = PyNULL()
-# const millan22::PyObject = PyNULL()
-# const MBsandbox::PyObject = PyNULL()
-# const salem::PyObject = PyNULL()
+const netCDF4::PyObject = PyNULL()
+const cfg::PyObject = PyNULL()
+const utils::PyObject = PyNULL()
+const workflow::PyObject = PyNULL()
+const tasks::PyObject = PyNULL()
+const global_tasks::PyObject = PyNULL()
+const graphics::PyObject = PyNULL()
+const bedtopo::PyObject = PyNULL()
+const millan22::PyObject = PyNULL()
+const MBsandbox::PyObject = PyNULL()
+const salem::PyObject = PyNULL()
 
-# # Essential Python libraries
-# const np::PyObject = PyNULL()
-# const xr::PyObject = PyNULL()
-# const rioxarray::PyObject = PyNULL()
-# const pd::PyObject = PyNULL()
+# Essential Python libraries
+const xr::PyObject = PyNULL()
+const rioxarray::PyObject = PyNULL()
+const pd::PyObject = PyNULL()
 
 # ##############################################
 # ##########  SLEIPNIR LIBRARIES  ##############
 # ##############################################
 
+include(joinpath(Sleipnir.root_dir, "src/setup/config.jl"))
 # All parameters needed for the models
 include(joinpath(Sleipnir.root_dir, "src/parameters/Parameters.jl"))
 # Anything related to managing glacier topographical and climate data

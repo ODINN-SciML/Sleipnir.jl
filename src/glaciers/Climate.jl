@@ -24,5 +24,3 @@ end
     avg_temps::Ref{PyObject} # Intermediate buffer for computing average temperatures
     avg_gradients::Ref{PyObject} # Intermediate buffer for computing average gradients
 end
-
-
