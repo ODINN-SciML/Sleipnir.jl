@@ -9,6 +9,7 @@ struct SimulationParameters{F <: AbstractFloat} <: AbstractParameters
     float_type::DataType
     int_type::DataType
     tspan::Tuple{F, F}
+    step::F
     multiprocessing::Bool
     workers::Int 
 end
@@ -42,6 +43,7 @@ function SimulationParameters(;
             float_type::DataType = Float64,
             int_type::DataType = Int64,
             tspan::Tuple{F, F} = (2010.0,2015.0),
+            step::F = 1/12,
             multiprocessing::Bool = true,
             workers::Int = 4
             ) where {F <: AbstractFloat}
@@ -50,7 +52,7 @@ function SimulationParameters(;
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate,
                                                 float_type, int_type,
-                                                tspan, multiprocessing, workers)
+                                                tspan, step, multiprocessing, workers)
 
     return simulation_parameters
 end

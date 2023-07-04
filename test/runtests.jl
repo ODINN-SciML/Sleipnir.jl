@@ -3,11 +3,13 @@ Pkg.activate(dirname(Base.current_project()))
 
 using Revise
 using Sleipnir
+using PyCall
 using Test
 using JLD2
 using Infiltrator
 
 include(joinpath(Sleipnir.root_dir, "test/params_construction.jl"))
+include(joinpath(Sleipnir.root_dir, "test/glaciers_construction.jl"))
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
@@ -16,3 +18,4 @@ ENV["GKSwstype"]="nul"
 
 @testset "Parameters constructors by default" params_constructor_default(save_refs=false)
 
+@testset "Glaciers constructors" glaciers_constructor(save_refs=true)
