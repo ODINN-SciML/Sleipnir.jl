@@ -1,5 +1,4 @@
 
-
 @kwdef mutable struct Climate2Dstep{F <: AbstractFloat} 
     temp::Matrix{F}
     PDD::Matrix{F}
@@ -11,8 +10,6 @@
     y::Vector{F}
     ref_hgt::Ref{F}
 end
-
-
 
 @kwdef mutable struct Climate{F <: AbstractFloat} 
     raw_climate::PyObject # Raw climate dataset for the whole simulation

@@ -8,8 +8,8 @@ using Test
 using JLD2
 using Infiltrator
 
-include(joinpath(Sleipnir.root_dir, "test/params_construction.jl"))
-include(joinpath(Sleipnir.root_dir, "test/glaciers_construction.jl"))
+include("params_construction.jl")
+include("glaciers_construction.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
