@@ -1,4 +1,6 @@
 
+export Glacier, Climate
+
 include("Climate.jl")
 
 @kwdef mutable struct Glacier{F <: AbstractFloat, I <: Int} 
