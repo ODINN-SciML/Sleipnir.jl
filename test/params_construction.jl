@@ -25,7 +25,7 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             multiprocessing = false,
                                             workers = 10)
 
-    oggm_params = OGGMparameters(working_dir = joinpath(homedir(), "OGGM/OGGM_data"),
+    oggm_params = OGGMparameters(working_dir = "",
                                 paths = nothing,
                                 params = nothing,
                                 multiprocessing = false,
@@ -65,7 +65,7 @@ function params_constructor_default(; save_refs::Bool = false)
 
     simulation_params = SimulationParameters()
 
-    oggm_params = OGGMparameters(test=true)
+    oggm_params = OGGMparameters(test=true, working_dir="")
 
     params = Parameters(simulation=simulation_params,
                         physical=physical_params,
