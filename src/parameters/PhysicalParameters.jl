@@ -64,3 +64,8 @@ function PhysicalParameters(;
 
     return physical_parameters
 end
+
+Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g && a.n == b.n && 
+                                      a.A == b.A && a.ϵ == b.ϵ && a.C == b.C && a.η₀ == b.η₀ &&
+                                      a.maxA == b.maxA && a.minA == b.minA && a.maxTlaw == b.maxTlaw &&
+                                      a.noise_A_magnitude == b.noise_A_magnitude

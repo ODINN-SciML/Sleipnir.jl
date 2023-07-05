@@ -56,3 +56,8 @@ function SimulationParameters(;
 
     return simulation_parameters
 end
+
+Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots && 
+                                      a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.float_type == b.float_type && a.int_type == b.int_type &&
+                                      a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
+                                      a.workers == b.workers
