@@ -17,7 +17,7 @@ using Statistics
 # ############    PARAMETERS     ###############
 # ##############################################
 
-const global root_dir::String = dirname(Base.current_project())
+const global root_dir::String = cd(pwd, "..")
 
 
 # ##############################################
