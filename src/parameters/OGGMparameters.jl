@@ -71,6 +71,10 @@ function OGGMparameters(;
     return OGGM_parameters
 end
 
+Base.:(==)(a::OGGMparameters, b::OGGMparameters) = a.working_dir == b.working_dir && a.paths == b.paths && a.params == b.params && 
+                                      a.multiprocessing == b.multiprocessing && a.workers == b.workers && a.ice_thickness_source == b.ice_thickness_source &&
+                                      a.base_url == b.base_url
+
 """
     oggm_config()
 
