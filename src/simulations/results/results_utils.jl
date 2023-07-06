@@ -26,7 +26,7 @@ Save simulation `Results` into a `.jld2` file.
 """
 function save_results_file!(results_list::Vector{Results{F}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, SIM <: Simulation}
     # Create path for simulation results
-    predictions_path = joinpath(ODINN.root_dir, "data/results/predictions")
+    predictions_path = joinpath(dirname(Base.current_project()), "data/results/predictions")
     if !ispath(predictions_path)
         mkpath(predictions_path)
     end
