@@ -10,7 +10,7 @@ mutable struct Results{F <: AbstractFloat}
 end
 
 
-function Results(glacier::Glacier, ifm::IF;
+function Results(glacier::AbstractGlacier, ifm::IF;
         rgi_id::String = glacier.rgi_id,
         H::Vector{Matrix{F}} = Matrix{F}([]),
         S::Matrix{F} = zeros(F, size(ifm.S)),

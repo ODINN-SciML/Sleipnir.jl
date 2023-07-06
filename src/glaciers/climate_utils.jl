@@ -10,7 +10,7 @@ using Dates # to provide correct Julian time slices
 
 Initializes the `Climate` data structure for a given `Glacier``
 """
-function initialize_glacier_climate!(glacier::Glacier, params::Parameters)
+function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
 
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
     raw_climate::PyObject = xr.open_dataset(joinpath(glacier.gdir.dir, "raw_climate_$(params.simulation.tspan).nc"))
@@ -121,7 +121,7 @@ end
 Projects climate data to the glacier matrix by simply copying the closest gridpoint to all matrix gridpoints.
 Generates a new xarray Dataset which is returned.   
 """
-function downscale_2D_climate!(glacier::Glacier)
+function downscale_2D_climate!(glacier::Glacier2D)
     # Update 2D climate structure
     climate = glacier.climate
 
@@ -137,7 +137,7 @@ function downscale_2D_climate!(glacier::Glacier)
     apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
 end
 
-function downscale_2D_climate(climate_step::PyObject, glacier::Glacier)
+function downscale_2D_climate(climate_step::PyObject, glacier::Glacier2D)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     MFT = typeof(glacier.S)
     FT = typeof(glacier.S[1])
@@ -165,7 +165,7 @@ function downscale_2D_climate(climate_step::PyObject, glacier::Glacier)
 
 end
 
-function downscale_2D_climate(glacier::Glacier)
+function downscale_2D_climate(glacier::Glacier2D)
     climate_2D_step = downscale_2D_climate(glacier.climate.climate_step[], glacier)
     return climate_2D_step
 end
