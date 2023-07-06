@@ -1,4 +1,4 @@
-export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, OGGMparameters
+export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, OGGMparameters, AbstractEmptyParams
 
 abstract type AbstractParameters end
 
