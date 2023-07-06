@@ -22,7 +22,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
      # Generate raw climate data if necessary
     pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
     # Initialize glaciers
-    glaciers::Vector{Glacier} = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
+    glaciers::Vector{Glacier2D} = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
 
     return glaciers
 end
@@ -42,7 +42,7 @@ Keyword arguments
 """
 function initialize_glacier(gdir::PyObject, parameters; smoothing=false, test=false)
     # Initialize glacier initial topography
-    glacier::Glacier = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
+    glacier::AbstractGlacier = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
@@ -109,11 +109,11 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         glacier_gd.close() # Release any resources linked to this object
 
         # We initialize the Glacier with all the initial topographical conditions
-        glacier = Glacier{F,I}(rgi_id = gdir.rgi_id, gdir = gdir,
-                        climate=nothing, 
-                        H₀ = H₀, S = S, B = B, 
-                        V = V, slope = slope, dist_border = dist_border,
-                        S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny)
+        glacier = Glacier(rgi_id = gdir.rgi_id, gdir = gdir,
+                          climate=nothing, 
+                          H₀ = H₀, S = S, B = B, 
+                          V = V, slope = slope, dist_border = dist_border,
+                          S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny)
 
         return glacier
 
