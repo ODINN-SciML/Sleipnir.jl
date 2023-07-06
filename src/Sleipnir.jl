@@ -45,14 +45,14 @@ const pd::PyObject = PyNULL()
 # ##########  SLEIPNIR LIBRARIES  ##############
 # ##############################################
 
-include(joinpath(Sleipnir.root_dir, "src/setup/config.jl"))
+include("setup/config.jl")
 # All parameters needed for the models
-include(joinpath(Sleipnir.root_dir, "src/parameters/Parameters.jl"))
+include("parameters/Parameters.jl")
 # Anything related to managing glacier topographical and climate data
-include(joinpath(Sleipnir.root_dir, "src/glaciers/Glacier.jl"))
+include("glaciers/Glacier.jl")
 # All structures and functions related to ODINN models
-include(joinpath(Sleipnir.root_dir, "src/models/Model.jl"))
+include("models/Model.jl")
 # Everything related to running simulations in ODINN
-include(joinpath(Sleipnir.root_dir, "src/simulations/Simulation.jl"))
+include("simulations/Simulation.jl")
 
 end # module

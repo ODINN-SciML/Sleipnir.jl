@@ -1,5 +1,5 @@
 
-export Glacier
+export Glacier, Climate
 
 abstract type AbstractGlacier end 
 
