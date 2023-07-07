@@ -17,8 +17,8 @@ using Statistics
 # ############    PARAMETERS     ###############
 # ##############################################
 
+cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
-
 
 # ##############################################
 # ############  PYTHON LIBRARIES  ##############
