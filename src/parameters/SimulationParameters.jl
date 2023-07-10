@@ -12,6 +12,7 @@ struct SimulationParameters{F <: AbstractFloat} <: AbstractParameters
     step::F
     multiprocessing::Bool
     workers::Int 
+    working_dir::String
 end
 
 """
@@ -45,14 +46,19 @@ function SimulationParameters(;
             tspan::Tuple{F, F} = (2010.0,2015.0),
             step::F = 1/12,
             multiprocessing::Bool = true,
-            workers::Int = 4
+            workers::Int = 4,
+            working_dir = ""
             ) where {F <: AbstractFloat}
 
     # Build the simulation parameters based on input values
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate,
                                                 float_type, int_type,
-                                                tspan, step, multiprocessing, workers)
+                                                tspan, step, multiprocessing, workers, working_dir)
+
+    if !ispath(working_dir)
+        mkpath(joinpath(working_dir, "data"))
+    end
 
     return simulation_parameters
 end
