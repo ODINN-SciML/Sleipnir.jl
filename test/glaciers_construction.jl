@@ -4,7 +4,8 @@ function glaciers_constructor(; save_refs::Bool = false)
 
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 
-    params = Parameters(simulation=SimulationParameters(velocities=false),
+    params = Parameters(simulation=SimulationParameters(velocities=false,
+                                                        working_dir=Sleipnir.root_dir),
                         OGGM=OGGMparameters(ice_thickness_source="Farinotti19"))
 
     glaciers = initialize_glaciers(rgi_ids, params; test=true)
@@ -17,10 +18,10 @@ function glaciers_constructor(; save_refs::Bool = false)
     end
 
     if save_refs
-        jldsave("data/glaciers/glaciers.jld2"; glaciers)
+        jldsave(joinpath(@__DIR__, "data/glaciers/glaciers.jld2"); glaciers)
     end
 
-    glaciers_ref = load("data/glaciers/glaciers.jld2")["glaciers"]
+    glaciers_ref = load(joinpath(@__DIR__,"data/glaciers/glaciers.jld2"))["glaciers"]
 
     @test all(glaciers .== glaciers_ref)
 
