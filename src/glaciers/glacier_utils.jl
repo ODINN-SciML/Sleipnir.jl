@@ -68,7 +68,7 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.OGGM.ice_thickness_source == "Millan22" && params.simulation.velocities
+    if params.OGGM.ice_thickness_source == "Millan22" 
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
     elseif params.OGGM.ice_thickness_source == "Farinotti19"
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
