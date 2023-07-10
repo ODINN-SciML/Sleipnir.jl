@@ -35,7 +35,7 @@ function OGGMparameters(;
             params::Union{PyDict, Nothing} = nothing,
             multiprocessing::Bool = false,
             workers::Int64 = 1,
-            ice_thickness_source::String = "Millan22",
+            ice_thickness_source::String = "Farinotti19",
             base_url::String = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/",
             test = false
             )
