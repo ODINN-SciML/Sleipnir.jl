@@ -23,7 +23,8 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             int_type = Int64,
                                             tspan = (2010.0,2015.0),
                                             multiprocessing = false,
-                                            workers = 10)
+                                            workers = 10,
+                                            working_dir = "")
 
     oggm_params = OGGMparameters(working_dir = "",
                                 paths = nothing,

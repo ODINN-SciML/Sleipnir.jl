@@ -14,8 +14,8 @@ include("glaciers_construction.jl")
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
 
-@testset "Parameters constructors with specified values" params_constructor_specified(save_refs=true)
+@testset "Parameters constructors with specified values" params_constructor_specified()
 
-@testset "Parameters constructors by default" params_constructor_default(save_refs=true)
+@testset "Parameters constructors by default" params_constructor_default()
 
-@testset "Glaciers constructors" glaciers_constructor(save_refs=true)
+@testset "Glaciers constructors" glaciers_constructor()
