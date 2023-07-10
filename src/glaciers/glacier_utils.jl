@@ -85,7 +85,7 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         mkdir(gdir_path)
     end
 
-    # try
+    try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{F} = F.(glacier_gd.dis_from_border.data)
         S::Matrix{F} = F.(glacier_gd.topo.data) # surface elevation
@@ -117,14 +117,14 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
 
         return glacier
 
-#     catch error
-#         @show error  
-#         missing_glaciers = load(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-#         push!(missing_glaciers, gdir.rgi_id)
-#         jldsave(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"); missing_glaciers)
-#         glacier_gd.close() # Release any resources linked to this object
-#         @warn "Glacier without data: $(gdir.rgi_id). Updating list of missing glaciers. Please try again."
-#     end
+    catch error
+        @show error  
+        missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        push!(missing_glaciers, gdir.rgi_id)
+        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+        glacier_gd.close() # Release any resources linked to this object
+        @warn "Glacier without data: $(gdir.rgi_id). Updating list of missing glaciers. Please try again."
+    end
 end
 
 """
@@ -134,10 +134,10 @@ Initializes Glacier Directories using OGGM. Wrapper function calling `init_gdirs
 """
 function init_gdirs(rgi_ids::Vector{String}, params::Parameters; velocities=true)
     # Try to retrieve glacier gdirs if they are available
-    filter_missing_glaciers!(rgi_ids)
+    filter_missing_glaciers!(rgi_ids, params)
     try
         gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids)
-        filter_missing_glaciers!(gdirs)
+        filter_missing_glaciers!(gdirs, params)
         return gdirs
     catch 
         @warn "Cannot retrieve gdirs from disk!"
@@ -145,7 +145,7 @@ function init_gdirs(rgi_ids::Vector{String}, params::Parameters; velocities=true
         # Generate all gdirs if needed
         gdirs::Vector{PyObject} = init_gdirs_scratch(rgi_ids, params; velocities = velocities)
         # Check which gdirs errored in the tasks (useful to filter those gdirs)
-        filter_missing_glaciers!(gdirs)
+        filter_missing_glaciers!(gdirs, params)
         return gdirs
     end
 end
@@ -226,20 +226,20 @@ end
 
 Downloads and creates distributed ice thickness matrices for each gdir based on the Glathida observations.
 """
-function get_glathida!(gtd_file, gdirs; force=false)
+function get_glathida!(gtd_file, gdirs, params::Parameters; force=false)
     glathida = pd.HDFStore(gtd_file)
     # TODO: make this work in a pmap
     gtd_grids = map(gdir -> get_glathida_glacier(gdir, glathida, force), gdirs) 
 
     # Update missing_glaciers list before removing them
-    missing_glaciers = load(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+    missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
     for (gtd_grid, gdir) in zip(gtd_grids, gdirs)
         if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) && all(gdir.rgi_id .!= missing_glaciers)
             push!(missing_glaciers, gdir.rgi_id)
             @info "Glacier with all data at 0: $(gdir.rgi_id). Updating list of missing glaciers..."
         end
     end
-    jldsave(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
     # Remove glaciers with all data points at 0
     deleteat!(gtd_grids, findall(x->length(x[x .!= 0.0])==0, gtd_grids))
@@ -277,11 +277,11 @@ function get_glathida_glacier(gdir, glathida, force)
     return gtd_grid
 end
 
-function filter_missing_glaciers!(gdirs::Vector{PyObject})
+function filter_missing_glaciers!(gdirs::Vector{PyObject}, params::Parameters)
     task_log::PyObject = global_tasks.compile_task_log(gdirs, 
                                             task_names=["gridded_attributes", "velocity_to_gdir", "thickness_to_gdir"])
                                                         
-    task_log.to_csv(joinpath(Sleipnir.root_dir, "task_log.csv"))
+    task_log.to_csv(joinpath(params.simulation.working_dir, "task_log.csv"))
     glacier_filter = ((task_log.velocity_to_gdir != "SUCCESS").values .&& (task_log.gridded_attributes != "SUCCESS").values
                         .&& (task_log.thickness_to_gdir != "SUCCESS").values)
     glacier_ids = String[]
@@ -291,7 +291,7 @@ function filter_missing_glaciers!(gdirs::Vector{PyObject})
     missing_glaciers::Vector{String} = glacier_ids[glacier_filter]
 
     try
-        missing_glaciers_old::Vector{String} = load(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        missing_glaciers_old::Vector{String} = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
         for missing_glacier in missing_glaciers_old
             if all(missing_glacier .!= missing_glaciers) # if the glacier is already not present, let's add it
                 push!(missing_glaciers, missing_glacier)
@@ -304,14 +304,15 @@ function filter_missing_glaciers!(gdirs::Vector{PyObject})
     for id in missing_glaciers
         deleteat!(gdirs, findall(x->x.rgi_id==id, gdirs))
     end
+    
     # Save missing glaciers in a file
-    jldsave(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
     # @warn "Filtering out these glaciers from gdir list: $missing_glaciers"
     
     return missing_glaciers
 end
 
-function filter_missing_glaciers!(rgi_ids::Vector{String})
+function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters)
 
     # Check which glaciers we can actually process
     rgi_stats::PyObject = pd.read_csv(utils.file_downloader("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv"), index_col=0)
@@ -332,7 +333,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String})
     end
 
     try
-        missing_glaciers::Vector{String} = load(joinpath(Sleipnir.root_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        missing_glaciers::Vector{String} = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
         for missing_glacier in missing_glaciers
             deleteat!(rgi_ids, findall(x->x == missing_glacier,rgi_ids))
         end
