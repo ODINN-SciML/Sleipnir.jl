@@ -17,7 +17,7 @@ function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameter
     climate_step = Ref{PyObject}(get_cumulative_climate(raw_climate.sel(time=dummy_period)))
     climate_2D_step = downscale_2D_climate(climate_step[], glacier)
     longterm_temps = get_longterm_temps(glacier.gdir, raw_climate)
-    glacier.climate = Climate(raw_climate = raw_climate,
+    glacier.climate = Climate2D(raw_climate = raw_climate,
                             climate_raw_step = Ref{PyObject}(raw_climate.sel(time=dummy_period)),
                             #climate_cum_step = raw_climate.sel(time=dummy_period).sum(),
                             climate_step = climate_step,

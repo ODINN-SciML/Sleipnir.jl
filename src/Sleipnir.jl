@@ -49,7 +49,7 @@ include("setup/config.jl")
 # All parameters needed for the models
 include("parameters/Parameters.jl")
 # Anything related to managing glacier topographical and climate data
-include("glaciers/Glacier.jl")
+include("glaciers/glacier/Glacier.jl")
 # All structures and functions related to ODINN models
 include("models/Model.jl")
 # Everything related to running simulations in ODINN

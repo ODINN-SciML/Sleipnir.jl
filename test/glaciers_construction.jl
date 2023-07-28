@@ -1,6 +1,6 @@
 
 
-function glaciers_constructor(; save_refs::Bool = false)
+function glaciers2D_constructor(; save_refs::Bool = false)
 
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 
@@ -18,11 +18,11 @@ function glaciers_constructor(; save_refs::Bool = false)
     end
 
     if save_refs
-        jldsave(joinpath(@__DIR__, "data/glaciers/glaciers.jld2"); glaciers)
+        jldsave(joinpath(@__DIR__, "data/glaciers/glaciers2D.jld2"); glaciers)
     end
 
-    glaciers_ref = load(joinpath(@__DIR__,"data/glaciers/glaciers.jld2"))["glaciers"]
-
+    glaciers_ref = load(joinpath(@__DIR__,"data/glaciers/glaciers2D.jld2"))["glaciers"]
+    
     @test all(glaciers .== glaciers_ref)
 
 end

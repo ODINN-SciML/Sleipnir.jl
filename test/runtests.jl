@@ -18,4 +18,4 @@ ENV["GKSwstype"]="nul"
 
 @testset "Parameters constructors by default" params_constructor_default()
 
-@testset "Glaciers constructors" glaciers_constructor()
+@testset "Glaciers 2D constructors" glaciers2D_constructor()
