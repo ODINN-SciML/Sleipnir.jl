@@ -42,7 +42,7 @@ Keyword arguments
 """
 function initialize_glacier(gdir::PyObject, parameters; smoothing=false, test=false)
     # Initialize glacier initial topography
-    glacier::AbstractGlacier = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
+    glacier::Glacier2D = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
@@ -109,10 +109,11 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         glacier_gd.close() # Release any resources linked to this object
 
         # We initialize the Glacier with all the initial topographical conditions
-        glacier = Glacier(rgi_id = gdir.rgi_id, gdir = gdir,
+        glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,
                           climate=nothing, 
-                          H₀ = H₀, S = S, B = B, 
-                          V = V, slope = slope, dist_border = dist_border,
+                          H₀ = H₀, S = S, B = B, V = V, 
+                          A = 4e-17, C = 0.0, n = 3.0,
+                          slope = slope, dist_border = dist_border,
                           S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny)
 
         return glacier
