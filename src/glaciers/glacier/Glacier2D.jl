@@ -13,6 +13,9 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Int} <: AbstractGlacier
     S::Union{Matrix{F}, Nothing}
     B::Union{Matrix{F}, Nothing}
     V::Union{Matrix{F}, Nothing}
+    A::Union{F, Nothing}
+    C::Union{F, Nothing}
+    n::Union{F, Nothing}
     slope::Union{Matrix{F}, Nothing}
     dist_border::Union{Matrix{F}, Nothing}
     S_coords::Union{PyObject, Nothing}
@@ -50,6 +53,9 @@ function Glacier2D(;
     S::Union{Matrix{F}, Nothing} = nothing,
     B::Union{Matrix{F}, Nothing} = nothing,
     V::Union{Matrix{F}, Nothing}= nothing,
+    A::Union{F, Nothing} = nothing,
+    C::Union{F, Nothing} = nothing,
+    n::Union{F, Nothing} = nothing,
     slope::Union{Matrix{F}, Nothing} = nothing,
     dist_border::Union{Matrix{F}, Nothing} = nothing,
     S_coords::Union{PyObject, Nothing} = nothing,
@@ -62,7 +68,7 @@ function Glacier2D(;
     # Define default float and integer type for constructor
     ft = Float64
     it = Int64
-    return Glacier2D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, slope, dist_border, S_coords, Δx, Δy, nx, ny)
+    return Glacier2D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, slope, dist_border, S_coords, Δx, Δy, nx, ny)
 end
 
 ###############################################
@@ -71,6 +77,7 @@ end
 
 Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate && 
                                       a.H₀ == b.H₀ && a.S == b.S && a.B == b.B && a.V == b.V &&
+                                      a.A == b.A && a.C == b.C && a.n == b.n && 
                                       a.slope == b.slope && a.dist_border == b.dist_border && a.rgi_id == b.rgi_id &&
                                       a.S_coords == b.S_coords && a.Δx == b.Δx && a.Δy == b.Δy && a.Δx == b.Δx && a.nx == b.nx && a.ny == b.ny
 
