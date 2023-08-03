@@ -11,7 +11,7 @@
     ref_hgt::Ref{F}
 end
 
-@kwdef mutable struct Climate{F <: AbstractFloat} 
+@kwdef mutable struct Climate2D{F <: AbstractFloat} 
     raw_climate::PyObject # Raw climate dataset for the whole simulation
     # Buffers to avoid memory allocations
     climate_raw_step::Ref{PyObject} # Raw climate trimmed for the current step
