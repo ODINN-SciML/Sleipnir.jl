@@ -1,11 +1,8 @@
 
-struct PhysicalParameters{F <: AbstractFloat, I <: Int} <: AbstractParameters
+struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     ρ::F
     g::F
-    n::I
-    A::F
     ϵ::F
-    C::F
     η₀::F
     maxA::F
     minA::F
@@ -18,10 +15,7 @@ end
     PhysicalParameters(;
         ρ::Float64 = 900.0,
         g::Float64 = 9.81,
-        n::Int64 = 3,
-        A::Float64 = 2e-17,
         ϵ::Float64 = 1e-3,
-        C::Float64 = 0.0,
         η₀::F = 1.0, 
         maxA::Float64 = 8e-17,
         minA::Float64 = 8.5e-20,
@@ -45,19 +39,17 @@ Keyword arguments
 function PhysicalParameters(;
             ρ::F = 900.0,
             g::F = 9.81,
-            n::I = 3,
-            A::F = 2e-17,
             ϵ::F = 1e-3,
-            C::F = 0.0,
             η₀::F = 1.0, 
             maxA::F = 8e-17,
             minA::F = 8.5e-20,
             maxTlaw::F = 1.0,
             minTlaw::F = -25.0,
             noise_A_magnitude::F = 5e-18
-            ) where {F <: AbstractFloat, I <: Int}
+            ) where {F <: AbstractFloat}
     # Build PhysicalParameters based on values
-    physical_parameters = PhysicalParameters(ρ, g, n, A, ϵ, C, η₀,
+    ft = typeof(g)
+    physical_parameters = PhysicalParameters{ft}(ρ, g, ϵ, η₀,
                                             maxA, minA,
                                             maxTlaw, minTlaw,
                                             noise_A_magnitude)
@@ -65,7 +57,7 @@ function PhysicalParameters(;
     return physical_parameters
 end
 
-Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g && a.n == b.n && 
-                                      a.A == b.A && a.ϵ == b.ϵ && a.C == b.C && a.η₀ == b.η₀ &&
+Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g && 
+                                      a.ϵ == b.ϵ && a.η₀ == b.η₀ &&
                                       a.maxA == b.maxA && a.minA == b.minA && a.maxTlaw == b.maxTlaw &&
                                       a.noise_A_magnitude == b.noise_A_magnitude
