@@ -1,5 +1,5 @@
 group:
-  repos:     
+  repos: |
     ODINN-SciML/Huginn.jl
     ODINN-SciML/Muninn.jl
     ODINN-SciML/ODINN.jl
