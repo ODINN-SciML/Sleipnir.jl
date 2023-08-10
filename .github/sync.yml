@@ -6,3 +6,5 @@ group:
   files: 
     - source: environment.yml
       dest: environment.yml
+    - source: .gitignore
+      dest: .gitignore
