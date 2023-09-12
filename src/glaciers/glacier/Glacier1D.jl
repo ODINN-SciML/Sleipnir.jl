@@ -1,5 +1,5 @@
 
-export Glacier1D, Climate1D
+export Glacier1D, Climate1D, AbstractGlacier
 
 abstract type AbstractGlacier end 
 
