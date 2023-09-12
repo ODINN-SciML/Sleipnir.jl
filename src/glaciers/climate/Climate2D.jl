@@ -1,4 +1,6 @@
 
+export Climate2Dstep, Climate2D
+
 @kwdef mutable struct Climate2Dstep{F <: AbstractFloat} 
     temp::Matrix{F}
     PDD::Matrix{F}
