@@ -17,6 +17,15 @@ Keyword arguments
     - `params`: `Parameters` object to be passed
 """
 function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
+
+    # Generate missing glaciers file
+    missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
+    if !isdir(missing_glaciers_path)
+        mkdir(missing_glaciers_path)
+    end
+    missing_glaciers = Vector([])
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+
     # Initialize glacier directories
     gdirs::Vector{PyObject} = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
      # Generate raw climate data if necessary
