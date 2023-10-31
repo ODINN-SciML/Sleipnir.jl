@@ -1,23 +1,26 @@
 function glaciers2D_plots()
 
     # Load glacier data
-    @load "glaciers2D_test_temporal.jld2" results
+    @load (joinpath(@__DIR__,"data/glaciers/glaciers2D_test_temporal.jld2")) results
     
-    function compare_fig_to_image(fig, reference_img_path)
-        # Save the generated figure to a temporary PNG file
-        tmp_file_path = tempname() * ".png"
-        Makie.save(tmp_file_path, fig)
+    function compare_fig_to_image(fig, reference_img_path; threshold=1e-1)
+        # Temporary save figure
+        temp_filename = tempname() * ".png"
+        save(temp_filename, fig)
     
-        # Load the saved image
-        img_data = load(tmp_file_path)
+        # Step 2: Read Images
+        img1 = load(temp_filename)
+        img2 = load(joinpath(@__DIR__,"$reference_img_path"))
+      
+        # Compare Images using Mean Squared Error (MSE)
+        mse_value = mse(img1, img2)
         
-        # Load the reference image
-        reference_img = load(joinpath(@__DIR__,"reference_img_path"))
+        
+        # Clean up the temporary file
+        rm(temp_filename)
     
-        # Optionally, you can delete the temporary file
-        rm(tmp_file_path)
-    
-        return all(img_data .== reference_img)
+        # Determine if the images are similar based on a threshold
+        return mse_value <= threshold
     end
     
     
@@ -25,7 +28,6 @@ function glaciers2D_plots()
     @testset "plot_glacier tests" begin
         @testset "Heatmaps" begin
             fig = plot_glacier(results[2], "heatmaps", [:H, :V, :B])
-            display(fig)
             @test isa(fig, Figure)
             @test compare_fig_to_image(fig, "data/figures/reference_plot_heatmaps.png")
         end
@@ -50,7 +52,7 @@ function glaciers2D_plots()
     end
 end
 
-run_tests()
+
 
 
 

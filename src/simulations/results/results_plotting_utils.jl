@@ -47,7 +47,7 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
 
         # Mirror data around both X and Y axes
         data = reverse(reverse(data, dims=1),dims=2)
-
+        
         # Fetch the colormap for the current variable from the mapping
         colormap = get(colormap_mapping, string(var), :cool)  # Default to :cool if not found
 
@@ -264,6 +264,8 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     return fig  # Return the main figure with the plot
 end
 
+
+
 """
     plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) -> Figure
 
@@ -313,3 +315,4 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
     end
 end
 
+export plot_glacier

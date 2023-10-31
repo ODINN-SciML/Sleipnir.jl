@@ -12,8 +12,8 @@ using PyCall
 using JLD2
 using Distributed
 using Statistics
-using CairoMakie
 using Makie
+using CairoMakie
 
 # ##############################################
 # ############    PARAMETERS     ###############

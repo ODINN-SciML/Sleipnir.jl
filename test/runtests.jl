@@ -7,8 +7,11 @@ using PyCall
 using Test
 using JLD2
 using Infiltrator
-using ImageMagick
-using ColorTypes
+using Makie
+using CairoMakie
+using Images
+using ImageDistances
+
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
