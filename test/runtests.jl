@@ -9,8 +9,8 @@ using JLD2
 using Infiltrator
 using Makie
 using CairoMakie
-using Images
-using ImageDistances
+using ImageMagick
+
 
 
 include("params_construction.jl")

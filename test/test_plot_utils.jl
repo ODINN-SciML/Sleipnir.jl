@@ -3,31 +3,29 @@ function glaciers2D_plots()
     # Load glacier data
     @load (joinpath(@__DIR__,"data/glaciers/glaciers2D_test_temporal.jld2")) results
     
-    function compare_fig_to_image(fig, reference_img_path; threshold=1e-1)
+    function compare_fig_to_image(fig, reference_img_path)
         # Temporary save figure
         temp_filename = tempname() * ".png"
         save(temp_filename, fig)
     
         # Step 2: Read Images
         img1 = load(temp_filename)
-        img2 = load(joinpath(@__DIR__,"$reference_img_path"))
-      
-        # Compare Images using Mean Squared Error (MSE)
-        mse_value = mse(img1, img2)
-        
-        
+        img2 = load(joinpath(@__DIR__,reference_img_path))
+    
+        # Perform a pixel-by-pixel comparison
+        are_identical = all(img1 .== img2)
+    
         # Clean up the temporary file
         rm(temp_filename)
     
-        # Determine if the images are similar based on a threshold
-        return mse_value <= threshold
+        return are_identical
     end
     
     
     # Test execution
     @testset "plot_glacier tests" begin
         @testset "Heatmaps" begin
-            fig = plot_glacier(results[2], "heatmaps", [:H, :V, :B])
+            fig = plot_glacier(results[2], "heatmaps", [:H,:B])
             @test isa(fig, Figure)
             @test compare_fig_to_image(fig, "data/figures/reference_plot_heatmaps.png")
         end

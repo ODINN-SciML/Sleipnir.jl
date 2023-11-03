@@ -14,6 +14,14 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     # Extract the rgi_id 
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
 
+    #Extract longitude and latitude 
+    lon = results.lon
+    lat = results.lat
+
+    Δx = results.Δx 
+
+   
+
     # Number of variables to plot determines the number of subplots
     num_vars = length(variables)
 
@@ -39,36 +47,64 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
 
         # Extract data from results for variable
         data = getfield(results, var)
+       
+        
         
         # If the data is a 3D array, take only the last matrix
         if typeof(data) == Vector{Matrix{Float64}}
             data = data[end]
         end
 
-        # Mirror data around both X and Y axes
-        data = reverse(reverse(data, dims=1),dims=2)
+        ny, nx = size(data)
+        
+        # Fix alignment of matrix
+        data = reverse(data', dims=2)
         
         # Fetch the colormap for the current variable from the mapping
         colormap = get(colormap_mapping, string(var), :cool)  # Default to :cool if not found
 
         # Plot the heatmap for the current variable with its designated colormap
         hm = heatmap!(ax, data, colormap=colormap)
+        Colorbar(fig[ax_row, ax_col + 1], hm)
         
-        if num_vars==2
-            Colorbar(fig[ax_row, ax_col + 1], hm)
+           
         
-        else    
-            Colorbar(fig[ax_row, ax_col + 1], hm)
-        end
+        
 
         # Set title, labels, and other attributes for current variable
-        ax.title = "$(get(title_mapping, string(var), (string(var), ""))[1]) ($(get(title_mapping, string(var), (string(var), ""))[2]))" # Fetch title from mapping, default to var if not found
-        ax.xlabel = "X coordinate"
-        ax.ylabel = "Y coordinate"
+        title, unit = get(title_mapping, string(var), (string(var), ""))
+        ax.title = "$title ($unit)"
+        ax.xlabel = "Longitude"
+        ax.ylabel = "Latitude"
+        ax.xticks=([round(nx/2)], ["$lon °"])
+        ax.yticks=([round(ny/2)], ["$lat °"])
+        ax.yticklabelrotation = π/2
+        ax.ylabelpadding = 15
+        ax.yticklabelalign = (:center, :bottom)
+
+
+        # Width of the scale division in heatmap data units
+        scale_width = 0.10*nx
+        scale_number = round(Δx * scale_width / 1000; digits=1)#to km
+        if num_vars == 1
+            textsize=1.2*scale_width 
+        elseif num_vars == 2
+            textsize=0.9*scale_width 
+        else
+            textsize=0.5*scale_width
+        
+        end
+        
+        # Position and draw the scale division rectangle
+        poly!(ax, Rect(nx -round(0.15*nx) , round(0.075*ny), scale_width, scale_width/10), color=:black)
+        text!(ax, "$scale_number km", 
+            position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
+            fontsize=textsize)
+        
     end
     
     fig[0, :] = Label(fig, "$rgi_id")
-
+    
     return fig
 end
 
@@ -91,6 +127,13 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
     
         # Extract data for the variable
         data = getfield(results, variables[1])
+        
+        #Extract longitude and latitude 
+        lon = results.lon
+        lat = results.lat
+        
+        #pixel width
+        Δx = results.Δx
     
         # Check the shape of the extracted data
         if typeof(data) ≠ Vector{Matrix{Float64}}
@@ -118,7 +161,7 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
              ax = Axis(fig[1, 1], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution")
          elseif metrics == ["difference"]
              fig = Figure()
-             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution")
+             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",aspect=DataAspect())
          else
              fig = Figure(layout=GridLayout(1, 4)) 
              ax = Axis(fig[1, 3:4], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution")
@@ -131,12 +174,36 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
                 hist!(ax, vec(data[end]-data[1]), bins=50)
                 ax.limits[] = (minimum(data_diff), maximum(data_diff), nothing, nothing)
             elseif metric == "difference"
-                # Mirror data around x and y
-                data_diff = reverse(reverse(data_diff, dims=1), dims=2)
+                
+                
+                ny, nx = size(data_diff)
+                data_diff = reverse(data_diff',dims=2) # Fix alignment
                 
                 hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, color=:auto, halign=:right)
-                ax_diff.xlabel = "X coordinate"
-                ax_diff.ylabel = "Y coordinate"
+                ax_diff.xlabel = "Longitude"
+                ax_diff.ylabel = "Latitude"
+                ax_diff.xticks=([round(nx/2)], ["$lon °"])
+                ax_diff.yticks=([round(ny/2)], ["$lat °"])
+                ax_diff.yticklabelrotation = π/2
+                ax_diff.ylabelpadding = 15.0
+                ax_diff.yticklabelalign = (:center, :bottom)
+
+                
+                # Width of the scale division in heatmap data units
+                scale_width = 0.10*nx
+                scale_number = round(Δx * scale_width / 1000; digits=1)#to km
+                
+                if metrics == ["difference"]
+                    textsize=1.2*scale_width
+                else 
+                    textsize=0.5*scale_width
+                end
+                
+                # Position and draw the scale division rectangle
+                poly!(ax_diff, Rect(nx -round(0.15*nx) , round(0.075*ny), scale_width, scale_width/10), color=:black)
+                text!(ax_diff, "$scale_number km", 
+                    position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
+                    fontsize=textsize)
                 Colorbar(fig[1, 2], hm_diff)
               
                 
@@ -178,10 +245,6 @@ function plot_glacier_statistics_evolution(results, variables, title_mapping; ts
     # Extract the rgi_id 
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
     
-    # Print plot information
-    variable_title = get(title_mapping, variables[1], variables[1])
-    
-
     # Create a time vector
     t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
 
@@ -224,9 +287,11 @@ function plot_glacier_statistics_evolution(results, variables, title_mapping; ts
 end
 
 
-function plot_glacier_integrated_volume(results, variables, title_mapping; tspan, area=1.0)
-   
-
+function plot_glacier_integrated_volume(results, variables, title_mapping; tspan)
+    
+    # Determine pixel area
+    area=results.Δx*results.Δy
+    
     # Check if more than one variable is passed
     if length(variables) > 1
         error("Only one variable can be passed to this function.")
@@ -283,7 +348,6 @@ Generate various types of plots for glacier data.
 # Optional Keyword Arguments
 - `tspan`: A tuple representing the start and end time for the simulation.
 - `metrics`: Metrics to visualize, e.g., `["average"]` for statistics, `["difference"]` for difference.
-- `area`: Area (in square meters) of each pixel for integrated volume calculation. Default is `1.0`.
 
 # Returns
 - A `Figure` object containing the desired visualization.
