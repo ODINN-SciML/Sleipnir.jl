@@ -1,3 +1,5 @@
+export plot_glacier
+
 function plot_glacier_heatmaps(results, variables, title_mapping)
 
     # Dictionary of variable-specific colormaps
@@ -15,8 +17,22 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
 
     #Extract longitude and latitude 
-    lon = results.lon
-    lat = results.lat
+    lon = if hasproperty(results, :lon)
+        results.lon
+    elseif hasproperty(results.gdir, :cenlon)
+        results.gdir.cenlon
+    else
+        nothing
+    end
+    
+    lat = if hasproperty(results, :lat)
+        results.lat
+    elseif hasproperty(results.gdir, :cenlat)
+        results.gdir.cenlat
+    else
+        nothing
+    end
+    
 
     Δx = results.Δx 
 
@@ -104,7 +120,7 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     end
     
     fig[0, :] = Label(fig, "$rgi_id")
-    
+    resize_to_layout!(fig)
     return fig
 end
 
@@ -129,8 +145,8 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
         data = getfield(results, variables[1])
         
         #Extract longitude and latitude 
-        lon = results.lon
-        lat = results.lat
+        lon = hasproperty(results, :lon) ? results.lon : "none"
+        lat = hasproperty(results, :lat) ? results.lat : "none"
         
         #pixel width
         Δx = results.Δx
@@ -151,8 +167,8 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
         t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
     
         matrix_size = size(data[1])
-        diff_width = 1.5 * matrix_size[1]
-        diff_height = 1.5 * matrix_size[2]
+        diff_width = 1.0 * matrix_size[2]
+        diff_height = 1.0 * matrix_size[1]
         data_diff=data[end] - data[1]
      
          # Determine whether to create a single plot or a subplot
@@ -164,8 +180,8 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
              ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",aspect=DataAspect())
          else
              fig = Figure(layout=GridLayout(1, 4)) 
-             ax = Axis(fig[1, 3:4], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution")
-             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",width=diff_width,height=diff_height)
+             ax = Axis(fig[1, 3:4], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution",width=diff_width,height=diff_height)
+             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",aspect=DataAspect())
          end
     
         # Plot based on the metric
@@ -179,7 +195,12 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
                 ny, nx = size(data_diff)
                 data_diff = reverse(data_diff',dims=2) # Fix alignment
                 
-                hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, color=:auto, halign=:right)
+                # Calculate the symmetric color range
+                max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
+
+                    
+                hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, halign=:right, colorrange=(-max_abs_value, max_abs_value))
+
                 ax_diff.xlabel = "Longitude"
                 ax_diff.ylabel = "Latitude"
                 ax_diff.xticks=([round(nx/2)], ["$lon °"])
@@ -205,13 +226,14 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
                     position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
                     fontsize=textsize)
                 Colorbar(fig[1, 2], hm_diff)
+                
               
                 
             end
         end
         
         fig[0, :] = Label(fig, "$rgi_id")
-
+        resize_to_layout!(fig)
         fig  # Return the main figure
     
 end
@@ -280,7 +302,7 @@ function plot_glacier_statistics_evolution(results, variables, title_mapping; ts
 
     leg = Legend(fig, ax)  
     fig[1, 2] = leg 
-    
+    resize_to_layout!(fig)
     
 
     fig  # Return the main figure
@@ -326,6 +348,7 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     ax.ylabel = "Integrated Ice Volume (m³)   "
     ax.title = "Evolution of Integrated Ice Volume ($rgi_id)"
 
+    resize_to_layout!(fig)
     return fig  # Return the main figure with the plot
 end
 
@@ -379,4 +402,3 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
     end
 end
 
-export plot_glacier
