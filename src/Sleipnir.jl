@@ -12,7 +12,6 @@ using PyCall
 using JLD2
 using Distributed
 using Statistics
-using Makie
 using CairoMakie
 
 # ##############################################

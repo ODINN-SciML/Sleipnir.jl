@@ -7,15 +7,14 @@ using PyCall
 using Test
 using JLD2
 using Infiltrator
-using Makie
 using CairoMakie
-using ImageMagick
+
 
 
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
-include("test_plot_utils.jl")
+include("plot_utils.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
