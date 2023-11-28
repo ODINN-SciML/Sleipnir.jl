@@ -1,7 +1,6 @@
 name = "Sleipnir"
 uuid = "f5e6c550-199f-11ee-3608-394420200519"
-authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>",
-           "Facundo Sapienza <fsapienza@berkeley.edu>"]
+authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>"]
 version = "0.3.5"
 
 [deps]
@@ -20,6 +19,7 @@ Infiltrator = "1"
 JLD2 = "0.4"
 PyCall = "1"
 Revise = "3"
+Statistics = "1"
 julia = "1.7"
 
 [extras]
