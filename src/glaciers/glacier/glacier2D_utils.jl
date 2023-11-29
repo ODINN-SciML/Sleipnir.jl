@@ -118,7 +118,7 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         glacier_gd.close() # Release any resources linked to this object
 
         # We initialize the Glacier with all the initial topographical conditions
-        glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,
+        glacier = Glacier2D{F}(rgi_id = gdir.rgi_id, gdir = gdir,
                           climate=nothing, 
                           H₀ = H₀, S = S, B = B, V = V, 
                           A = 4e-17, C = 0.0, n = 3.0,
