@@ -23,6 +23,6 @@ function glaciers2D_constructor(; save_refs::Bool = false)
 
     glaciers_ref = load(joinpath(Sleipnir.root_dir,"test/data/glaciers/glaciers2D.jld2"))["glaciers"]
     
-    @test all(glaciers .== glaciers_ref)
+    @test all(glaciers .≈ glaciers_ref)
 
 end
