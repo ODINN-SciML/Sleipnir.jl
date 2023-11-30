@@ -5,6 +5,7 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(
         "H" => :YlGnBu,
+        "H₀" => :YlGnBu,
         "S" => :terrain,
         "B" => :terrain,
         "V" => :viridis,
@@ -382,6 +383,7 @@ Generate various types of plots for glacier data.
 function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) where T
     title_mapping = Dict(
         "H" => ("Ice Thickness", "m", :YlGnBu),
+        "H₀" => ("Ice Thickness", "m", :YlGnBu),
         "S" => ("Surface Topography", "m", :terrain),
         "B" => ("Bed Topography", "m", :terrain),
         "V" => ("Ice Surface Velocity", "m/s", :viridis),
