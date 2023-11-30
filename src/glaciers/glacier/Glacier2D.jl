@@ -66,8 +66,8 @@ function Glacier2D(;
     ) where {F <: AbstractFloat, I <: Int} 
 
     # Define default float and integer type for constructor
-    ft = Float64
-    it = Int64
+    ft = typeof(Δx)
+    it = typeof(nx)
     return Glacier2D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, slope, dist_border, S_coords, Δx, Δy, nx, ny)
 end
 
