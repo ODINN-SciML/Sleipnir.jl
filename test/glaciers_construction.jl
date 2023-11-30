@@ -26,9 +26,9 @@ function glaciers2D_constructor(; save_refs::Bool = false)
     @show glaciers[1] ≈ glaciers_ref[1]
     @show glaciers[2] ≈ glaciers_ref[2]
 
-    @show glaciers[1].rgi_id ≈ glaciers_ref[1].rgi_id
-    @show glaciers[1].gdir ≈ glaciers_ref[1].gdir
-    @show glaciers[1].climate ≈ glaciers_ref[1].climate
+    @show glaciers[1].rgi_id == glaciers_ref[1].rgi_id
+    @show glaciers[1].gdir == glaciers_ref[1].gdir
+    @show glaciers[1].climate == glaciers_ref[1].climate
     @show glaciers[1].H₀ ≈ glaciers_ref[1].H₀
     @show glaciers[1].S ≈ glaciers_ref[1].S
     @show glaciers[1].B ≈ glaciers_ref[1].B
@@ -38,7 +38,7 @@ function glaciers2D_constructor(; save_refs::Bool = false)
     @show glaciers[1].n ≈ glaciers_ref[1].n
     @show glaciers[1].slope ≈ glaciers_ref[1].slope
     @show glaciers[1].dist_border ≈ glaciers_ref[1].dist_border
-    @show glaciers[1].S_coords ≈ glaciers_ref[1].S_coords
+    @show glaciers[1].S_coords == glaciers_ref[1].S_coords
     @show glaciers[1].Δx ≈ glaciers_ref[1].Δx
     @show glaciers[1].Δy ≈ glaciers_ref[1].Δy
     @show glaciers[1].nx ≈ glaciers_ref[1].nx
