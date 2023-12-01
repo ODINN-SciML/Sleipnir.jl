@@ -109,10 +109,10 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         else
             V = zeros(F, size(H₀))
         end
-        nx = glacier_gd.y.size # glacier extent
-        ny = glacier_gd.x.size # really weird, but this is inversed 
-        Δx = abs(gdir.grid.dx)
-        Δy = abs(gdir.grid.dy)
+        nx = I(glacier_gd.y.size) # glacier extent
+        ny = I(glacier_gd.x.size) # really weird, but this is inversed 
+        Δx = abs(F(gdir.grid.dx))
+        Δy = abs(F.(gdir.grid.dy))
         slope = F.(glacier_gd.slope.data)
 
         glacier_gd.close() # Release any resources linked to this object
