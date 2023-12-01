@@ -44,8 +44,12 @@ function glaciers2D_constructor(; save_refs::Bool = false)
     @show glaciers[1].nx ≈ glaciers_ref[1].nx
     @show glaciers[1].ny ≈ glaciers_ref[1].ny
 
-    @show glaciers[1].slope
-    @show glaciers_ref[1].slope
+    @show maximum(abs.(glaciers[1].slope .- glaciers_ref[1].slope))
+    @show length(glaciers[1].slope)
+    @show length(glaciers_ref[1].slope)
+
+    # @show glaciers[1].slope
+    # @show glaciers_ref[1].slope
 
     # @show glaciers[1].rgi_id
     # @show glaciers_ref[1].rgi_id
