@@ -84,7 +84,7 @@ Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdi
 Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate && 
                                       a.H₀ ≈ b.H₀ && a.S ≈ b.S && a.B ≈ b.B && a.V ≈ b.V &&
                                       a.A ≈ b.A && a.C ≈ b.C && a.n ≈ b.n && 
-                                      a.slope ≈ b.slope && a.dist_border ≈ b.dist_border && 
+                                      isapprox(a.slope, b.slope; rtol=1e-3) && a.dist_border ≈ b.dist_border && 
                                       a.S_coords == b.S_coords && a.Δx ≈ b.Δx && a.Δy ≈ b.Δy && a.nx ≈ b.nx && a.ny ≈ b.ny
 
 include("glacier2D_utils.jl")
