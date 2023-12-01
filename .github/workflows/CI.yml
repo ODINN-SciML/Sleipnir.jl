@@ -4,8 +4,7 @@ on:
     branches:
       - main
    push:
-    branches:
-      - main
+    branches: []
     tags: '*'
 concurrency:
   # Skip intermediate builds: always.
