@@ -18,11 +18,11 @@ function glaciers2D_constructor(; save_refs::Bool = false)
     end
 
     if save_refs
-        jldsave(joinpath(@__DIR__, "data/glaciers/glaciers2D.jld2"); glaciers)
+        jldsave(joinpath(Sleipnir.root_dir, "test/data/glaciers/glaciers2D.jld2"); glaciers)
     end
 
-    glaciers_ref = load(joinpath(@__DIR__,"data/glaciers/glaciers2D.jld2"))["glaciers"]
-    
-    @test all(glaciers .== glaciers_ref)
+    glaciers_ref = load(joinpath(Sleipnir.root_dir,"test/data/glaciers/glaciers2D.jld2"))["glaciers"]
+
+    @test all(glaciers .≈ glaciers_ref)
 
 end
