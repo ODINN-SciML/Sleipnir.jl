@@ -14,7 +14,11 @@ function create_results(simulation::SIM, glacier_idx::I, solution; light=false) 
                       B = simulation.glaciers[glacier_idx].B,
                       V = simulation.model.iceflow.V,
                       Vx = simulation.model.iceflow.Vx,
-                      Vy = simulation.model.iceflow.Vy)
+                      Vy = simulation.model.iceflow.Vy,
+                      Δx = simulation.glaciers[glacier_idx].Δx,              
+                      Δy = simulation.glaciers[glacier_idx].Δy,
+                      lon = simulation.glaciers[glacier_idx].gdir.cenlon,
+                      lat = simulation.glaciers[glacier_idx].gdir.cenlat)              
                       
     return results
 end

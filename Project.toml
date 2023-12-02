@@ -4,6 +4,7 @@ authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapien
 version = "0.3.5"
 
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
