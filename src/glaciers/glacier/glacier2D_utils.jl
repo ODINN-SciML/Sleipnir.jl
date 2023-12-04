@@ -35,7 +35,6 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         
         # Check for valid RGI IDs
         valid_rgi_ids = check_glathida_rgi_ids(rgi_ids)
-    
         
         if isempty(valid_rgi_ids)
             error("None of the provided RGI IDs are valid.")
@@ -48,7 +47,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         pmap((gdir) -> Sleipnir.generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
         
          # Initialize Glaciers with valid RGI IDs
-        glaciers = pmap((gdir) -> get_glathida!(data_glathida, [gdir]), gdirs)
+        glaciers = pmap((gdir) -> get_glathida!(data_glathida, [gdir], params), gdirs)
         
     else 
         # Initialize glacier directories
@@ -234,7 +233,7 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
 end
 
 # [Begin] Glathida Utilities
-function get_glathida!(gtd_file, gdirs; force=false)
+function get_glathida!(gtd_file, gdirs, params; force=false)
     glathida = pd.HDFStore(gtd_file)
     gtd_grids = map(gdir -> get_glathida_glacier(gdir, glathida, force), gdirs)
 
@@ -254,11 +253,21 @@ function get_glathida!(gtd_file, gdirs; force=false)
    
     Δx = abs(gdir.grid.dx)
     Δy = abs(gdir.grid.dy)
-    
+    ny, nx  = size(gtd_grids[1])
 
-    glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,
-                          climate=nothing, 
-                          H₀ = gtd_grids[1], 
+    #Millan22 velocity 
+    glacier_gd = xr.open_dataset(gdir.get_filepath("gridded_data"))
+    F = params.simulation.float_type  
+    V = zeros(F, size(glacier_gd.glacier_mask.data))
+    
+    if params.simulation.velocities
+        V .= F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0))
+        fillNaN!(V)  # Replace NaN values with zeros
+    end
+
+
+    glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,nx = nx,ny = ny, 
+                          H₀ = gtd_grids[1], V = V,
                           Δx=Δx, Δy=Δy)
                     
     println(glacier)
