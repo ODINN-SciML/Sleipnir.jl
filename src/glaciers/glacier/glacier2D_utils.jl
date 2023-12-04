@@ -237,7 +237,7 @@ function get_glathida!(gtd_file, gdirs, params; force=false)
     glathida = pd.HDFStore(gtd_file)
     gtd_grids = map(gdir -> get_glathida_glacier(gdir, glathida, force), gdirs)
 
-    missing_glaciers = load(joinpath(pwd(), "data/missing_glaciers.jld2"))["missing_glaciers"]
+    missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
     for (gtd_grid, gdir) in zip(gtd_grids, gdirs)
         if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) && all(gdir.rgi_id .!= missing_glaciers)
             push!(missing_glaciers, gdir.rgi_id)
@@ -270,8 +270,6 @@ function get_glathida!(gtd_file, gdirs, params; force=false)
                           H₀ = gtd_grids[1], V = V,
                           Δx=Δx, Δy=Δy)
                     
-    println(glacier)
-    println("test")
     return glacier
 end
 
