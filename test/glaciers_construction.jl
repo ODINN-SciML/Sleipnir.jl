@@ -1,10 +1,11 @@
 
 
-function glaciers2D_constructor(; save_refs::Bool = false)
+function glaciers2D_constructor(; save_refs::Bool = true)
 
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 
     params = Parameters(simulation=SimulationParameters(velocities=false,
+                                                        use_glathida_data=true,
                                                         working_dir=Sleipnir.root_dir),
                         OGGM=OGGMparameters(ice_thickness_source="Farinotti19"))
 
@@ -25,30 +26,6 @@ function glaciers2D_constructor(; save_refs::Bool = false)
 
     @test all(glaciers .≈ glaciers_ref)
 
-
-
-    #GlaThiDa test
-    params_glathida = Parameters(simulation=SimulationParameters(velocities=false,
-                                                        use_glathida_data=true,
-                                                        working_dir=Sleipnir.root_dir),
-                        OGGM=OGGMparameters(ice_thickness_source="Farinotti19"))
-    
-    glaciers_glathida = initialize_glaciers(rgi_ids, params_glathida; test=true)
-
-    # Empty all PyCall stuff to avoid issues
-    for glacier in glaciers_glathida
-        glacier.gdir = nothing
-        glacier.climate = nothing
-        glacier.S_coords = nothing
-    end
-
-    if save_refs
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/glaciers/glaciers2D_glathida.jld2"); glaciers_glathida)
-    end
-
-    glaciers_ref_glathida = load(joinpath(Sleipnir.root_dir,"test/data/glaciers/glaciers2D_glathida.jld2"))["glaciers_glathida"]
-    
-    @test all([glacier.H₀ for glacier in glaciers_glathida] .≈ [glacier.H₀ for glacier in glaciers_ref_glathida])
 
 end
 

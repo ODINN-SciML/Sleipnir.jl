@@ -3,16 +3,7 @@ export plot_glacier
 function plot_glacier_heatmaps(results, variables, title_mapping)
 
     # Dictionary of variable-specific colormaps
-    colormap_mapping = Dict(
-        "H" => :YlGnBu,
-        "H₀" => :YlGnBu,
-        "S" => :terrain,
-        "B" => :terrain,
-        "V" => :viridis,
-        "Vx" => :viridis,
-        "Vy" => :viridis
-    )
-
+    colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
     # Extract the rgi_id 
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
@@ -384,6 +375,7 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
     title_mapping = Dict(
         "H" => ("Ice Thickness", "m", :YlGnBu),
         "H₀" => ("Ice Thickness", "m", :YlGnBu),
+        "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
         "S" => ("Surface Topography", "m", :terrain),
         "B" => ("Bed Topography", "m", :terrain),
         "V" => ("Ice Surface Velocity", "m/s", :viridis),

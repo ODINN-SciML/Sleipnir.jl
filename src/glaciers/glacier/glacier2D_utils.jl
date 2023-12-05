@@ -26,9 +26,13 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     missing_glaciers = Vector([])
     jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
-    # Initialize glaciers
-    gdirs = Vector{PyObject}()  
-    glaciers = Vector{Glacier2D}() 
+    # Initialize glacier directories
+    gdirs = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
+        
+    # Generate raw climate data if necessary
+    pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
+    
+    glaciers = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
     
     if params.simulation.use_glathida_data == true
         data_glathida, all_rgi_ids = get_glathida_path_and_IDs()
@@ -37,26 +41,24 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         valid_rgi_ids = check_glathida_rgi_ids(rgi_ids)
         
         if isempty(valid_rgi_ids)
-            error("None of the provided RGI IDs are valid.")
+            error("None of the provided RGI IDs have GlaThiDa.")
         end
-        
-        # Initialize glacier directories
-        gdirs = Sleipnir.init_gdirs(valid_rgi_ids, params; velocities=params.simulation.velocities)
-    
-        # Generate raw climate data if necessary
-        pmap((gdir) -> Sleipnir.generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
-        
-         # Initialize Glaciers with valid RGI IDs
-        glaciers = pmap((gdir) -> get_glathida!(data_glathida, [gdir], params), gdirs)
-        
-    else 
-        # Initialize glacier directories
-        gdirs = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
-        
-        # Generate raw climate data if necessary
-        pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
-        
-        glaciers = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
+
+        # Filter out gdirs corresponding to the valid RGI IDs
+        valid_gdirs = filter(gdir -> gdir.rgi_id in valid_rgi_ids, gdirs)
+
+        # Obtain H_glathida values for the valid RGI IDs
+        H_glathida_values = get_glathida!(data_glathida, valid_gdirs)
+
+        # Create a mapping from RGI ID to H_glathida value
+        rgi_to_H_glathida = Dict(zip(valid_rgi_ids, H_glathida_values))
+
+        # Assign H_glathida to glaciers with valid RGI IDs
+        for glacier in glaciers
+            if glacier.rgi_id in valid_rgi_ids
+                glacier.H_glathida = rgi_to_H_glathida[glacier.rgi_id]
+            end
+        end
     end
     
     return glaciers
@@ -233,11 +235,12 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
 end
 
 # [Begin] Glathida Utilities
-function get_glathida!(gtd_file, gdirs, params; force=false)
+function get_glathida!(gtd_file, gdirs; force=false)
     glathida = pd.HDFStore(gtd_file)
     gtd_grids = map(gdir -> get_glathida_glacier(gdir, glathida, force), gdirs)
 
-    missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+     # Update missing_glaciers list before removing them
+    missing_glaciers = load(joinpath(pwd(), "data/missing_glaciers.jld2"))["missing_glaciers"]
     for (gtd_grid, gdir) in zip(gtd_grids, gdirs)
         if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) && all(gdir.rgi_id .!= missing_glaciers)
             push!(missing_glaciers, gdir.rgi_id)
@@ -247,30 +250,9 @@ function get_glathida!(gtd_file, gdirs, params; force=false)
     jldsave(joinpath(pwd(), "data/missing_glaciers.jld2"); missing_glaciers)
 
     deleteat!(gtd_grids, findall(x->length(x[x .!= 0.0])==0, gtd_grids))
-    deleteat!(gdirs, findall(x->length(x[x .!= 0.0])==0, gtd_grids))
-    
-    gdir = gdirs[1]
-   
-    Δx = abs(gdir.grid.dx)
-    Δy = abs(gdir.grid.dy)
-    ny, nx  = size(gtd_grids[1])
-
-    #Millan22 velocity 
-    glacier_gd = xr.open_dataset(gdir.get_filepath("gridded_data"))
-    F = params.simulation.float_type  
-    V = zeros(F, size(glacier_gd.glacier_mask.data))
-    
-    if params.simulation.velocities
-        V .= F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0))
-        fillNaN!(V)  # Replace NaN values with zeros
-    end
-
-
-    glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,nx = nx,ny = ny, 
-                          H₀ = gtd_grids[1], V = V,
-                          Δx=Δx, Δy=Δy)
+    deleteat!(gdirs, findall(x->length(x[x .!= 0.0])==0, gtd_grids))    
                     
-    return glacier
+    return gtd_grids
 end
 
 function check_glathida_rgi_ids(target_rgi_ids)
@@ -282,7 +264,7 @@ function check_glathida_rgi_ids(target_rgi_ids)
         
         # Checking if the target RGI ID is in the rgi_ids array
         is_in_rgi_ids = target_rgi_id in rgi_ids
-        println("Is '$target_rgi_id' in Glathida database? ", is_in_rgi_ids)
+        println("Is '$target_rgi_id' in GlaThiDa database? ", is_in_rgi_ids)
 
         # Add to the list if valid
         if is_in_rgi_ids
@@ -309,6 +291,8 @@ function get_glathida_glacier(gdir, glathida, force)
                 gtd_grid[i,j] = thick
             end
         end
+        
+        # Save file 
         h5open(joinpath(gdir.dir, "glathida.h5"), "w") do file
             write(file, "gtd_grid", gtd_grid)  
         end
