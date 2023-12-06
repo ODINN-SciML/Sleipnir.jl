@@ -1,6 +1,6 @@
 
 
-function glaciers2D_constructor(; save_refs::Bool = true)
+function glaciers2D_constructor(; save_refs::Bool = false)
 
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 

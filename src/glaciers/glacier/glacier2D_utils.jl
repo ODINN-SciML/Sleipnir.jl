@@ -27,12 +27,12 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
     # Initialize glacier directories
-    gdirs = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
-        
+    gdirs::Vector{PyObject} = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
+    
     # Generate raw climate data if necessary
     pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
     
-    glaciers = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
+    glaciers::Vector{Glacier2D} = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
     
     if params.simulation.use_glathida_data == true
         data_glathida, all_rgi_ids = get_glathida_path_and_IDs()
@@ -48,7 +48,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         valid_gdirs = filter(gdir -> gdir.rgi_id in valid_rgi_ids, gdirs)
 
         # Obtain H_glathida values for the valid RGI IDs
-        H_glathida_values = get_glathida!(data_glathida, valid_gdirs)
+        H_glathida_values = get_glathida!(data_glathida, valid_gdirs,params)
 
         # Create a mapping from RGI ID to H_glathida value
         rgi_to_H_glathida = Dict(zip(valid_rgi_ids, H_glathida_values))
@@ -235,19 +235,19 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
 end
 
 # [Begin] Glathida Utilities
-function get_glathida!(gtd_file, gdirs; force=false)
+function get_glathida!(gtd_file, gdirs, params; force=false)
     glathida = pd.HDFStore(gtd_file)
     gtd_grids = map(gdir -> get_glathida_glacier(gdir, glathida, force), gdirs)
 
      # Update missing_glaciers list before removing them
-    missing_glaciers = load(joinpath(pwd(), "data/missing_glaciers.jld2"))["missing_glaciers"]
+    missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
     for (gtd_grid, gdir) in zip(gtd_grids, gdirs)
         if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) && all(gdir.rgi_id .!= missing_glaciers)
             push!(missing_glaciers, gdir.rgi_id)
             @info "Glacier with all data at 0: $(gdir.rgi_id). Updating list of missing glaciers..."
         end
     end
-    jldsave(joinpath(pwd(), "data/missing_glaciers.jld2"); missing_glaciers)
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
     deleteat!(gtd_grids, findall(x->length(x[x .!= 0.0])==0, gtd_grids))
     deleteat!(gdirs, findall(x->length(x[x .!= 0.0])==0, gtd_grids))    
