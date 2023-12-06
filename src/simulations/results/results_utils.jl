@@ -17,8 +17,9 @@ function create_results(simulation::SIM, glacier_idx::I, solution; light=false) 
                       Vy = simulation.model.iceflow.Vy,
                       Δx = simulation.glaciers[glacier_idx].Δx,              
                       Δy = simulation.glaciers[glacier_idx].Δy,
-                      lon = simulation.glaciers[glacier_idx].gdir.cenlon,
-                      lat = simulation.glaciers[glacier_idx].gdir.cenlat)              
+                      lon = get_property_or_zero_PyObject(simulation.glaciers[glacier_idx].gdir, :cenlon),
+                      lat = get_property_or_zero_PyObject(simulation.glaciers[glacier_idx].gdir, :cenlat)
+)              
                       
     return results
 end
