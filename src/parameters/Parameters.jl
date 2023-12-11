@@ -42,4 +42,5 @@ function Parameters(;
     return parameters
 end
 
-Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && a.OGGM == b.OGGM
+Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && a.OGGM == b.OGGM &&
+                                                a.solver == b.solver && a.hyper == b.hyper && a.UDE == b.UDE
