@@ -264,7 +264,6 @@ function check_glathida_rgi_ids(target_rgi_ids)
         
         # Checking if the target RGI ID is in the rgi_ids array
         is_in_rgi_ids = target_rgi_id in rgi_ids
-        println("Is '$target_rgi_id' in GlaThiDa database? ", is_in_rgi_ids)
 
         # Add to the list if valid
         if is_in_rgi_ids
