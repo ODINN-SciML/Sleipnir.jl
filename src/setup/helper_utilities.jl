@@ -11,11 +11,22 @@ function safe_approx(a, b)
     end
 end
 
-function get_property_or_zero_PyObject(obj, prop_name::Symbol)
+# Function for Python objects
+function safe_getproperty(obj::PyObject, prop_name::Symbol)
     if PyCall.hasproperty(obj, prop_name)
         return PyCall.getproperty(obj, prop_name)
     else
         return 0.0
     end
 end
+
+# Function for Julia objects
+function safe_getproperty(obj, prop_name::Symbol)
+    if hasproperty(obj, prop_name)
+        return getproperty(obj, prop_name)
+    else
+        return 0.0
+    end
+end
+
     
