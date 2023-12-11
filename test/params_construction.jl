@@ -16,6 +16,7 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             plots = false,
                                             velocities = false,
                                             overwrite_climate = false,
+                                            use_glathida_data = false,
                                             float_type = Float64,
                                             int_type = Int64,
                                             tspan = (2010.0,2015.0),

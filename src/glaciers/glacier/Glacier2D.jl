@@ -10,6 +10,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Int} <: AbstractGlacier
     gdir::Union{PyObject, Nothing} 
     climate::Union{Climate2D, Nothing}
     H₀::Union{Matrix{F}, Nothing}
+    H_glathida::Union{Matrix{F}, Nothing}
     S::Union{Matrix{F}, Nothing}
     B::Union{Matrix{F}, Nothing}
     V::Union{Matrix{F}, Nothing}
@@ -31,6 +32,7 @@ function Glacier2D(;
     gdir::Union{PyObject, Nothing} = nothing,
     climate::Union{Climate2D, Nothing} = nothing,
     H₀::Union{Matrix{F}, Nothing} = nothing,
+    H_glathida::Union{Matrix{F}, Nothing},
     S::Union{Matrix{F}, Nothing} = nothing,
     B::Union{Matrix{F}, Nothing} = nothing,
     V::Union{Matrix{F}, Nothing}= nothing,
@@ -50,6 +52,7 @@ function Glacier2D(;
     gdir::Union{PyObject, Nothing} = nothing,
     climate::Union{Climate2D, Nothing} = nothing,
     H₀::Union{Matrix{F}, Nothing} = nothing,
+    H_glathida::Union{Matrix{F}, Nothing} = nothing,
     S::Union{Matrix{F}, Nothing} = nothing,
     B::Union{Matrix{F}, Nothing} = nothing,
     V::Union{Matrix{F}, Nothing}= nothing,
@@ -68,24 +71,27 @@ function Glacier2D(;
     # Define default float and integer type for constructor
     ft = typeof(Δx)
     it = typeof(nx)
-    return Glacier2D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, slope, dist_border, S_coords, Δx, Δy, nx, ny)
+    return Glacier2D{ft,it}(rgi_id, gdir, climate, H₀, H_glathida, S, B, V, A, C, n, slope, dist_border, S_coords, Δx, Δy, nx, ny)
 end
 
 ###############################################
 ################### UTILS #####################
 ###############################################
 
+
 Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate && 
-                                      a.H₀ == b.H₀ && a.S == b.S && a.B == b.B && a.V == b.V &&
+                                      a.H₀ == b.H₀ && a.H_glathida == b.H_glathida && a.S == b.S && a.B == b.B && a.V == b.V &&
                                       a.A == b.A && a.C == b.C && a.n == b.n && 
                                       a.slope == b.slope && a.dist_border == b.dist_border && 
                                       a.S_coords == b.S_coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx && a.ny == b.ny
 
-Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate && 
-                                      a.H₀ ≈ b.H₀ && a.S ≈ b.S && a.B ≈ b.B && a.V ≈ b.V &&
-                                      a.A ≈ b.A && a.C ≈ b.C && a.n ≈ b.n && 
-                                      isapprox(a.slope, b.slope; rtol=1e-3) && a.dist_border ≈ b.dist_border && 
-                                      a.S_coords == b.S_coords && a.Δx ≈ b.Δx && a.Δy ≈ b.Δy && a.nx ≈ b.nx && a.ny ≈ b.ny
+Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate &&
+                                        safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) && 
+                                        safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
+                                        safe_approx(a.A, b.A) && safe_approx(a.C, b.C) && safe_approx(a.n, b.n) &&
+                                        isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
+                                        a.S_coords == b.S_coords && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
+                                        safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny)
 
 include("glacier2D_utils.jl")
 include("../climate/climate2D_utils.jl")

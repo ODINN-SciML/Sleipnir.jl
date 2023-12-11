@@ -12,6 +12,9 @@ using PyCall
 using JLD2
 using Distributed
 using Statistics
+using CairoMakie
+using Downloads
+using HDF5
 
 # ##############################################
 # ############    PARAMETERS     ###############

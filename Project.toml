@@ -1,11 +1,14 @@
 name = "Sleipnir"
 uuid = "f5e6c550-199f-11ee-3608-394420200519"
 authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>"]
-version = "0.3.5"
+version = "0.4.0"
 
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -15,6 +18,9 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+CairoMakie = "0.11"
+HDF5 = "0.17"
+Downloads = "1"
 Infiltrator = "1"
 JLD2 = "0.4"
 PyCall = "1"
