@@ -38,6 +38,13 @@ function Parameters(;
         # Build the parameters based on all the subtypes of parameters
         parameters = Parameters(physical, simulation, OGGM,
                                 nothing,nothing, nothing)
+
+        if parameters.simulation.multiprocessing
+                enable_multiprocessing(parameters.simulation.workers)
+        end
+                
+        oggm_config(OGGM.working_dir; oggm_processes=OGGM.workers)
+        
         return parameters
 end
 
