@@ -1,5 +1,7 @@
 
-  struct OGGMparameters <: AbstractParameters
+export oggm_config
+
+struct OGGMparameters <: AbstractParameters
     working_dir::String
     paths::Union{PyDict, Nothing}
     params::Union{PyDict, Nothing}
@@ -41,26 +43,6 @@ function OGGMparameters(;
             )
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
-    # initialize OGGM configuration
-    cfg.initialize()
-    
-    if isnothing(paths) && !test
-        paths = PyDict(cfg."PATHS")  # OGGM PATHS
-        paths["working_dir"] = working_dir # Choose own custom path for the OGGM data
-    end
-    if isnothing(params) && !test
-        params = PyDict(cfg."PARAMS")
-        params["hydro_month_nh"]=1
-        params["dl_verify"] = false
-        params["continue_on_error"] = true # avoid stopping when a task fails for a glacier (e.g. lack of data)
-        
-        # Multiprocessing 
-        params["use_multiprocessing"] = multiprocessing # Let's use multiprocessing for OGGM
-        if multiprocessing
-            params["mp_processes"] = workers
-        end
-
-    end
 
     # Build the OGGM parameters and configuration
     OGGM_parameters = OGGMparameters(working_dir, paths, params,
@@ -83,7 +65,7 @@ Configures the basic paths and parameters for OGGM.
 function oggm_config(working_dir=joinpath(homedir(), "OGGM/OGGM_data"); oggm_processes=1)
     @eval begin
     @everywhere begin
-    @eval ODINN begin
+    @eval Sleipnir begin
     cfg.initialize() # initialize OGGM configuration
     
     PATHS = PyDict(cfg."PATHS")  # OGGM PATHS
@@ -102,12 +84,8 @@ function oggm_config(working_dir=joinpath(homedir(), "OGGM/OGGM_data"); oggm_pro
 
 
 
-    end # @eval ODINN
+    end # @eval Sleipnir
     end # @everywhere
     end # @eval
-
-    @eval ODINN begin
-
-    end # @eval ODINN
 
 end

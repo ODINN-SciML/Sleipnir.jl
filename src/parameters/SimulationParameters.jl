@@ -62,7 +62,7 @@ function SimulationParameters(;
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
-    end
+    end  
 
     return simulation_parameters
 end
