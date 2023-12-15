@@ -46,27 +46,5 @@ function clean()
 # """
 #     Initialize_ODINN(processes, python_path)
 
-# Initializes ODINN by configuring PyCall based on a given Python path. It also configures multiprocessing
-# for a given number of processes. 
-# """
-# function enable_multiprocessing(procs::Int)
-#     if procs > 0
-#         if nprocs() < procs
-#             @eval begin
-#             addprocs($procs - nprocs(); exeflags="--project")
-#             println("Number of cores: ", nprocs())
-#             println("Number of workers: ", nworkers())
-#             @everywhere using ODINN
-#             end # @eval
-#         elseif nprocs() != procs && procs == 1
-#             @eval begin
-#             rmprocs(workers(), waitfor=0)
-#             println("Number of cores: ", nprocs())
-#             println("Number of workers: ", nworkers())
-#             end # @eval
-#         end
-#     end
-#     return nworkers()
-# end
 
 include("helper_utilities.jl")

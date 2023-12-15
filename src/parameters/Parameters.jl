@@ -35,11 +35,10 @@ function Parameters(;
             OGGM::OGGMparameters = OGGMparameters()
             ) 
 
-    # Build the parameters based on all the subtypes of parameters
-    parameters = Parameters(physical, simulation, OGGM,
-                            nothing,nothing, nothing)
-
-    return parameters
+        # Build the parameters based on all the subtypes of parameters
+        parameters = Parameters(physical, simulation, OGGM,
+                                nothing,nothing, nothing)
+        return parameters
 end
 
 Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && a.OGGM == b.OGGM &&
