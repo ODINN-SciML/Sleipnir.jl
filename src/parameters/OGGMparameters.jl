@@ -63,9 +63,10 @@ Base.:(==)(a::OGGMparameters, b::OGGMparameters) = a.working_dir == b.working_di
 Configures the basic paths and parameters for OGGM.
 """
 function oggm_config(working_dir=joinpath(homedir(), "OGGM/OGGM_data"); oggm_processes=1)
+    scope = @__MODULE__ # Capture current module to allow use from external packages (e.g. Huginn, Muninn and ODINN)
     @eval begin
     @everywhere begin
-    @eval Sleipnir begin
+    @eval $scope begin
     cfg.initialize() # initialize OGGM configuration
     
     PATHS = PyDict(cfg."PATHS")  # OGGM PATHS
