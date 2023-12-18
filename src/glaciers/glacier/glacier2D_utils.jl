@@ -30,7 +30,11 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     gdirs::Vector{PyObject} = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
     
     # Generate raw climate data if necessary
-    pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
+    if params.simulation.test_mode
+        map((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs) # avoid GitHub CI issue
+    else
+        pmap((gdir) -> generate_raw_climate_files(gdir, params.simulation.tspan), gdirs)
+    end
     
     glaciers::Vector{Glacier2D} = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
     
