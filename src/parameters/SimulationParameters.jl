@@ -14,6 +14,7 @@ struct SimulationParameters{F <: AbstractFloat} <: AbstractParameters
     multiprocessing::Bool
     workers::Int 
     working_dir::String
+    test_mode::Bool
 end
 
 
@@ -52,13 +53,14 @@ function SimulationParameters(;
             step::F = 1/12,
             multiprocessing::Bool = true,
             workers::Int = 4,
-            working_dir::String = ""
+            working_dir::String = "",
+            test_mode::Bool = false
             ) where {F <: AbstractFloat}
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
                                                 float_type, int_type,
-                                                tspan, step, multiprocessing, workers, working_dir)
+                                                tspan, step, multiprocessing, workers, working_dir, test_mode)
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
@@ -71,4 +73,4 @@ Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use
                                       a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
                                       a.float_type == b.float_type && a.int_type == b.int_type &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
-                                      a.workers == b.workers && a.working_dir == b.working_dir
+                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode
