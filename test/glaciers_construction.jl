@@ -6,7 +6,8 @@ function glaciers2D_constructor(; save_refs::Bool = false)
 
     params = Parameters(simulation=SimulationParameters(velocities=false,
                                                         use_glathida_data=true,
-                                                        working_dir=Sleipnir.root_dir),
+                                                        working_dir=Sleipnir.root_dir,
+                                                        test_mode=true),
                         OGGM=OGGMparameters(ice_thickness_source="Farinotti19"))
 
     glaciers = initialize_glaciers(rgi_ids, params; test=true)
