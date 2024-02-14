@@ -373,15 +373,22 @@ Generate various types of plots for glacier data.
 """
 function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) where T
     title_mapping = Dict(
-        "H" => ("Ice Thickness", "m", :YlGnBu),
-        "H₀" => ("Ice Thickness", "m", :YlGnBu),
-        "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
-        "S" => ("Surface Topography", "m", :terrain),
-        "B" => ("Bed Topography", "m", :terrain),
-        "V" => ("Ice Surface Velocity", "m/s", :viridis),
-        "Vx" => ("Ice Surface Velocity (X-direction)", "m/s", :viridis),
-        "Vy" => ("Ice Surface Velocity (Y-direction)", "m/s", :viridis)
+    "H" => ("Ice Thickness", "m", :YlGnBu),
+    "H₀" => ("Ice Thickness", "m", :YlGnBu),
+    "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
+    "S" => ("Surface Topography", "m", :terrain),
+    "B" => ("Bed Topography", "m", :terrain),
+    "V" => ("Ice Surface Velocity", "m/s", :viridis),
+    "Vx" => ("Ice Surface Velocity (X-direction)", "m/s", :viridis),
+    "Vy" => ("Ice Surface Velocity (Y-direction)", "m/s", :viridis),
+    "H_pred" => ("Predicted Ice Thickness", "m", :YlGnBu),
+    "H_obs" => ("Observed Ice Thickness", "m", :YlGnBu),
+    "H_diff" => ("Ice Thickness Difference", "m", :RdBu),
+    "V_pred" => ("Predicted Ice Surface Velocity", "m/s", :viridis),
+    "V_obs" => ("Observed Ice Surface Velocity", "m/s", :viridis),
+    "V_diff" => ("Ice Surface Velocity Difference", "m/s", :RdBu)
     )
+
 
     if plot_type == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping)
