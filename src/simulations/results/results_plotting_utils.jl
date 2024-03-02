@@ -27,8 +27,16 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     
 
     Δx = results.Δx 
-
-   
+    
+    ice_thickness_vars = [:H, :H₀, :H_glathida, :H_pred, :H_obs] # Symbol representation of the variable names
+    max_values = []
+    for var in ice_thickness_vars
+        if hasproperty(results, var)
+            push!(max_values, maximum(getfield(results, var)))
+        end
+    end
+    global_max = maximum(max_values)
+    
 
     # Number of variables to plot determines the number of subplots
     num_vars = length(variables)
@@ -72,8 +80,17 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
         colormap = get(colormap_mapping, string(var), :cool)  # Default to :cool if not found
 
         # Plot the heatmap for the current variable with its designated colormap
-        hm = heatmap!(ax, data, colormap=colormap)
-        Colorbar(fig[ax_row, ax_col + 1], hm)
+        if var in ice_thickness_vars
+            # Plot with a uniform color range for ice thickness variables
+            hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max))
+            Colorbar(fig[ax_row, ax_col + 1], hm)
+        else
+            # Plot other variables without the uniform color range
+            hm = heatmap!(ax, data, colormap=colormap)
+            Colorbar(fig[ax_row, ax_col + 1], hm)
+        end
+
+        
         
            
         
@@ -344,6 +361,40 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     return fig  # Return the main figure with the plot
 end
 
+function plot_bias(data, keys)
+    # Check for exactly two keys
+    if length(keys) != 2
+        error("Exactly two keys are required for the scatter plot.")
+    end
+
+
+    # Extract the RGI ID directly
+    rgi_id = data.rgi_id
+
+    # Initialize the x_values and y_values
+    x_values = getfield(data,keys[1])
+    y_values = getfield(data,keys[2])
+
+    # Filter for non-zero values of H_obs or V_obs and corresponding values of the second key
+    if :H_obs in keys || :V_obs in keys
+        obs_key = :H_obs in keys ? :H_obs : :V_obs
+        non_zero_indices = findall(getfield(data,obs_key) .!= 0)
+        x_values = getfield(data,keys[1])[non_zero_indices]
+        y_values = getfield(data,keys[2])[non_zero_indices]
+    end
+
+    # Set up the figure, axis, and scatter plot
+    fig = Figure(size = (600, 400))
+    ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * string(rgi_id))
+    
+    # Plot the scatter and bias line
+    Makie.scatter!(ax, x_values, y_values, markersize = 5, color = :blue, label = "Data")
+    xmin, xmax = minimum(x_values), maximum(x_values)
+    Makie.lines!(ax, [xmin, xmax], [xmin, xmax], linestyle = :dash, color = :red, label = "y = x")
+
+    fig
+end
+
 
 
 """
@@ -372,23 +423,23 @@ Generate various types of plots for glacier data.
 - The function routes requests to specific plotting functions based on `plot_type`.
 """
 function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) where T
+    
     title_mapping = Dict(
-    "H" => ("Ice Thickness", "m", :YlGnBu),
-    "H₀" => ("Ice Thickness", "m", :YlGnBu),
-    "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
-    "S" => ("Surface Topography", "m", :terrain),
-    "B" => ("Bed Topography", "m", :terrain),
-    "V" => ("Ice Surface Velocity", "m/s", :viridis),
-    "Vx" => ("Ice Surface Velocity (X-direction)", "m/s", :viridis),
-    "Vy" => ("Ice Surface Velocity (Y-direction)", "m/s", :viridis),
-    "H_pred" => ("Predicted Ice Thickness", "m", :YlGnBu),
-    "H_obs" => ("Observed Ice Thickness", "m", :YlGnBu),
-    "H_diff" => ("Ice Thickness Difference", "m", :RdBu),
-    "V_pred" => ("Predicted Ice Surface Velocity", "m/s", :viridis),
-    "V_obs" => ("Observed Ice Surface Velocity", "m/s", :viridis),
-    "V_diff" => ("Ice Surface Velocity Difference", "m/s", :RdBu)
+        "H" => ("Ice Thickness", "m", :YlGnBu),
+        "H₀" => ("Ice Thickness", "m", :YlGnBu),
+        "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
+        "S" => ("Surface Topography", "m", :terrain),
+        "B" => ("Bed Topography", "m", :terrain),
+        "V" => ("Ice Surface Velocity", "m/s", :viridis),
+        "Vx" => ("Ice Surface Velocity (X-direction)", "m/s", :viridis),
+        "Vy" => ("Ice Surface Velocity (Y-direction)", "m/s", :viridis),
+        "H_pred" => ("Predicted Ice Thickness", "m", :YlGnBu),
+        "H_obs" => ("Observed Ice Thickness", "m", :YlGnBu),
+        "H_diff" => ("Ice Thickness Difference", "m", :RdBu),
+        "V_pred" => ("Predicted Ice Surface Velocity", "m/s", :viridis),
+        "V_obs" => ("Observed Ice Surface Velocity", "m/s", :viridis),
+        "V_diff" => ("Ice Surface Velocity Difference", "m/s", :RdBu)
     )
-
 
     if plot_type == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping)
@@ -398,8 +449,9 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
         return plot_glacier_statistics_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "integrated_volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
+    elseif plot_type == "bias"  
+        return plot_bias(results, variables)
     else
         error("Invalid plot_type: $plot_type")
     end
 end
-
