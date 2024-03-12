@@ -361,36 +361,53 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     return fig  # Return the main figure with the plot
 end
 
-function plot_bias(data, keys)
+function plot_bias(data, keys; treshold = [0, 0])
     # Check for exactly two keys
     if length(keys) != 2
         error("Exactly two keys are required for the scatter plot.")
     end
 
-
-    # Extract the RGI ID directly
+     # Ensure treshold is an array of length 2
+    if length(treshold) == 1
+        treshold = [treshold[1], treshold[1]]
+    end
+    
+    # Extract data
     rgi_id = data.rgi_id
-
-    # Initialize the x_values and y_values
     x_values = getfield(data,keys[1])
     y_values = getfield(data,keys[2])
-
-    # Filter for non-zero values of H_obs or V_obs and corresponding values of the second key
+    
+    # Filter non-zero observations if necessary
     if :H_obs in keys || :V_obs in keys
         obs_key = :H_obs in keys ? :H_obs : :V_obs
-        non_zero_indices = findall(getfield(data,obs_key) .!= 0)
-        x_values = getfield(data,keys[1])[non_zero_indices]
-        y_values = getfield(data,keys[2])[non_zero_indices]
+        #non_zero_indices = findall(getfield(data,obs_key) .!= 0)
+        mask_H = getfield(data,obs_key) .> treshold[1] * maximum(getfield(data,obs_key))
+        mask_H_2 = getfield(data,obs_key) .< (1-treshold[2]) * maximum(getfield(data,obs_key))
+        x_values = x_values[mask_H .& mask_H_2]
+        y_values = y_values[mask_H .& mask_H_2]
     end
-
-    # Set up the figure, axis, and scatter plot
-    fig = Figure(size = (600, 400))
-    ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * string(rgi_id))
     
-    # Plot the scatter and bias line
-    Makie.scatter!(ax, x_values, y_values, markersize = 5, color = :blue, label = "Data")
+    
+    # Calculate metrics
+    differences = x_values .- y_values
+    rmse = sqrt(mean(differences .^ 2)) # Root Mean Square Error
+    bias = mean(differences) # Bias
+    ss_res = sum(differences .^ 2) # Sum of squares of residuals
+    ss_tot = sum((x_values .- mean(x_values)) .^ 2) # Total sum of squares
+    r_squared = 1 - (ss_res / ss_tot) # R-squared
+
+    # Plotting
+    fig = Figure(size = (600, 400))
+    ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
+
+    scatter!(ax, x_values, y_values, markersize = 5, color = :blue, label = "Data")
     xmin, xmax = minimum(x_values), maximum(x_values)
-    Makie.lines!(ax, [xmin, xmax], [xmin, xmax], linestyle = :dash, color = :red, label = "y = x")
+    ymin, ymax = minimum(y_values), maximum(y_values)
+    lines!(ax, [xmin, xmax], [xmin, xmax], linestyle = :dash, color = :red, label = "y = x")
+
+    # Display metrics on the plot
+    metrics_text = "RMSE: $(round(rmse, digits=2))\nR²: $(round(r_squared, digits=2))\nBias: $(round(bias, digits=2))"
+    text!(ax, metrics_text, position = (xmax, ymax), align = (:right, :top), color = :black)
 
     fig
 end
@@ -450,7 +467,7 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
     elseif plot_type == "integrated_volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
     elseif plot_type == "bias"  
-        return plot_bias(results, variables)
+        return plot_bias(results, variables; kwargs...)
     else
         error("Invalid plot_type: $plot_type")
     end
