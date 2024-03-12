@@ -129,12 +129,16 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{F} = F.(glacier_gd.dis_from_border.data)
-        S::Matrix{F} = F.(glacier_gd.topo.data) # surface elevation
+        
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
 
         B::Matrix{F} = F.(glacier_gd.topo.data) .- H₀ # bedrock
         S_coords::PyObject = rioxarray.open_rasterio(gdir.get_filepath("dem"))
+        #S::Matrix{F} = F.(glacier_gd.topo.data)
+        S::Matrix{F} = F.(S_coords[1].values) # surface elevation
+        #smooth!(S)
+        
         if params.simulation.velocities
             V::Matrix{F} = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0))
             fillNaN!(V)
@@ -180,6 +184,13 @@ function init_gdirs(rgi_ids::Vector{String}, params::Parameters; velocities=true
     try
         gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids)
         filter_missing_glaciers!(gdirs, params)
+
+        if params.OGGM.DEM_source != "Default"
+            for gdir in gdirs
+                tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
+            end
+        end
+        
         return gdirs
     catch 
         @warn "Cannot retrieve gdirs from disk!"
@@ -202,12 +213,20 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
     gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids, prepro_base_url=params.OGGM.base_url, 
                                                 from_prepro_level=2, prepro_border=10,
                                                 reset=true, force=true)
+    if params.OGGM.DEM_source != "Default"
+        for gdir in gdirs
+            tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
+        end
+    end
+    
+
     if velocities
         list_talks = [
             # tasks.compute_centerlines,
             # tasks.initialize_flowlines,
             # tasks.compute_downstream_line,
             # tasks.catchment_area,
+            # tasks.process_dem,
             tasks.gridded_attributes,
             tasks.glacier_masks,
             # tasks.gridded_mb_attributes,
