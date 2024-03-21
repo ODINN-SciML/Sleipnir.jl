@@ -1,6 +1,6 @@
 export plot_glacier
 
-function plot_glacier_heatmaps(results, variables, title_mapping)
+function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_size::Union{Nothing,Float64}=nothing)
 
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
@@ -32,10 +32,25 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     max_values = []
     for var in ice_thickness_vars
         if hasproperty(results, var)
-            push!(max_values, maximum(getfield(results, var)))
+            
+            current_matrix = getfield(results, var)
+            
+            # Ensure current_matrix is not Nothing and not empty
+            if !isnothing(current_matrix) && !isempty(current_matrix)
+                # Check if current_matrix is a Vector of Matrix{Float64}
+                if typeof(current_matrix) <: Vector
+                    # Update current_matrix to be the last element in the vector, if it's not empty
+                    current_matrix = current_matrix[end]
+                end
+                
+                push!(max_values, maximum(current_matrix))
+            end
         end
     end
-    global_max = maximum(max_values)
+
+    # Ensure max_values is not empty before finding global maximum
+    global_max = isempty(max_values) ? nothing : maximum(max_values)
+
     
 
     # Number of variables to plot determines the number of subplots
@@ -67,7 +82,7 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
         
         
         # If the data is a 3D array, take only the last matrix
-        if typeof(data) == Vector{Matrix{Float64}}
+        if typeof(data) <: Vector
             data = data[end]
         end
 
@@ -111,13 +126,17 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
         # Width of the scale division in heatmap data units
         scale_width = 0.10*nx
         scale_number = round(Δx * scale_width / 1000; digits=1)#to km
-        if num_vars == 1
-            textsize=1.2*scale_width 
-        elseif num_vars == 2
-            textsize=0.9*scale_width 
-        else
-            textsize=0.5*scale_width
         
+        if scale_text_size === nothing
+            if num_vars == 1
+                textsize=1.2*scale_width 
+            elseif num_vars == 2
+                textsize=0.9*scale_width 
+            else
+                textsize=0.5*scale_width
+            end
+        else
+            textsize = scale_text_size
         end
         
         # Position and draw the scale division rectangle
@@ -400,7 +419,7 @@ function plot_bias(data, keys; treshold = [0, 0])
     fig = Figure(size = (600, 400))
     ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
 
-    scatter!(ax, x_values, y_values, markersize = 5, color = :blue, label = "Data")
+    scatter!(ax, vec(x_values), vec(y_values), markersize = 5, color = :blue, label = "Data")
     xmin, xmax = minimum(x_values), maximum(x_values)
     ymin, ymax = minimum(y_values), maximum(y_values)
     lines!(ax, [xmin, xmax], [xmin, xmax], linestyle = :dash, color = :red, label = "y = x")
@@ -459,7 +478,7 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
     )
 
     if plot_type == "heatmaps"
-        return plot_glacier_heatmaps(results, variables, title_mapping)
+        return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution_difference"
         return plot_glacier_difference_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution_statistics"
