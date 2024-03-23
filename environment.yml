@@ -40,8 +40,8 @@ dependencies:
   
   # Packages installed through pip
   - pip:
-    - joblib=1.3
-    - progressbar2=4.4
+    - joblib==1.3
+    - progressbar2==4.4
     - git+https://github.com/OGGM/pytest-mpl
     - git+https://github.com/OGGM/massbalance-sandbox
     - oggm==1.6.0
