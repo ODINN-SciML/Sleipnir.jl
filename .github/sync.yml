@@ -8,3 +8,5 @@ group:
       dest: environment.yml
     - source: .gitignore
       dest: .gitignore
+    - source: .github/workflows/CI.yml
+      dest: .github/workflows/CI.yml
