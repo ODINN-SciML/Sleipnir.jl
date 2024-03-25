@@ -29,11 +29,11 @@ function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_siz
     ice_thickness_vars = [:H, :H₀, :H_glathida, :H_pred, :H_obs] # Ice thickness variables
     velocity_vars = [:V, :Vx, :Vy, :V_pred, :V_obs] # Velocity variables, excluding V_diff
     
-    # Initialize max_values for ice thickness and velocity separately
+    # Initialize max_values for ice thickness and velocity separately, considering only given variables
     max_values_ice = []
     max_values_velocity = []
-    
-    for var in union(ice_thickness_vars, velocity_vars)  # Check all vars for maximum
+
+    for var in intersect(union(ice_thickness_vars, velocity_vars), variables)  # Check only given vars for maximum
         if hasproperty(results, var)
             current_matrix = getfield(results, var)
             if !isnothing(current_matrix) && !isempty(current_matrix)
@@ -48,7 +48,7 @@ function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_siz
             end
         end
     end
-    
+
     # Determine global maximum for ice and velocity separately
     global_max_ice = isempty(max_values_ice) ? nothing : maximum(max_values_ice)
     global_max_velocity = isempty(max_values_velocity) ? nothing : maximum(max_values_velocity)
