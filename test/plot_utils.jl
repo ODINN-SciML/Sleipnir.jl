@@ -40,6 +40,15 @@ function glaciers2D_plots()
                 @test false
             end
         end
+
+        @testset "Bias" begin
+            try
+                plot_glacier(results[2], "bias", [:B,:S])
+                @test true
+            catch
+                @test false
+            end
+        end
     end
 end
 
