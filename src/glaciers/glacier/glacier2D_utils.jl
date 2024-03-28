@@ -185,6 +185,7 @@ function init_gdirs(rgi_ids::Vector{String}, params::Parameters; velocities=true
         gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids)
         filter_missing_glaciers!(gdirs, params)
 
+        # Set different surface topography source if specified
         if params.OGGM.DEM_source != "Default"
             for gdir in gdirs
                 tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
@@ -213,6 +214,8 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
     gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids, prepro_base_url=params.OGGM.base_url, 
                                                 from_prepro_level=2, prepro_border=10,
                                                 reset=true, force=true)
+
+    # Set different surface topography source if specified
     if params.OGGM.DEM_source != "Default"
         for gdir in gdirs
             tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
