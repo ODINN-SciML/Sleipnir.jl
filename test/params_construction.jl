@@ -30,6 +30,7 @@ function params_constructor_specified(; save_refs::Bool = false)
                                 multiprocessing = false,
                                 workers = 1,
                                 ice_thickness_source = "Millan22",
+                                DEM_source = "Default",
                                 base_url = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/",
                                 test = true)
 

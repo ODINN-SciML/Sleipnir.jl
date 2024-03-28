@@ -8,6 +8,7 @@ struct OGGMparameters <: AbstractParameters
     multiprocessing::Bool
     workers::Int64
     ice_thickness_source::String
+    DEM_source::String
     base_url::String
 end
 
@@ -38,6 +39,7 @@ function OGGMparameters(;
             multiprocessing::Bool = false,
             workers::Int64 = 1,
             ice_thickness_source::String = "Farinotti19",
+            DEM_source::String = "Default",
             base_url::String = "https://cluster.klima.uni-bremen.de/~oggm/gdirs/oggm_v1.6/L1-L2_files/elev_bands/",
             test = false
             )
@@ -47,15 +49,15 @@ function OGGMparameters(;
     # Build the OGGM parameters and configuration
     OGGM_parameters = OGGMparameters(working_dir, paths, params,
                                     multiprocessing, workers, 
-                                    ice_thickness_source,
+                                    ice_thickness_source, DEM_source,
                                     base_url)
 
     return OGGM_parameters
 end
 
 Base.:(==)(a::OGGMparameters, b::OGGMparameters) = a.working_dir == b.working_dir && a.paths == b.paths && a.params == b.params && 
-                                      a.multiprocessing == b.multiprocessing && a.workers == b.workers && a.ice_thickness_source == b.ice_thickness_source &&
-                                      a.base_url == b.base_url
+                                      a.multiprocessing == b.multiprocessing && a.workers == b.workers && a.ice_thickness_source == b.ice_thickness_source && 
+                                      a.DEM_source == b.DEM_source && a.base_url == b.base_url
 
 """
     oggm_config()
@@ -75,7 +77,7 @@ function oggm_config(working_dir=joinpath(homedir(), "OGGM/OGGM_data"); oggm_pro
     PARAMS["hydro_month_nh"]=1
     PARAMS["dl_verify"] = false
     PARAMS["continue_on_error"] = true # avoid stopping when a task fails for a glacier (e.g. lack of data)
-
+    PARAMS["border"] = 10
     # Multiprocessing 
     multiprocessing = $oggm_processes > 1 ? true : false
     PARAMS["use_multiprocessing"] = multiprocessing # Let's use multiprocessing for OGGM

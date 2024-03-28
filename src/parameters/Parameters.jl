@@ -9,13 +9,14 @@ include("SimulationParameters.jl")
 include("OGGMparameters.jl")
 
 struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
-                  PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams}
-    physical::PPHY
-    simulation::PSIM
-    OGGM::POGGM
-    hyper::PHY
-    solver::PSOL
-    UDE::PUDE
+        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
+        physical::PPHY
+        simulation::PSIM
+        OGGM::POGGM
+        hyper::PHY
+        solver::PSOL
+        UDE::PUDE
+        inversion::PINV  
 end
 
 """
@@ -30,23 +31,24 @@ Keyword arguments
     
 """
 function Parameters(;
-            physical::PhysicalParameters = PhysicalParameters(),
-            simulation::SimulationParameters = SimulationParameters(),
-            OGGM::OGGMparameters = OGGMparameters()
-            ) 
+        physical::PhysicalParameters = PhysicalParameters(),
+        simulation::SimulationParameters = SimulationParameters(),
+        OGGM::OGGMparameters = OGGMparameters(),
+    ) 
 
-        # Build the parameters based on all the subtypes of parameters
-        parameters = Parameters(physical, simulation, OGGM,
-                                nothing,nothing, nothing)
+    # Build the parameters based on all the subtypes of parameters
+    parameters = Parameters(physical, simulation, OGGM,
+                            nothing, nothing, nothing, nothing)  
 
-        if parameters.simulation.multiprocessing
-                enable_multiprocessing(parameters.simulation.workers)
-        end
-                
-        oggm_config(OGGM.working_dir; oggm_processes=OGGM.workers)
-        
-        return parameters
+    if parameters.simulation.multiprocessing
+            enable_multiprocessing(parameters.simulation.workers)
+    end
+            
+    oggm_config(parameters.OGGM.working_dir; oggm_processes=parameters.OGGM.workers)
+    
+    return parameters
 end
 
-Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && a.OGGM == b.OGGM &&
-                                                a.solver == b.solver && a.hyper == b.hyper && a.UDE == b.UDE
+Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && 
+                                           a.OGGM == b.OGGM && a.solver == b.solver && a.hyper == b.hyper && 
+                                           a.UDE == b.UDE && a.inversion == b.inversion  

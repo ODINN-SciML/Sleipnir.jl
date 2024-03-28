@@ -39,21 +39,20 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     glaciers::Vector{Glacier2D} = pmap((gdir) -> initialize_glacier(gdir, params; smoothing=false, test=test), gdirs)
     
     if params.simulation.use_glathida_data == true
-        data_glathida, all_rgi_ids = get_glathida_path_and_IDs()
+        data_glathida, glathida_rgi_ids = get_glathida_path_and_IDs()
         
-        # Check for valid RGI IDs
-        valid_rgi_ids = check_glathida_rgi_ids(rgi_ids)
+        # Obtain H_glathida values for the valid RGI IDs
+        H_glathida_values, valid_gdirs = get_glathida!(data_glathida, gdirs, params)
+        valid_rgi_ids = [gdir.rgi_id for gdir in valid_gdirs]
         
         if isempty(valid_rgi_ids)
             error("None of the provided RGI IDs have GlaThiDa.")
         end
 
-        # Filter out gdirs corresponding to the valid RGI IDs
-        valid_gdirs = filter(gdir -> gdir.rgi_id in valid_rgi_ids, gdirs)
-
-        # Obtain H_glathida values for the valid RGI IDs
-        H_glathida_values = get_glathida!(data_glathida, valid_gdirs,params)
-
+        if length(valid_rgi_ids) < length(rgi_ids)
+            @warn "Not all glaciers have GlaThiDa data available."
+        end
+        
         # Create a mapping from RGI ID to H_glathida value
         rgi_to_H_glathida = Dict(zip(valid_rgi_ids, H_glathida_values))
 
@@ -130,12 +129,16 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{F} = F.(glacier_gd.dis_from_border.data)
-        S::Matrix{F} = F.(glacier_gd.topo.data) # surface elevation
+        
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
 
         B::Matrix{F} = F.(glacier_gd.topo.data) .- H₀ # bedrock
         S_coords::PyObject = rioxarray.open_rasterio(gdir.get_filepath("dem"))
+        #S::Matrix{F} = F.(glacier_gd.topo.data)
+        S::Matrix{F} = F.(S_coords[1].values) # surface elevation
+        #smooth!(S)
+        
         if params.simulation.velocities
             V::Matrix{F} = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0))
             fillNaN!(V)
@@ -181,6 +184,14 @@ function init_gdirs(rgi_ids::Vector{String}, params::Parameters; velocities=true
     try
         gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids)
         filter_missing_glaciers!(gdirs, params)
+
+        # Set different surface topography source if specified
+        if params.OGGM.DEM_source != "Default"
+            for gdir in gdirs
+                tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
+            end
+        end
+        
         return gdirs
     catch 
         @warn "Cannot retrieve gdirs from disk!"
@@ -203,12 +214,22 @@ function init_gdirs_scratch(rgi_ids::Vector{String}, params::Parameters; velocit
     gdirs::Vector{PyObject} = workflow.init_glacier_directories(rgi_ids, prepro_base_url=params.OGGM.base_url, 
                                                 from_prepro_level=2, prepro_border=10,
                                                 reset=true, force=true)
+
+    # Set different surface topography source if specified
+    if params.OGGM.DEM_source != "Default"
+        for gdir in gdirs
+            tasks.define_glacier_region(gdir, source = params.OGGM.DEM_source)
+        end
+    end
+    
+
     if velocities
         list_talks = [
             # tasks.compute_centerlines,
             # tasks.initialize_flowlines,
             # tasks.compute_downstream_line,
             # tasks.catchment_area,
+            # tasks.process_dem,
             tasks.gridded_attributes,
             tasks.glacier_masks,
             # tasks.gridded_mb_attributes,
@@ -253,29 +274,13 @@ function get_glathida!(gtd_file, gdirs, params; force=false)
     end
     jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
-    deleteat!(gtd_grids, findall(x->length(x[x .!= 0.0])==0, gtd_grids))
-    deleteat!(gdirs, findall(x->length(x[x .!= 0.0])==0, gtd_grids))    
+   # Apply deletion to both gtd_grids and gdirs using the same set of indices
+    indices_to_remove = findall(x -> length(x[x .!= 0.0]) == 0, gtd_grids)
+    deleteat!(gtd_grids, indices_to_remove)
+    deleteat!(gdirs, indices_to_remove)
+
                     
-    return gtd_grids
-end
-
-function check_glathida_rgi_ids(target_rgi_ids)
-    data_glathida,rgi_ids = get_glathida_path_and_IDs()
-    
-    valid_rgi_ids = String[]  # Initialize an empty array to store valid RGI IDs
-
-    for target_rgi_id in target_rgi_ids
-        
-        # Checking if the target RGI ID is in the rgi_ids array
-        is_in_rgi_ids = target_rgi_id in rgi_ids
-
-        # Add to the list if valid
-        if is_in_rgi_ids
-            push!(valid_rgi_ids, target_rgi_id)
-        end
-    end
-
-    return valid_rgi_ids
+    return gtd_grids, gdirs
 end
 
 function get_glathida_glacier(gdir, glathida, force)
