@@ -192,14 +192,14 @@ function trim_period(period, climate)
     return period
 end
 
-function partial_year(period::Type{<:Period}, float::F) where {F <: AbstractFloat}
+function partial_year(period::Type{<:Period}, float)
     _year, Δ = divrem(float, 1)
     year_start = Date(_year)
     year = period((year_start + Year(1)) - year_start)
     partial = period(round(Dates.value(year) * Δ))
     year_start + partial
 end
-partial_year(float::F) where {F <: AbstractFloat} = partial_year(Day, float) 
+partial_year(float) = partial_year(Day, float) 
 
 
 function get_longterm_temps(gdir::PyObject, tspan)

@@ -23,8 +23,12 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     if !isdir(missing_glaciers_path)
         mkdir(missing_glaciers_path)
     end
-    missing_glaciers = Vector([])
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+
+    if !isfile(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))
+        missing_glaciers = Vector([])
+        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+    end
+    filter_missing_glaciers!(rgi_ids, params)
 
     # Initialize glacier directories
     gdirs::Vector{PyObject} = init_gdirs(rgi_ids, params; velocities=params.simulation.velocities)
@@ -84,7 +88,7 @@ Keyword arguments
 """
 function initialize_glacier(gdir::PyObject, parameters; smoothing=false, test=false)
     # Initialize glacier initial topography
-    glacier::Glacier2D = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
+    glacier = initialize_glacier_data(gdir, parameters; smoothing=smoothing, test=test)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
@@ -138,7 +142,11 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         S_coords::PyObject = rioxarray.open_rasterio(gdir.get_filepath("dem"))
         if params.simulation.velocities
             V::Matrix{F} = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0))
+            Vx::Matrix{F} = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0))
+            Vy::Matrix{F} = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0))
             fillNaN!(V)
+            fillNaN!(Vx)
+            fillNaN!(Vy)
         else
             V = zeros(F, size(H₀))
         end
@@ -149,15 +157,14 @@ function initialize_glacier_data(gdir::PyObject, params::Parameters; smoothing=f
         slope = F.(glacier_gd.slope.data)
 
         glacier_gd.close() # Release any resources linked to this object
-
         # We initialize the Glacier with all the initial topographical conditions
         glacier = Glacier2D(rgi_id = gdir.rgi_id, gdir = gdir,
                           climate=nothing, 
-                          H₀ = H₀, S = S, B = B, V = V, 
+                          H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
                           A = 4e-17, C = 0.0, n = 3.0,
                           slope = slope, dist_border = dist_border,
-                          S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny)
-
+                          S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
+                          cenlon = gdir.cenlon, cenlat = gdir.cenlat)
         return glacier
 
     catch error

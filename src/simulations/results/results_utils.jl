@@ -5,21 +5,28 @@
 
 Store the results of a simulation of a single glacier into a `Results`.
 """
-function create_results(simulation::SIM, glacier_idx::I, solution; light=false) where {SIM <: Simulation, I <: Int} # TODO: define type for solution!
-    ft = simulation.parameters.simulation.float_type
-    H::Vector{Matrix{ft}} = light ? [solution.u[begin],solution.u[end]] : solution.u 
-    results = Results(simulation.glaciers[glacier_idx], simulation.model.iceflow;
+function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer} 
+    H = light ? [solution.u[begin],solution.u[end]] : solution.u 
+    # Simulations using Reverse Diff require an iceflow model per glacier
+    if isnothing(batch_id)
+        iceflow_model = simulation.model.iceflow
+    else
+        iceflow_model = simulation.model.iceflow[batch_id]
+    end
+    results = Results(simulation.glaciers[glacier_idx], iceflow_model;
                       H = H,
-                      S = simulation.model.iceflow.S,
+                      S = iceflow_model.S,
                       B = simulation.glaciers[glacier_idx].B,
-                      V = simulation.model.iceflow.V,
-                      Vx = simulation.model.iceflow.Vx,
-                      Vy = simulation.model.iceflow.Vy,
+                      V = iceflow_model.V,
+                      Vx = iceflow_model.Vx,
+                      Vy = iceflow_model.Vy,
                       Δx = simulation.glaciers[glacier_idx].Δx,              
                       Δy = simulation.glaciers[glacier_idx].Δy,
-                      lon = safe_getproperty(simulation.glaciers[glacier_idx].gdir, :cenlon),
-                      lat = safe_getproperty(simulation.glaciers[glacier_idx].gdir, :cenlat)
-)              
+                      lon = simulation.glaciers[glacier_idx].cenlon,
+                      lat = simulation.glaciers[glacier_idx].cenlat,
+                      θ = simulation.model.machine_learning.θ,
+                      loss = loss
+                    )              
                       
     return results
 end
