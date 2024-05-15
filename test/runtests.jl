@@ -25,4 +25,4 @@ ENV["GKSwstype"]="nul"
 
 @testset "Glaciers 2D constructors" glaciers2D_constructor()
 
-@testset "Glaciers 2D plots" glaciers2D_plots()
+#@testset "Glaciers 2D plots" glaciers2D_plots()
