@@ -5,7 +5,7 @@ abstract type AbstractGlacier end
 
 include("../climate/Climate1D.jl")
 
-mutable struct Glacier1D{F <: AbstractFloat, I <: Int} <: AbstractGlacier
+mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
     gdir::Union{PyObject, Nothing} 
     climate::Union{Climate1D, Nothing}
@@ -43,7 +43,7 @@ function Glacier1D(;
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
     ny::Union{I, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Int} 
+    ) where {F <: AbstractFloat, I <: Integer} 
 
 Constructor for empty 2D Glacier object.
 """
@@ -67,7 +67,7 @@ function Glacier1D(;
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
     ny::Union{I, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Int} 
+    ) where {F <: AbstractFloat, I <: Integer} 
 
     # Define default float and integer type for constructor
     ft = Float64

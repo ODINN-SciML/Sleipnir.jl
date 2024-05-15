@@ -1,6 +1,6 @@
 
 
-struct SimulationParameters{F <: AbstractFloat} <: AbstractParameters
+struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParameters
     use_MB::Bool
     use_iceflow::Bool
     plots::Bool
@@ -12,7 +12,7 @@ struct SimulationParameters{F <: AbstractFloat} <: AbstractParameters
     tspan::Tuple{F, F}
     step::F
     multiprocessing::Bool
-    workers::Int 
+    workers::I 
     working_dir::String
     test_mode::Bool
 end
@@ -30,7 +30,7 @@ end
                         int_type::DataType = Int64,
                         tspan::Tuple{F, F} = (2010.0,2015.0),
                         multiprocessing::Bool = true,
-                        workers::Int = 4
+                        workers::I = 4
         )
 Initialize the parameters for a simulation.
 Keyword arguments
@@ -52,10 +52,10 @@ function SimulationParameters(;
             tspan::Tuple{F, F} = (2010.0,2015.0),
             step::F = 1/12,
             multiprocessing::Bool = true,
-            workers::Int = 4,
+            workers::I = 4,
             working_dir::String = "",
             test_mode::Bool = false
-            ) where {F <: AbstractFloat}
+            ) where {I <: Integer, F <: AbstractFloat}
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
