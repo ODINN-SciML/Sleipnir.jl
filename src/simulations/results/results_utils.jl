@@ -13,6 +13,12 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
     else
         iceflow_model = simulation.model.iceflow[batch_id]
     end
+    if !isnothing(simulation.model.machine_learning)
+        θ = simulation.model.machine_learning.θ
+    else
+        θ = nothing
+    end
+    
     results = Results(simulation.glaciers[glacier_idx], iceflow_model;
                       H = H,
                       S = iceflow_model.S,
@@ -24,7 +30,7 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
                       Δy = simulation.glaciers[glacier_idx].Δy,
                       lon = simulation.glaciers[glacier_idx].cenlon,
                       lat = simulation.glaciers[glacier_idx].cenlat,
-                      θ = simulation.model.machine_learning.θ,
+                      θ = θ,
                       loss = loss
                     )              
                       

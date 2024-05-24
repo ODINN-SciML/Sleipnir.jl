@@ -8,13 +8,13 @@ mutable struct Results{F <: AbstractFloat}
     V::Matrix{F}
     Vx::Matrix{F}
     Vy::Matrix{F}
-    V_ref::Matrix{F}
-    Vx_ref::Matrix{F}
-    Vy_ref::Matrix{F}
+    V_ref::Union{Nothing, Matrix{F}}
+    Vx_ref::Union{Nothing, Matrix{F}}
+    Vy_ref::Union{Nothing, Matrix{F}}
     Δx::F             
     Δy::F  
-    lon::F 
-    lat::F
+    lon::Union{Nothing, F} 
+    lat::Union{Nothing, F} 
     θ::Union{Nothing, Vector{F}}
     loss::Union{Nothing, Vector{F}}          
 end
@@ -29,13 +29,13 @@ function Results(glacier::G, ifm::IF;
         V::Matrix{F} = zeros(F, size(ifm.V)),
         Vx::Matrix{F} = zeros(F, size(ifm.Vx)),
         Vy::Matrix{F} = zeros(F, size(ifm.Vy)),
-        V_ref::Matrix{F} = glacier.V,
-        Vx_ref::Matrix{F} = glacier.Vx,
-        Vy_ref::Matrix{F} = glacier.Vy,
+        V_ref::Union{Nothing, Matrix{F}} = glacier.V,
+        Vx_ref::Union{Nothing, Matrix{F}} = glacier.Vx,
+        Vy_ref::Union{Nothing, Matrix{F}} = glacier.Vy,
         Δx::F = glacier.Δx,                
         Δy::F = glacier.Δy,   
-        lon::F = glacier.cenlon,
-        lat::F = glacier.cenlat,
+        lon::Union{Nothing, F}  = glacier.cenlon,
+        lat::Union{Nothing, F}  = glacier.cenlat,
         θ::Union{Nothing,Vector{F}} = nothing,
         loss::Union{Nothing,Vector{F}} = nothing                 
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel}
