@@ -8,7 +8,7 @@ include("PhysicalParameters.jl")
 include("SimulationParameters.jl")
 include("OGGMparameters.jl")
 
-struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
+mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
         PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
         physical::PPHY
         simulation::PSIM

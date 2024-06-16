@@ -15,7 +15,7 @@ mutable struct Results{F <: AbstractFloat}
     Δy::F  
     lon::Union{Nothing, F} 
     lat::Union{Nothing, F} 
-    θ::Union{Nothing, Vector{F}}
+    θ::Union{Nothing, ComponentArray{F}}
     loss::Union{Nothing, Vector{F}}          
 end
 
@@ -36,7 +36,7 @@ function Results(glacier::G, ifm::IF;
         Δy::F = glacier.Δy,   
         lon::Union{Nothing, F}  = glacier.cenlon,
         lat::Union{Nothing, F}  = glacier.cenlat,
-        θ::Union{Nothing,Vector{F}} = nothing,
+        θ::Union{Nothing,ComponentArray{F}} = nothing,
         loss::Union{Nothing,Vector{F}} = nothing                 
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel}
 
