@@ -1,14 +1,13 @@
 export plot_glacier
 
-function plot_glacier_heatmaps(results, variables, title_mapping)
-
+function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_size::Union{Nothing,Float64}=nothing)
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
     # Extract the rgi_id 
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
 
-    #Extract longitude and latitude 
+    # Extract longitude and latitude 
     lon = if hasproperty(results, :lon)
         results.lon
     elseif hasproperty(results.gdir, :cenlon)
@@ -24,62 +23,74 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
     else
         nothing
     end
-    
 
     Δx = results.Δx 
+    
+    ice_thickness_vars = [:H, :H₀, :H_glathida, :H_pred, :H_obs] # Ice thickness variables
+    velocity_vars = [:V, :Vx, :Vy, :V_pred, :V_obs] # Velocity variables, excluding V_diff
+    
+    # Initialize max_values for ice thickness and velocity separately, considering only given variables
+    max_values_ice = []
+    max_values_velocity = []
 
-   
+    for var in intersect(union(ice_thickness_vars, velocity_vars), variables)  # Check only given vars for maximum
+        if hasproperty(results, var)
+            current_matrix = getfield(results, var)
+            if !isnothing(current_matrix) && !isempty(current_matrix)
+                if typeof(current_matrix) <: Vector
+                    current_matrix = current_matrix[end]
+                end
+                if var in ice_thickness_vars
+                    push!(max_values_ice, maximum(current_matrix))
+                elseif var in velocity_vars
+                    push!(max_values_velocity, maximum(current_matrix))
+                end
+            end
+        end
+    end
 
-    # Number of variables to plot determines the number of subplots
+    # Determine global maximum for ice and velocity separately
+    global_max_ice = isempty(max_values_ice) ? nothing : maximum(max_values_ice)
+    global_max_velocity = isempty(max_values_velocity) ? nothing : maximum(max_values_velocity)
+
     num_vars = length(variables)
-
-    # Determine the grid layout based on the number of variables
     rows, cols = if num_vars == 1
-        2, 2  # Adjusted for extra row
+        2, 2
     elseif num_vars == 2
-        3, 2  # Adjusted for extra row
+        3, 2
     elseif num_vars in [3, 4]
-        3, 4  # Adjusted for extra row
+        3, 4
     else
         error("Unsupported number of variables.")
     end
 
-    # Create a figure with GridLayout
     fig = Figure(layout=GridLayout(rows, cols))
-
-    # Iterate over the variables and create subplots
     for (i, var) in enumerate(variables)
         ax_row = div(i - 1, 2) + 1
         ax_col = 2 * (rem(i - 1, 2)) + 1
         ax = Axis(fig[ax_row, ax_col], aspect=DataAspect())
-
-        # Extract data from results for variable
         data = getfield(results, var)
-       
         
-        
-        # If the data is a 3D array, take only the last matrix
-        if typeof(data) == Vector{Matrix{Float64}}
+        if typeof(data) <: Vector
             data = data[end]
         end
 
         ny, nx = size(data)
-        
-        # Fix alignment of matrix
         data = reverse(data', dims=2)
-        
-        # Fetch the colormap for the current variable from the mapping
-        colormap = get(colormap_mapping, string(var), :cool)  # Default to :cool if not found
+        colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
 
-        # Plot the heatmap for the current variable with its designated colormap
-        hm = heatmap!(ax, data, colormap=colormap)
-        Colorbar(fig[ax_row, ax_col + 1], hm)
-        
-           
-        
-        
+        # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
+        if var in ice_thickness_vars
+            hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_ice))
+            Colorbar(fig[ax_row, ax_col + 1], hm)
+        elseif var in velocity_vars
+            hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_velocity))
+            Colorbar(fig[ax_row, ax_col + 1], hm)
+        else
+            hm = heatmap!(ax, data, colormap=colormap)
+            Colorbar(fig[ax_row, ax_col + 1], hm)
+        end
 
-        # Set title, labels, and other attributes for current variable
         title, unit = get(title_mapping, string(var), (string(var), ""))
         ax.title = "$title ($unit)"
         ax.xlabel = "Longitude"
@@ -90,25 +101,22 @@ function plot_glacier_heatmaps(results, variables, title_mapping)
         ax.ylabelpadding = 15
         ax.yticklabelalign = (:center, :bottom)
 
-
-        # Width of the scale division in heatmap data units
         scale_width = 0.10*nx
-        scale_number = round(Δx * scale_width / 1000; digits=1)#to km
-        if num_vars == 1
-            textsize=1.2*scale_width 
-        elseif num_vars == 2
-            textsize=0.9*scale_width 
+        scale_number = round(Δx * scale_width / 1000; digits=1) # Convert to km
+        if scale_text_size === nothing
+            textsize = if num_vars == 1
+                1.2*scale_width 
+            elseif num_vars == 2
+                0.9*scale_width 
+            else
+                0.5*scale_width
+            end
         else
-            textsize=0.5*scale_width
-        
+            textsize = scale_text_size
         end
         
-        # Position and draw the scale division rectangle
-        poly!(ax, Rect(nx -round(0.15*nx) , round(0.075*ny), scale_width, scale_width/10), color=:black)
-        text!(ax, "$scale_number km", 
-            position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
-            fontsize=textsize)
-        
+        poly!(ax, Rect(nx - round(0.15*nx), round(0.075*ny), scale_width, scale_width/10), color=:black)
+        text!(ax, "$scale_number km", position=(nx - round(0.15*nx) + scale_width/16, round(0.075*ny) + scale_width/10), fontsize=textsize)
     end
     
     fig[0, :] = Label(fig, "$rgi_id")
@@ -344,6 +352,57 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     return fig  # Return the main figure with the plot
 end
 
+function plot_bias(data, keys; treshold = [0, 0])
+    # Check for exactly two keys
+    if length(keys) != 2
+        error("Exactly two keys are required for the scatter plot.")
+    end
+
+     # Ensure treshold is an array of length 2
+    if length(treshold) == 1
+        treshold = [treshold[1], treshold[1]]
+    end
+    
+    # Extract data
+    rgi_id = data.rgi_id
+    x_values = getfield(data,keys[1])
+    y_values = getfield(data,keys[2])
+    
+    # Filter non-zero observations if necessary
+    if :H_obs in keys || :V_obs in keys
+        obs_key = :H_obs in keys ? :H_obs : :V_obs
+        #non_zero_indices = findall(getfield(data,obs_key) .!= 0)
+        mask_H = getfield(data,obs_key) .> treshold[1] * maximum(getfield(data,obs_key))
+        mask_H_2 = getfield(data,obs_key) .< (1-treshold[2]) * maximum(getfield(data,obs_key))
+        x_values = x_values[mask_H .& mask_H_2]
+        y_values = y_values[mask_H .& mask_H_2]
+    end
+    
+    
+    # Calculate metrics
+    differences = x_values .- y_values
+    rmse = sqrt(mean(differences .^ 2)) # Root Mean Square Error
+    bias = mean(differences) # Bias
+    ss_res = sum(differences .^ 2) # Sum of squares of residuals
+    ss_tot = sum((x_values .- mean(x_values)) .^ 2) # Total sum of squares
+    r_squared = 1 - (ss_res / ss_tot) # R-squared
+
+    # Plotting
+    fig = Figure(size = (600, 400))
+    ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
+
+    scatter!(ax, vec(x_values), vec(y_values), markersize = 5, color = :blue, label = "Data")
+    xmin, xmax = minimum(x_values), maximum(x_values)
+    ymin, ymax = minimum(y_values), maximum(y_values)
+    lines!(ax, [xmin, xmax], [xmin, xmax], linestyle = :dash, color = :red, label = "y = x")
+
+    # Display metrics on the plot
+    metrics_text = "RMSE: $(round(rmse, digits=2))\nR²: $(round(r_squared, digits=2))\nBias: $(round(bias, digits=2))"
+    text!(ax, metrics_text, position = (xmax, ymax), align = (:right, :top), color = :black)
+
+    fig
+end
+
 
 
 """
@@ -372,27 +431,35 @@ Generate various types of plots for glacier data.
 - The function routes requests to specific plotting functions based on `plot_type`.
 """
 function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) where T
+    
     title_mapping = Dict(
         "H" => ("Ice Thickness", "m", :YlGnBu),
         "H₀" => ("Ice Thickness", "m", :YlGnBu),
         "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
         "S" => ("Surface Topography", "m", :terrain),
         "B" => ("Bed Topography", "m", :terrain),
-        "V" => ("Ice Surface Velocity", "m/s", :viridis),
-        "Vx" => ("Ice Surface Velocity (X-direction)", "m/s", :viridis),
-        "Vy" => ("Ice Surface Velocity (Y-direction)", "m/s", :viridis)
+        "V" => ("Ice Surface Velocity", "m/y", :viridis),
+        "Vx" => ("Ice Surface Velocity (X-direction)", "m/y", :viridis),
+        "Vy" => ("Ice Surface Velocity (Y-direction)", "m/y", :viridis),
+        "H_pred" => ("Predicted Ice Thickness", "m", :YlGnBu),
+        "H_obs" => ("Observed Ice Thickness", "m", :YlGnBu),
+        "H_diff" => ("Ice Thickness Difference", "m", :RdBu),
+        "V_pred" => ("Predicted Ice Surface Velocity", "m/y", :viridis),
+        "V_obs" => ("Observed Ice Surface Velocity", "m/y", :viridis),
+        "V_diff" => ("Ice Surface Velocity Difference", "m/y", :RdBu)
     )
 
     if plot_type == "heatmaps"
-        return plot_glacier_heatmaps(results, variables, title_mapping)
+        return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution_difference"
         return plot_glacier_difference_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution_statistics"
         return plot_glacier_statistics_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "integrated_volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
+    elseif plot_type == "bias"  
+        return plot_bias(results, variables; kwargs...)
     else
         error("Invalid plot_type: $plot_type")
     end
 end
-
