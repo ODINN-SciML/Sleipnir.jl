@@ -4,10 +4,6 @@ abstract type AbstractParameters end
 
 const AbstractEmptyParams = Union{AbstractParameters,Nothing}
 
-include("PhysicalParameters.jl")
-include("SimulationParameters.jl")
-include("OGGMparameters.jl")
-
 struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
         PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
         physical::PPHY
@@ -18,6 +14,10 @@ struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY 
         UDE::PUDE
         inversion::PINV  
 end
+
+include("PhysicalParameters.jl")
+include("SimulationParameters.jl")
+include("OGGMparameters.jl")
 
 """
 Parameters(;
@@ -44,7 +44,7 @@ function Parameters(;
             enable_multiprocessing(parameters.simulation.workers)
     end
             
-    oggm_config(parameters.OGGM.working_dir; oggm_processes=parameters.OGGM.workers)
+    oggm_config(parameters)
     
     return parameters
 end
