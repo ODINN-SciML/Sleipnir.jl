@@ -7,7 +7,7 @@ include("../climate/Climate1D.jl")
 
 mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
-    gdir::Union{PyObject, Nothing} 
+    gdir::Union{Py, Nothing} 
     climate::Union{Climate1D, Nothing}
     H₀::Union{Vector{F}, Nothing}
     S::Union{Vector{F}, Nothing}
@@ -20,7 +20,7 @@ mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     λ::Union{Vector{F}, Nothing}
     slope::Union{Vector{F}, Nothing}
     dist_border::Union{Vector{F}, Nothing}
-    S_coords::Union{PyObject, Nothing}
+    S_coords::Union{Py, Nothing}
     Δx::Union{F, Nothing}
     Δy::Union{F, Nothing}
     nx::Union{I, Nothing}
@@ -30,7 +30,7 @@ end
 """
 function Glacier1D(;
     rgi_id::Union{String, Nothing} = nothing,
-    gdir::Union{PyObject, Nothing} = nothing,
+    gdir::Union{Py, Nothing} = nothing,
     climate::Union{Climate1D, Nothing} = nothing,
     H₀::Union{Vector{F}, Nothing} = nothing,
     S::Union{Vector{F}, Nothing} = nothing,
@@ -38,7 +38,7 @@ function Glacier1D(;
     V::Union{Vector{F}, Nothing}= nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{PyObject, Nothing} = nothing,
+    S_coords::Union{Py, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -49,7 +49,7 @@ Constructor for empty 2D Glacier object.
 """
 function Glacier1D(;
     rgi_id::Union{String, Nothing} = nothing,
-    gdir::Union{PyObject, Nothing} = nothing,
+    gdir::Union{Py, Nothing} = nothing,
     climate::Union{Climate1D, Nothing} = nothing,
     H₀::Union{Vector{F}, Nothing} = nothing,
     S::Union{Vector{F}, Nothing} = nothing,
@@ -62,7 +62,7 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{PyObject, Nothing} = nothing,
+    S_coords::Union{Py, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,

@@ -12,7 +12,7 @@ function safe_approx(a, b)
 end
 
 # Function for Python objects
-function safe_getproperty(obj::PyObject, prop_name::Symbol)
+function safe_getproperty(obj::Py, prop_name::Symbol)
     if PyCall.hasproperty(obj, prop_name)
         return PyCall.getproperty(obj, prop_name)
     else
@@ -28,5 +28,4 @@ function safe_getproperty(obj, prop_name::Symbol)
         return 0.0
     end
 end
-
     

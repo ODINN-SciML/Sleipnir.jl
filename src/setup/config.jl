@@ -1,4 +1,6 @@
-export netCDF4, cfg, utils, workflow, tasks, global_tasks, graphics, bedtopo, millan22, MBsandbox, salem, pd, xr, rioxarray
+export netCDF, cfg, utils, workflow, tasks, global_tasks, graphics, bedtopo, millan22, MBsandbox, salem, pd, xr, rioxarray
+
+using Libdl: dlopen
 
 function __init__()
 
@@ -8,32 +10,27 @@ function __init__()
         mkpath(OGGM_path)
     end
 
-    # Load Python packages
-    try
-        # Only load Python packages if not previously loaded by Sleipnir
-        if cfg == PyNULL() && workflow == PyNULL() && utils == PyNULL() && MBsandbox == PyNULL() 
-            println("Initializing Python libraries...")
-            copy!(netCDF4, pyimport("netCDF4"))
-            copy!(cfg, pyimport("oggm.cfg"))
-            copy!(utils, pyimport("oggm.utils"))
-            copy!(workflow, pyimport("oggm.workflow"))
-            copy!(tasks, pyimport("oggm.tasks"))
-            copy!(global_tasks, pyimport("oggm.global_tasks"))
-            copy!(graphics, pyimport("oggm.graphics"))
-            copy!(bedtopo, pyimport("oggm.shop.bedtopo"))
-            copy!(millan22, pyimport("oggm.shop.millan22"))
-            copy!(MBsandbox, pyimport("MBsandbox.mbmod_daily_oneflowline"))
-            copy!(salem, pyimport("salem"))
-            copy!(pd, pyimport("pandas"))
-            copy!(xr, pyimport("xarray"))
-            copy!(rioxarray, pyimport("rioxarray"))
-        end
-    catch e
-        @warn "It looks like you have not installed and/or activated the virtual Python environment. \n 
-        Please follow the guidelines in: https://github.com/ODINN-SciML/ODINN.jl#readme"
-        @warn exception=(e, catch_backtrace())
-    end
+    # Avoid issue with dylib files
+    dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.2.dylib"))
+    dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
 
+    # Load Python packages
+    # Only load Python packages if not previously loaded by Sleipnir
+    #println("Initializing Python libraries...")
+    isassigned(rioxarray) ? nothing : rioxarray[] = pyimport("rioxarray")
+    isassigned(netCDF4) ? nothing : netCDF4[] = pyimport("netCDF4")
+    isassigned(cfg) ? nothing : cfg[] = pyimport("oggm.cfg")
+    isassigned(utils) ? nothing : utils[] = pyimport("oggm.utils")
+    isassigned(workflow) ? nothing : workflow[] = pyimport("oggm.workflow")
+    isassigned(tasks) ? nothing : tasks[] = pyimport("oggm.tasks")
+    isassigned(global_tasks) ? nothing : global_tasks[] = pyimport("oggm.global_tasks")
+    isassigned(graphics) ? nothing : graphics[] = pyimport("oggm.graphics")
+    isassigned(bedtopo) ? nothing : bedtopo[] = pyimport("oggm.shop.bedtopo")
+    isassigned(millan22) ? nothing : millan22[] = pyimport("oggm.shop.millan22")
+    isassigned(MBsandbox) ? nothing : MBsandbox[] = pyimport("MBsandbox.mbmod_daily_oneflowline")
+    isassigned(salem) ? nothing : salem[] = pyimport("salem")
+    isassigned(pd) ? nothing : pd[] = pyimport("pandas")
+    isassigned(xr) ? nothing : xr[] = pyimport("xarray")
 end
 
 function clean()

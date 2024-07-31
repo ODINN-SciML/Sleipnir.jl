@@ -3,14 +3,10 @@ Pkg.activate(dirname(Base.current_project()))
 
 using Revise
 using Sleipnir
-using PyCall
 using Test
 using JLD2
 using Infiltrator
 using CairoMakie
-
-
-
 
 include("params_construction.jl")
 include("glaciers_construction.jl")

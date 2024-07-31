@@ -64,25 +64,24 @@ Base.:(==)(a::OGGMparameters, b::OGGMparameters) = a.working_dir == b.working_di
 
 Configures the basic paths and parameters for OGGM.
 """
-function oggm_config(working_dir=joinpath(homedir(), "OGGM/OGGM_data"); oggm_processes=1)
+function oggm_config(parameters::Parameters)
     scope = @__MODULE__ # Capture current module to allow use from external packages (e.g. Huginn, Muninn and ODINN)
     @eval begin
     @everywhere begin
     @eval $scope begin
-    cfg.initialize() # initialize OGGM configuration
+  
+    cfg[].initialize() # initialize OGGM configuration
     
-    PATHS = PyDict(cfg."PATHS")  # OGGM PATHS
-    PATHS["working_dir"] = $working_dir # Choose own custom path for the OGGM data
-    PARAMS = PyDict(cfg."PARAMS")
-    PARAMS["hydro_month_nh"]=1
-    PARAMS["dl_verify"] = false
-    PARAMS["continue_on_error"] = true # avoid stopping when a task fails for a glacier (e.g. lack of data)
-    PARAMS["border"] = 10
-    # Multiprocessing 
-    multiprocessing = $oggm_processes > 1 ? true : false
-    PARAMS["use_multiprocessing"] = multiprocessing # Let's use multiprocessing for OGGM
-    if multiprocessing
-        PARAMS["mp_processes"] = $oggm_processes
+    cfg[].PATHS["working_dir"] = $parameters.OGGM.working_dir # Choose own custom path for the OGGM data
+    cfg[].PARAMS["hydro_month_nh"]=1
+    cfg[].PARAMS["dl_verify"] = false
+    cfg[].PARAMS["continue_on_error"] = true # avoid stopping when a task fails for a glacier (e.g. lack of data)
+    cfg[].PARAMS["border"] = 10
+    # Multiprocessing
+    # multiprocessing = $oggm_processes > 1 ? true : false
+    cfg[].PARAMS["use_multiprocessing"] = $parameters.OGGM.multiprocessing # Let's use multiprocessing for OGGM
+    if $parameters.OGGM.multiprocessing
+        cfg[].PARAMS["mp_processes"] = $parameters.OGGM.workers
     end
 
 
