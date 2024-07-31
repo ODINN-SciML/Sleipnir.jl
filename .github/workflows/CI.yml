@@ -67,6 +67,18 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2
+        shell: bash -el {0}
+      - name: Install dependencies on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install libxml2
+          export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
+        shell: bash -el {0}
       - uses: julia-actions/julia-buildpkg@v1
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
