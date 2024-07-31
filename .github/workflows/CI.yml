@@ -35,15 +35,16 @@ jobs:
         uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
-      # Do tests
+      # Do tests
       - uses: actions/checkout@v4
       - name: Set up Python 🐍 ${{ matrix.python }}
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python }}  
-      - name: Update certifi
-        run: | 
-            pip install --upgrade certifi
+          python-version: ${{ matrix.python }}
+      - name: Install certifi and set SSL_CERT_FILE
+        run: |
+          pip install --upgrade certifi
+          echo "SSL_CERT_FILE=$(python -c 'import certifi; print(certifi.where())')" >> $GITHUB_ENV
         shell: bash -el {0}
       - uses: julia-actions/setup-julia@latest
         with:
@@ -58,7 +59,6 @@ jobs:
           cache-compiled: "true"
       - uses: julia-actions/julia-buildpkg@v1
         env:
-          # The SSL certificate path can be read from the action "Check Julia SSL certifications"
           JULIA_SSL_CA_ROOTS_PATH: ""
       - uses: julia-actions/julia-runtest@latest
         env:
