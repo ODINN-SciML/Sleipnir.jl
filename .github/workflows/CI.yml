@@ -52,7 +52,7 @@ jobs:
 #      - name: Check Julia SSL certifications 🔎🔐
 #        run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots())'
 #        shell: bash -el {0}
-      - uses: julia-actions/cache@latest
+      - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
           cache-compiled: "true"
