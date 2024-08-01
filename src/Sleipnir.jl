@@ -8,7 +8,7 @@ module Sleipnir
 using Base: @kwdef
 using Infiltrator
 import Pkg
-using PyCall
+using PythonCall, CondaPkg
 using JLD2
 using Distributed
 using Statistics
@@ -28,23 +28,23 @@ const global root_dir::String = dirname(Base.current_project())
 # ############  PYTHON LIBRARIES  ##############
 # ##############################################
 
-# We either retrieve the reexported Python libraries from Sleipnir or we start from scratch
-const netCDF4::PyObject = isdefined(Sleipnir, :netCDF4) ? Sleipnir.netCDF4 : PyNULL()
-const cfg::PyObject = isdefined(Sleipnir, :cfg) ? Sleipnir.cfg : PyNULL()
-const utils::PyObject = isdefined(Sleipnir, :utils) ? Sleipnir.utils : PyNULL()
-const workflow::PyObject = isdefined(Sleipnir, :workflow) ? Sleipnir.workflow : PyNULL()
-const tasks::PyObject = isdefined(Sleipnir, :tasks) ? Sleipnir.tasks : PyNULL()
-const global_tasks::PyObject = isdefined(Sleipnir, :global_tasks) ? Sleipnir.global_tasks : PyNULL()
-const graphics::PyObject = isdefined(Sleipnir, :graphics) ? Sleipnir.graphics : PyNULL()
-const bedtopo::PyObject = isdefined(Sleipnir, :bedtopo) ? Sleipnir.bedtopo : PyNULL()
-const millan22::PyObject = isdefined(Sleipnir, :millan22) ? Sleipnir.millan22 : PyNULL()
-const MBsandbox::PyObject = isdefined(Sleipnir, :MBsandbox) ? Sleipnir.MBsandbox : PyNULL()
-const salem::PyObject = isdefined(Sleipnir, :salem) ? Sleipnir.salem : PyNULL()
+# We define empty objects for the Python packages
+const netCDF4 = Ref{Py}()
+const cfg = Ref{Py}()
+const utils = Ref{Py}()
+const workflow = Ref{Py}()
+const tasks = Ref{Py}()
+const global_tasks = Ref{Py}()
+const graphics = Ref{Py}()
+const bedtopo = Ref{Py}()
+const millan22 = Ref{Py}()
+const MBsandbox = Ref{Py}()
+const salem = Ref{Py}()
 
 # Essential Python libraries
-const xr::PyObject = isdefined(Sleipnir, :xr) ? Sleipnir.xr : PyNULL()
-const rioxarray::PyObject = isdefined(Sleipnir, :rioxarray) ? Sleipnir.rioxarray : PyNULL()
-const pd::PyObject = isdefined(Sleipnir, :pd) ? Sleipnir.pd : PyNULL()
+const xr = Ref{Py}()
+const rioxarray = Ref{Py}()
+const pd = Ref{Py}()
 
 # ##############################################
 # ##########  SLEIPNIR LIBRARIES  ##############
