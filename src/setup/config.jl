@@ -11,9 +11,24 @@ function __init__()
     end
 
     # Avoid issue with dylib files
-    dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.2.dylib"))
-    dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
-
+    try
+        if Sys.isapple()
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.2.dylib"))
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
+        elseif Sys.islinux()
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.so.2"))
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8"))
+        elseif Sys.iswindows()
+            dlopen(joinpath(root_dir, ".CondaPkg/env/Library/bin/libxml2-2.dll"))
+            dlopen(joinpath(root_dir, ".CondaPkg/env/Library/bin/spatialite.dll"))
+        else
+            error("Unsupported operating system")
+        end
+    catch e
+        @error "Failed to load required libraries" exception=(e, catch_backtrace())
+        rethrow(e)
+    end
+    
     # Load Python packages
     # Only load Python packages if not previously loaded by Sleipnir
     #println("Initializing Python libraries...")
