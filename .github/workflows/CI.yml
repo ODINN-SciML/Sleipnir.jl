@@ -7,8 +7,6 @@ on:
     branches: []
     tags: '*'
 concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
@@ -29,13 +27,10 @@ jobs:
         arch:
           - x64
     steps:
-      # Cancel ongoing CI test runs if pushing to branch again before the previous tests
-      # have finished
       - name: Cancel ongoing test runs for previous commits
         uses: styfle/cancel-workflow-action@0.12.1
         with:
           access_token: ${{ github.token }}
-      # Do tests
       - uses: actions/checkout@v4
       - name: Set up Python 🐍 ${{ matrix.python }}
         uses: actions/setup-python@v2
@@ -57,14 +52,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2
-          echo "/usr/lib/x86_64-linux-gnu" | sudo tee -a /etc/ld.so.conf.d/libxml2.conf
-          sudo ldconfig
+          sudo apt-get install -y libxml2 libspatialite7
+          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         shell: bash -el {0}
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          brew install libxml2
+          brew install libxml2 libspatialite
           export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
         shell: bash -el {0}
       - uses: julia-actions/cache@v2
