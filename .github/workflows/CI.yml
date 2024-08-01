@@ -77,24 +77,6 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-      - name: Debug information
-        run: |
-          echo $LD_LIBRARY_PATH
-          echo $PKG_CONFIG_PATH
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            ls -l /usr/lib/x86_64-linux-gnu/libxml2*
-            ls -l /usr/lib/x86_64-linux-gnu/libspatialite*
-            pkg-config --libs libxml-2.0
-            pkg-config --libs spatialite
-          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            ls -l /usr/local/opt/libxml2/lib/libxml2*
-            ls -l /usr/local/opt/libspatialite/lib/libspatialite*
-            pkg-config --libs libxml-2.0
-            pkg-config --libs spatialite
-          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-            dir "C:\Program Files\libxml2\bin\libxml2*"
-            dir "C:\Program Files\spatialite\bin\spatialite*"
-          fi
       - uses: julia-actions/julia-buildpkg@v1
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
