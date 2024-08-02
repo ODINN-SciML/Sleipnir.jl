@@ -81,11 +81,6 @@ jobs:
           source ~/.bashrc
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/pkgconfig" >> $GITHUB_ENV
-      - name: Verify libraries
-        run: |
-          ls -l /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/libxml2*
-          ls -l /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/libspatialite*
-          ldd /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/libspatialite.so.8
       - uses: julia-actions/julia-runtest@latest
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
