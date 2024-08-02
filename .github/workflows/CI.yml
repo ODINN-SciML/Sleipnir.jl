@@ -52,34 +52,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-          # Print installed versions for debugging
-          dpkg -l | grep libxml2
-          dpkg -l | grep libspatialite
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew install libxml2 libspatialite
           export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
-      - name: Rebuild libspatialite
+      - name: Debug library information on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get install -y build-essential
-          wget https://www.gaia-gis.it/gaia-sins/libspatialite-sources/libspatialite-5.0.1.tar.gz
-          tar xzf libspatialite-5.0.1.tar.gz
-          cd libspatialite-5.0.1
-          ./configure --with-proj=/usr/local
-          make
-          sudo make install
-          sudo ldconfig
-      - name: Debug library information
-        if: matrix.os == 'ubuntu-latest'
-        run: |
+          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
           ldconfig -p | grep libxml
           ldconfig -p | grep libspatialite
           ldd $(find /usr/lib -name "libspatialite.so*" | head -n 1) || true
           ldd $(find /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib -name "libspatialite.so*" | head -n 1) || true
           pkg-config --modversion libxml-2.0
           pkg-config --modversion spatialite
+      - name: Set up Conda environment with CondaPkg.jl
+        run: julia --project=. -e 'using CondaPkg; CondaPkg.instantiate()'
       - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
