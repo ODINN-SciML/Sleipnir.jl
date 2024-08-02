@@ -76,10 +76,6 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
-      - name: Debug environment variables
-        run: |
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
       - name: Ensure Conda Environment Variables
         run: |
           source ~/.bashrc
