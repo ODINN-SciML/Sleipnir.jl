@@ -1,9 +1,9 @@
 name: Run Tests
 on:
-   pull_request:
+  pull_request:
     branches:
       - main
-   push:
+  push:
     branches: []
     tags: '*'
 concurrency:
@@ -14,8 +14,8 @@ jobs:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     defaults:
-       run:
-         shell: bash -el {0}
+      run:
+        shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -40,25 +40,42 @@ jobs:
         run: |
           pip install --upgrade certifi
           echo "SSL_CERT_FILE=$(python -c 'import certifi; print(certifi.where())')" >> $GITHUB_ENV
-        shell: bash -el {0}
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: Check Julia SSL certifications 🔎🔐
         run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots())'
-        shell: bash -el {0}
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2 libspatialite-dev
+          sudo apt-get install -y libxml2=2.9.10+dfsg-6.7ubuntu0.1 libxml2-dev=2.9.10+dfsg-6.7ubuntu0.1 libspatialite-dev
+          sudo apt-mark hold libxml2 libxml2-dev
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      - name: Rebuild libspatialite
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y build-essential
+          wget https://www.gaia-gis.it/gaia-sins/libspatialite-sources/libspatialite-5.0.1.tar.gz
+          tar xzf libspatialite-5.0.1.tar.gz
+          cd libspatialite-5.0.1
+          ./configure
+          make
+          sudo make install
+          sudo ldconfig
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew install libxml2 libspatialite
           export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
+      - name: Debug library versions
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          ldconfig -p | grep libxml
+          ldconfig -p | grep libspatialite
+          ldd /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/libspatialite.so || true
+          apt-cache policy libxml2 libspatialite7
       - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
@@ -73,14 +90,13 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+      - name: Ensure Conda Environment Variables
+        run: |
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - uses: julia-actions/julia-buildpkg@v1
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
-      - name: Ensure Conda Environment Variables
-        run: |
-          source ~/.bashrc
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/pkgconfig" >> $GITHUB_ENV
       - uses: julia-actions/julia-runtest@latest
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
