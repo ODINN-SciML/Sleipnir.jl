@@ -1,9 +1,9 @@
 name: Run Tests
 on:
-  pull_request:
+   pull_request:
     branches:
       - main
-  push:
+   push:
     branches: []
     tags: '*'
 concurrency:
@@ -14,8 +14,8 @@ jobs:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     defaults:
-      run:
-        shell: bash -el {0}
+       run:
+         shell: bash -el {0}
     strategy:
       fail-fast: false
       matrix:
@@ -40,29 +40,27 @@ jobs:
         run: |
           pip install --upgrade certifi
           echo "SSL_CERT_FILE=$(python -c 'import certifi; print(certifi.where())')" >> $GITHUB_ENV
+        shell: bash -el {0}
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: Check Julia SSL certifications 🔎🔐
         run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots())'
+        shell: bash -el {0}
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite-dev
-          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          sudo apt-get install -y libxml2 libspatialite-dev
+          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+        shell: bash -el {0}
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew install libxml2 libspatialite
-          echo "PKG_CONFIG_PATH=/usr/local/opt/libxml2/lib/pkgconfig:/usr/local/opt/libspatialite/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-      - name: Install dependencies on Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          choco install libxml2
-          choco install spatialite
+          export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
+        shell: bash -el {0}
       - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
@@ -83,7 +81,6 @@ jobs:
       - uses: julia-actions/julia-runtest@latest
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
-          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu:${{ env.LD_LIBRARY_PATH }}
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with:
