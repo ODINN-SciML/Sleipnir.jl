@@ -17,10 +17,7 @@ function __init__()
             dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
         elseif Sys.islinux()
             dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.so.2"))
-            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8"))
-        elseif Sys.iswindows()
-            dlopen(joinpath(root_dir, ".CondaPkg/env/Library/bin/libxml2-2.dll"))
-            dlopen(joinpath(root_dir, ".CondaPkg/env/Library/bin/spatialite.dll"))
+            load_spatialite()
         else
             error("Unsupported operating system")
         end
@@ -47,6 +44,22 @@ function __init__()
     isassigned(pd) ? nothing : pd[] = pyimport("pandas")
     isassigned(xr) ? nothing : xr[] = pyimport("xarray")
 end
+
+function load_spatialite()
+    lib_paths = [
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.7"),
+        "/usr/lib/x86_64-linux-gnu/libspatialite.so.8",
+        "/usr/lib/x86_64-linux-gnu/libspatialite.so.7"
+    ]
+    for lib in lib_paths
+        if isfile(lib)
+            return dlopen(lib)
+        end
+    end
+    error("libspatialite library not found")
+end
+
 
 function clean()
     atexit() do
