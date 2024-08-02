@@ -52,7 +52,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2 libspatialite7
+          sudo apt-get install -y libxml2 libspatialite8
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
         shell: bash -el {0}
       - name: Install dependencies on macOS
