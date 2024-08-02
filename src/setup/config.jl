@@ -47,7 +47,7 @@ end
 
 function load_spatialite()
     lib_paths = [
-        oinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so"),
         joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2"),
         joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2.12.7")
     ]
