@@ -13,7 +13,7 @@ function __init__()
     # Avoid issue with dylib files
     try
         if Sys.isapple()
-            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.2.dylib"))
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.dylib"))
             dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
         elseif Sys.islinux()
             dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.so.2"))
@@ -47,10 +47,9 @@ end
 
 function load_spatialite()
     lib_paths = [
-        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8"),
-        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.7"),
-        "/usr/lib/x86_64-linux-gnu/libspatialite.so.8",
-        "/usr/lib/x86_64-linux-gnu/libspatialite.so.7"
+        oinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2.12.7")
     ]
     for lib in lib_paths
         if isfile(lib)
