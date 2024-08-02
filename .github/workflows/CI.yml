@@ -50,9 +50,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2=2.9.10+dfsg-6.7ubuntu0.1 libxml2-dev=2.9.10+dfsg-6.7ubuntu0.1 libspatialite-dev
-          sudo apt-mark hold libxml2 libxml2-dev
+          sudo apt-get install -y libxml2 libxml2-dev libspatialite-dev
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          # Print installed versions for debugging
+          dpkg -l | grep libxml2
+          dpkg -l | grep libspatialite
       - name: Rebuild libspatialite
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -69,13 +71,15 @@ jobs:
         run: |
           brew install libxml2 libspatialite
           export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
-      - name: Debug library versions
+      - name: Debug library information
         if: matrix.os == 'ubuntu-latest'
         run: |
           ldconfig -p | grep libxml
           ldconfig -p | grep libspatialite
-          ldd /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/libspatialite.so || true
-          apt-cache policy libxml2 libspatialite7
+          ldd $(find /usr/lib -name "libspatialite.so*" | head -n 1) || true
+          ldd $(find /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib -name "libspatialite.so*" | head -n 1) || true
+          pkg-config --modversion libxml-2.0
+          pkg-config --modversion spatialite
       - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"

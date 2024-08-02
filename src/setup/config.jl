@@ -45,28 +45,6 @@ function __init__()
     isassigned(xr) ? nothing : xr[] = pyimport("xarray")
 end
 
-function load_libxml()
-    lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
-    
-    # Find all libspatialite files in the directory
-    lib_files = filter(f -> startswith(f, "libxml") && (endswith(f, ".so") || contains(f, ".so.")), readdir(lib_dir))
-    
-    if isempty(lib_files)
-        println("No libxml files found in $lib_dir")
-        return
-    end
-    
-    for lib_file in lib_files
-        lib_path = joinpath(lib_dir, lib_file)
-        try
-            dlopen(lib_path)
-            println("Opened $lib_path")
-        catch e
-            println("Failed to load $lib_path: $e")
-        end
-    end
-end
-
 function load_spatialite()
     lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
     
@@ -81,10 +59,48 @@ function load_spatialite()
     for lib_file in lib_files
         lib_path = joinpath(lib_dir, lib_file)
         try
-            dlopen(lib_path)
+            handle = dlopen(lib_path)
             println("Opened $lib_path")
+            # Print symbols
+            println("Symbols in $lib_path:")
+            for sym in dllist(handle)
+                println(sym)
+            end
+            dlclose(handle)
         catch e
             println("Failed to load $lib_path: $e")
+            # Print ldd output
+            run(`ldd $lib_path`)
+        end
+    end
+end
+
+function load_libxml()
+    lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
+    
+    # Find all libxml files in the directory
+    lib_files = filter(f -> startswith(f, "libxml") && (endswith(f, ".so") || contains(f, ".so.")), readdir(lib_dir))
+    
+    if isempty(lib_files)
+        println("No libxml files found in $lib_dir")
+        return
+    end
+    
+    for lib_file in lib_files
+        lib_path = joinpath(lib_dir, lib_file)
+        try
+            handle = dlopen(lib_path)
+            println("Opened $lib_path")
+            # Print symbols
+            println("Symbols in $lib_path:")
+            for sym in dllist(handle)
+                println(sym)
+            end
+            dlclose(handle)
+        catch e
+            println("Failed to load $lib_path: $e")
+            # Print ldd output
+            run(`ldd $lib_path`)
         end
     end
 end
