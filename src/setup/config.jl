@@ -11,20 +11,20 @@ function __init__()
     end
 
     # Avoid issue with dylib files
-    # try
-    #     if Sys.isapple()
-    #         dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.dylib"))
-    #         dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
-    #     elseif Sys.islinux()
-    #         dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.so.2"))
-    #         load_spatialite()
-    #     else
-    #         error("Unsupported operating system")
-    #     end
-    # catch e
-    #     @error "Failed to load required libraries" exception=(e, catch_backtrace())
-    #     rethrow(e)
-    # end
+    try
+        if Sys.isapple()
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libxml2.dylib"))
+            dlopen(joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.8.dylib"))
+        elseif Sys.islinux()
+            load_libxml()
+            load_spatialite()
+        else
+            error("Unsupported operating system")
+        end
+    catch e
+        @error "Failed to load required libraries" exception=(e, catch_backtrace())
+        rethrow(e)
+    end
     
     # Load Python packages
     # Only load Python packages if not previously loaded by Sleipnir
@@ -45,11 +45,29 @@ function __init__()
     isassigned(xr) ? nothing : xr[] = pyimport("xarray")
 end
 
+function load_libxml()
+    lib_paths = [
+        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so.2"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so.2.12.7")
+    ]
+    for lib in lib_paths
+        if isfile(lib)
+            try
+                dlopen(lib)
+                println("Opened $lib")
+            catch e
+                println("Failed to load $lib: $e")
+            end
+        end
+    end
+end
+
 function load_spatialite()
     lib_paths = [
         joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so"),
-        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2"),
-        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.2.12.7")
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8"),
+        joinpath(root_dir, ".CondaPkg/env/lib/libspatialite.so.8.1.0")
     ]
     for lib in lib_paths
         if isfile(lib)
