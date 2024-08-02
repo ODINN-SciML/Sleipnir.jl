@@ -61,7 +61,6 @@ function load_spatialite()
             end
         end
     end
-    error("libspatialite library not found")
 end
 
 function clean()
