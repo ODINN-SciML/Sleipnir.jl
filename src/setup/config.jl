@@ -54,7 +54,8 @@ function load_spatialite()
     for lib in lib_paths
         if isfile(lib)
             try
-                return dlopen(lib)
+                dlopen(lib)
+                println("Opened $lib")
             catch e
                 println("Failed to load $lib: $e")
             end
