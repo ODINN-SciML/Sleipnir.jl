@@ -46,19 +46,23 @@ function __init__()
 end
 
 function load_libxml()
-    lib_paths = [
-        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so"),
-        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so.2"),
-        joinpath(root_dir, ".CondaPkg/env/lib/libxml.so.2.12.7")
-    ]
-    for lib in lib_paths
-        if isfile(lib)
-            try
-                dlopen(lib)
-                println("Opened $lib")
-            catch e
-                println("Failed to load $lib: $e")
-            end
+    lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
+    
+    # Find all libspatialite files in the directory
+    lib_files = filter(f -> startswith(f, "libxml") && (endswith(f, ".so") || contains(f, ".so.")), readdir(lib_dir))
+    
+    if isempty(lib_files)
+        println("No libxml files found in $lib_dir")
+        return
+    end
+    
+    for lib_file in lib_files
+        lib_path = joinpath(lib_dir, lib_file)
+        try
+            dlopen(lib_path)
+            println("Opened $lib_path")
+        catch e
+            println("Failed to load $lib_path: $e")
         end
     end
 end
