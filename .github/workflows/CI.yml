@@ -50,7 +50,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite-dev
+          sudo apt-get install -y libxml2-dev libspatialite-dev
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           # Print installed versions for debugging
           dpkg -l | grep libxml2
@@ -94,10 +94,10 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-      - name: Ensure Conda Environment Variables
-        run: |
-          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+      # - name: Ensure Conda Environment Variables
+      #   run: |
+      #     echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+      #     echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
       - uses: julia-actions/julia-buildpkg@v1
         env:
           JULIA_SSL_CA_ROOTS_PATH: ""
