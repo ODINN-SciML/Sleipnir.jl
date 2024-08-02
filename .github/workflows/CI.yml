@@ -60,6 +60,17 @@ jobs:
         run: |
           brew install libxml2 libspatialite
           export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
+      - name: Rebuild libspatialite
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y build-essential
+          wget https://www.gaia-gis.it/gaia-sins/libspatialite-sources/libspatialite-5.0.1.tar.gz
+          tar xzf libspatialite-5.0.1.tar.gz
+          cd libspatialite-5.0.1
+          ./configure
+          make
+          sudo make install
+          sudo ldconfig
       - name: Debug library information
         if: matrix.os == 'ubuntu-latest'
         run: |
