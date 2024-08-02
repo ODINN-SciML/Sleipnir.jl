@@ -50,7 +50,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite libspatialite-dev
+          sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
           export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
           # Print installed versions for debugging
           dpkg -l | grep libxml2
