@@ -54,12 +54,15 @@ function load_spatialite()
     ]
     for lib in lib_paths
         if isfile(lib)
-            return dlopen(lib)
+            try
+                return dlopen(lib)
+            catch e
+                println("Failed to load $lib: $e")
+            end
         end
     end
     error("libspatialite library not found")
 end
-
 
 function clean()
     atexit() do
