@@ -67,10 +67,6 @@ jobs:
           ldd $(find /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib -name "libspatialite.so*" | head -n 1) || true
           pkg-config --modversion libxml-2.0
           pkg-config --modversion spatialite
-      - name: Set up Conda environment with CondaPkg.jl
-        run: |
-          import Pkg; Pkg.activate(".")
-          julia --project=. -e 'using CondaPkg; CondaPkg.instantiate()'
       - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
