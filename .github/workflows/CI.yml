@@ -81,9 +81,6 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-      - uses: julia-actions/julia-buildpkg@v1
-        env:
-          JULIA_SSL_CA_ROOTS_PATH: ""
       - name: Pin CondaPkg to avoid issues
         run: |
           julia --project=@. -e 'import Pkg; Pkg.add(Pkg.PackageSpec(name="CondaPkg", version="0.2.22"))'
