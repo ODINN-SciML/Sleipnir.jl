@@ -86,7 +86,7 @@ jobs:
           JULIA_SSL_CA_ROOTS_PATH: ""
       - name: Pin CondaPkg to avoid issues
         run: |
-          julia --project=@. -e 'import Pkg; Pkg.add(CondaPkg@0.2.22)'
+          julia --project=@. -e 'import Pkg; Pkg.add(PackageSpec(name="CondaPkg", version="0.2.22"))'
           julia --project=@. -e 'Pkg.pin(CondaPkg)'
       - uses: julia-actions/julia-runtest@latest
         env:
