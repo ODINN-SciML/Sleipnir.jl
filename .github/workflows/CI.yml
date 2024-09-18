@@ -44,8 +44,6 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - name: Check Julia SSL certifications 🔎🔐
-        run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots())'
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
