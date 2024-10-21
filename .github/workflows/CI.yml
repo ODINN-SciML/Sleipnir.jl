@@ -46,11 +46,11 @@ jobs:
           cache-environment: false
           cache-downloads: false
 #           condarc-file: ./condarc.yml                # If necessary, we can include .condarc to configure environment
-      - name: Test creation of environment with micromamba 🔧🐍🖤
-        run: | 
-            which python
-            conda env export
-        shell: bash -el {0}
+      # - name: Test creation of environment with micromamba 🔧🐍🖤
+      #   run: | 
+      #       which python
+      #       conda env export
+      #   shell: bash -el {0}
       - name: Update certifi
         run: | 
             pip install --upgrade certifi
