@@ -43,7 +43,8 @@ jobs:
           environment-file: ./environment.yml
           environment-name: oggm_env                # it is recommendable to add both name and yml file. 
           init-shell: bash
-          cache-environment: true
+          cache-environment: false
+          cache-downloads: false
 #           condarc-file: ./condarc.yml                # If necessary, we can include .condarc to configure environment
       - name: Test creation of environment with micromamba 🔧🐍🖤
         run: | 
