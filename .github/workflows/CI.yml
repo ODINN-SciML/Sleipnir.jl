@@ -87,7 +87,8 @@ jobs:
         env:
           PYTHON : /home/runner/micromamba/envs/oggm_env/bin/python
           # The SSL certificate path can be readed from the action "Check Julia SSL certifications"
-          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+          # SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+          SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
       - uses: julia-actions/julia-runtest@v1
         env:
           PYTHON : /home/runner/micromamba/envs/oggm_env/bin/python
