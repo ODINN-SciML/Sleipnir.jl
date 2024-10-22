@@ -20,45 +20,30 @@ function __init__()
     end
 
     # Load Python packages
-    try
-        load_libxml()
-        load_spatialite()
-    catch e
-        @error "Failed to load required libraries" exception=(e, catch_backtrace())
-        rethrow(e)
-    end
-    
-    # Load Python packages
-    # Only load Python packages if not previously loaded by Sleipnir
-    #println("Initializing Python libraries...")
-    isassigned(rioxarray) ? nothing : rioxarray[] = pyimport("rioxarray")
-    isassigned(netCDF4) ? nothing : netCDF4[] = pyimport("netCDF4")
-    isassigned(cfg) ? nothing : cfg[] = pyimport("oggm.cfg")
-    isassigned(utils) ? nothing : utils[] = pyimport("oggm.utils")
-    isassigned(workflow) ? nothing : workflow[] = pyimport("oggm.workflow")
-    isassigned(tasks) ? nothing : tasks[] = pyimport("oggm.tasks")
-    isassigned(global_tasks) ? nothing : global_tasks[] = pyimport("oggm.global_tasks")
-    isassigned(graphics) ? nothing : graphics[] = pyimport("oggm.graphics")
-    isassigned(bedtopo) ? nothing : bedtopo[] = pyimport("oggm.shop.bedtopo")
-    isassigned(millan22) ? nothing : millan22[] = pyimport("oggm.shop.millan22")
-    isassigned(MBsandbox) ? nothing : MBsandbox[] = pyimport("MBsandbox.mbmod_daily_oneflowline")
-    isassigned(salem) ? nothing : salem[] = pyimport("salem")
-    isassigned(pd) ? nothing : pd[] = pyimport("pandas")
-    isassigned(xr) ? nothing : xr[] = pyimport("xarray")
-end
-
-function load_libxml()
-    lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
-    # @show lib_dir
-
-    # Find all libspatialite files in the directory
-    if Sys.isapple()
-        lib_files = filter(f -> startswith(f, "libxml") && (endswith(f, ".dylib") || contains(f, ".dylib.")), readdir(lib_dir))
-    elseif Sys.islinux()
-        lib_files = filter(f -> startswith(f, "libxml") && (endswith(f, ".so") || contains(f, ".so.")), readdir(lib_dir))
-    else
-        error("Unsupported operating system")
-    end
+    # try
+    #     # Only load Python packages if not previously loaded by Sleipnir
+        if cfg == PyNULL() && workflow == PyNULL() && utils == PyNULL() && MBsandbox == PyNULL() 
+            println("Initializing Python libraries...")
+            copy!(netCDF4, pyimport("netCDF4"))
+            copy!(cfg, pyimport("oggm.cfg"))
+            copy!(utils, pyimport("oggm.utils"))
+            copy!(workflow, pyimport("oggm.workflow"))
+            copy!(tasks, pyimport("oggm.tasks"))
+            copy!(global_tasks, pyimport("oggm.global_tasks"))
+            copy!(graphics, pyimport("oggm.graphics"))
+            copy!(bedtopo, pyimport("oggm.shop.bedtopo"))
+            copy!(millan22, pyimport("oggm.shop.millan22"))
+            copy!(MBsandbox, pyimport("MBsandbox.mbmod_daily_oneflowline"))
+            copy!(salem, pyimport("salem"))
+            copy!(pd, pyimport("pandas"))
+            copy!(xr, pyimport("xarray"))
+            copy!(rioxarray, pyimport("rioxarray"))
+        end
+    # catch e
+    #     @warn "It looks like you have not installed and/or activated the virtual Python environment. \n 
+    #     Please follow the guidelines in: https://github.com/ODINN-SciML/ODINN.jl#readme"
+    #     @warn exception=(e, catch_backtrace())
+    # end
 
     if isempty(lib_files)
         println("No libxml files found in $lib_dir")
