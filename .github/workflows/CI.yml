@@ -86,7 +86,8 @@ jobs:
           brew info libxml2
           echo "========= Checking on Installs =========="
           brew info libspatialite
-          export PKG_CONFIG_PATH="/opt/homebrew/opt/libxml2/lib/pkgconfig"
+          # export PKG_CONFIG_PATH="/opt/homebrew/opt/libxml2/lib/pkgconfig"
+          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libxml2/lib/pkgconfig" >> "$GITHUB_ENV"
           # export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig:"   
       - name: Check that new paths had been exported
         if: matrix.os == 'macos-latest'
