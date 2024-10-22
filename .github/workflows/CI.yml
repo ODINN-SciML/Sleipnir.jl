@@ -87,7 +87,11 @@ jobs:
           echo "========= Checking on Installs =========="
           brew info libspatialite
           export PKG_CONFIG_PATH="/opt/homebrew/opt/libxml2/lib/pkgconfig"
-          # export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig:"        
+          # export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig:"   
+      - name: Check that new paths had been exported
+        if: matrix.os == 'macos-latest'
+        run: |
+           echo $PKG_CONFIG_PATH
       - uses: julia-actions/cache@v1
         with:
           cache-registries: "true"
