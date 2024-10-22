@@ -20,8 +20,8 @@ function __init__()
     end
 
     # Load Python packages
-    try
-        # Only load Python packages if not previously loaded by Sleipnir
+    # try
+    #     # Only load Python packages if not previously loaded by Sleipnir
         if cfg == PyNULL() && workflow == PyNULL() && utils == PyNULL() && MBsandbox == PyNULL() 
             println("Initializing Python libraries...")
             copy!(netCDF4, pyimport("netCDF4"))
@@ -39,11 +39,11 @@ function __init__()
             copy!(xr, pyimport("xarray"))
             copy!(rioxarray, pyimport("rioxarray"))
         end
-    catch e
-        @warn "It looks like you have not installed and/or activated the virtual Python environment. \n 
-        Please follow the guidelines in: https://github.com/ODINN-SciML/ODINN.jl#readme"
-        @warn exception=(e, catch_backtrace())
-    end
+    # catch e
+    #     @warn "It looks like you have not installed and/or activated the virtual Python environment. \n 
+    #     Please follow the guidelines in: https://github.com/ODINN-SciML/ODINN.jl#readme"
+    #     @warn exception=(e, catch_backtrace())
+    # end
 
 end
 
