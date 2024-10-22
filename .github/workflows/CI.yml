@@ -50,10 +50,10 @@ jobs:
       #       which python
       #       conda env export
       #   shell: bash -el {0}
-      # - name: Update certifi
-      #   run: | 
-      #       pip install --upgrade certifi
-      #   shell: bash -el {0}
+      - name: Update certifi
+        run: | 
+            pip install --upgrade certifi
+        shell: bash -el {0}
 #       - name: Test OGGM installation 🔧🌎 
 #         run: pytest.oggm
 #         shell: bash -el {0}
@@ -65,7 +65,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: Check Julia SSL certifications 🔎🔐
-        run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots())'
+        run: julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path); println(NetworkOptions.ssh_key_name); println(NetworkOptions.ssh_pub_key_path)'
         shell: bash -el {0}
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
