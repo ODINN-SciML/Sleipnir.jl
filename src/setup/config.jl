@@ -10,14 +10,14 @@ function __init__()
     end
 
     # Avoid issue with dylib files
-    try
+    # try
         load_lib("libxml")
         load_lib("libspatialite")
         load_lib("libcrypto")
-    catch e
+    # catch e
         @error "Failed to load required libraries" exception=(e, catch_backtrace())
         rethrow(e)
-    end
+    # end
 
     # Load Python packages
     # try
