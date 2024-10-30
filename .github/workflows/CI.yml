@@ -22,8 +22,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1'
+          - '1.9'
         python:
+          - 3.9
           - 3.12
         os:
           - ubuntu-latest 
@@ -67,25 +68,25 @@ jobs:
       - name: Check Julia SSL certifications 🔎🔐
         run: |
           julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
-          echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
+          # echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
         shell: bash -el {0}
-      - name: Install dependencies on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
-          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install libxml2 libspatialite
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libxml2/lib/pkgconfig" >> "$GITHUB_ENV"
-      - name: Check that new paths had been exported
-        if: matrix.os == 'macos-latest'
-        run: |
-          echo $PYTHON
-          echo $PKG_CONFIG_PATH
-          echo $SSL_CERT_FILE
+      # - name: Install dependencies on Ubuntu
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
+      #     echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      # - name: Install dependencies on macOS
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     brew install libxml2 libspatialite
+      #     echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libxml2/lib/pkgconfig" >> "$GITHUB_ENV"
+      # - name: Check that new paths had been exported
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     echo $PYTHON
+      #     echo $PKG_CONFIG_PATH
+      #     echo $SSL_CERT_FILE
       - uses: julia-actions/cache@v1
         with:
           cache-registries: "true"
