@@ -67,6 +67,7 @@ jobs:
           julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
           # echo "SSH_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
           echo "SSL_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
+          echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
         shell: bash -el {0}
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
