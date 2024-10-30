@@ -70,12 +70,12 @@ jobs:
           julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
           # echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
         shell: bash -el {0}
-      # - name: Install dependencies on Ubuntu
-      #   if: matrix.os == 'ubuntu-latest'
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
-      #     echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      - name: Install dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
+          echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
       # - name: Install dependencies on macOS
       #   if: matrix.os == 'macos-latest'
       #   run: |
@@ -104,7 +104,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
-          # JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
+          JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
           SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
       - name: Run tests in Ubuntu
         uses: julia-actions/julia-runtest@v1
@@ -118,7 +118,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
-          # JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem 
+          JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem 
           SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem 
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v3
