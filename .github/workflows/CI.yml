@@ -22,9 +22,9 @@ jobs:
       matrix:
         version:
           - '1.11'
-        python:
-          - 3.9
-          - 3.12
+        # python:
+        #   - 3.9
+        #   - 3.12
         os:
           - ubuntu-latest 
           - macos-latest
@@ -32,10 +32,10 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 🐍 ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}  
+      # - name: Set up Python 🐍 ${{ matrix.python }}
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: ${{ matrix.python }}  
       - name: Create environment with micromamba 🐍🖤
         uses: mamba-org/setup-micromamba@v1
         with: 
@@ -47,10 +47,10 @@ jobs:
           cache-downloads: false
           # If necessary, we can include .condarc to configure environment
           # condarc-file: ./condarc.yml                
-      # - name: Test creation of environment with micromamba 🔧🐍🖤
-      #   run: | 
-      #       which python
-      #       conda env export
+      - name: Test creation of environment with micromamba 🔧🐍🖤
+        run: | 
+            which python
+            conda env export
       #   shell: bash -el {0}
       - name: Update certifi
         run: | 
