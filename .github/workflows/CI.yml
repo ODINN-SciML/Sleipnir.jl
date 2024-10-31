@@ -51,7 +51,7 @@ jobs:
       - name: Test creation of environment with micromamba 🔧🐍🖤
         run: | 
             which python
-            conda env export
+            micromamba env export
       #   shell: bash -el {0}
       - name: Update certifi
         run: | 
