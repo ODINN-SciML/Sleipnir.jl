@@ -42,7 +42,7 @@ jobs:
           micromamba-version: '2.0.2-2'
           environment-file: ./environment.yml
           environment-name: oggm_env                # it is recommendable to add both name and yml file. 
-          init-shell: bash
+          init-shell: bash -el {0}
           cache-environment: false
           cache-downloads: false
           # If necessary, we can include .condarc to configure environment
