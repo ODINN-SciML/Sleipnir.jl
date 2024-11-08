@@ -43,7 +43,7 @@ jobs:
           micromamba-version: '2.0.2-2'
           environment-file: ./environment.yml
           environment-name: oggm_env                # it is recommendable to add both name and yml file. 
-          init-shell: bash -el {0}
+          init-shell: bash
           cache-environment: false
           cache-downloads: false
           # If necessary, we can include .condarc to configure environment
@@ -53,9 +53,9 @@ jobs:
             which python
             micromamba env export
       #   shell: bash -el {0}
-      # - name: Update certifi
-      #   run: | 
-      #       pip install --upgrade certifi
+      - name: Update certifi
+        run: | 
+            pip install --upgrade certifi
       #   shell: bash -el {0}
       - name: Set ENV Variables for PyCall.jl 🐍 📞
         run: | 
