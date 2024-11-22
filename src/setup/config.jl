@@ -1,5 +1,4 @@
-export netCDF, cfg, utils, workflow, tasks, global_tasks, graphics, bedtopo, millan22, MBsandbox, salem, pd, xr, rioxarray
-
+export netCDF4, cfg, utils, workflow, tasks, global_tasks, graphics, bedtopo, millan22, MBsandbox, salem, pd, xr, rioxarray
 using Libdl: dlopen
 
 function __init__()
@@ -116,6 +115,43 @@ function clean()
     return nworkers()
 end
 
+function filter_existing_paths(paths::Vector{String})
+    # Use `filter` to retain only the paths that exist
+    existing_paths = filter(ispath, paths)
+    return existing_paths
+end
 
+
+function load_lib(libname::String)
+    
+    # Find all libspatialite files in the directory
+
+    # Find way to pass this path
+    lib_dir = joinpath(dirname(dirname(read(`which python`, String)[1:end-1])), "lib")
+    # lib_dir = "/usr/local/Caskroom/miniforge/base/envs/oggm_env_20240917_ssl/lib"
+
+    if Sys.isapple()
+        lib_files = filter(f -> startswith(f, libname) && (endswith(f, ".dylib") || contains(f, ".dylib.")), readdir(lib_dir))
+    elseif Sys.islinux()
+        lib_files = filter(f -> startswith(f, libname) && (endswith(f, ".so") || contains(f, ".so.")), readdir(lib_dir))
+    else
+        error("Unsupported operating system")
+    end
+
+    if isempty(lib_files)
+        println("No libxml files found in $lib_dir")
+        return
+    end
+    
+    for lib_file in lib_files
+        lib_path = joinpath(lib_dir, lib_file)
+        try
+            dlopen(lib_path)
+            println("Opened $lib_path")
+        catch e
+            println("Failed to load $lib_path: $e")
+        end
+    end
+end
 
 include("helper_utilities.jl")

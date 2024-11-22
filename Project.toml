@@ -13,6 +13,10 @@ HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+<<<<<<< HEAD
+=======
+OpenSSL_jll = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
+>>>>>>> ed484cf566c14bb104c2175c0bd68098acf87a4d
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
@@ -20,14 +24,19 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+<<<<<<< HEAD
 CairoMakie = "0.11"
 Downloads = "1"
 HDF5 = "0.17"
 Infiltrator = "1"
+=======
+Downloads = "1"
+HDF5 = "0.17"
+>>>>>>> ed484cf566c14bb104c2175c0bd68098acf87a4d
 JLD2 = "0.4"
 Revise = "3"
 Statistics = "1"
-julia = "1.7"
+julia = "1.9"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
