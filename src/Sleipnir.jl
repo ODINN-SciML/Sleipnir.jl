@@ -8,7 +8,6 @@ module Sleipnir
 using Base: @kwdef
 using Infiltrator
 import Pkg
-using PythonCall, CondaPkg
 using JLD2
 using Distributed
 using Statistics
@@ -26,6 +25,13 @@ const global root_dir::String = dirname(Base.current_project())
 # ##############################################
 # ############  PYTHON LIBRARIES  ##############
 # ##############################################
+
+# We first load the SSL package 
+# @eval using OpenSSL_jll
+using PythonCall, CondaPkg
+# @eval using PythonCall, CondaPkg
+# const openssl = Ref{Py}()
+# @eval const openssl = pyimport("ssl")
 
 # We define empty objects for the Python packages
 const netCDF4 = Ref{Py}()
