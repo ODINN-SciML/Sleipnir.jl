@@ -25,7 +25,7 @@ jobs:
         python:
           - '3.12'
         os: 
-          - ubuntu-latest
+          # - ubuntu-latest
           - macos-latest
         arch:
           - x64
@@ -39,21 +39,25 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - name: Check Julia SSL certifications 🔎🔐
+        run: |
+          julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
+          echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
       - name: Install dependencies on Ubuntu
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
-          # export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
       - name: Install dependencies on macOS
         if: matrix.os == 'macos-latest'
         run: |
           brew install libxml2 libspatialite
-          # export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
+          export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
       - uses: julia-actions/cache@v2
         with:
-          cache-registries: "false"
-          cache-compiled: "false"
+          cache-registries: "true"
+          cache-compiled: "true"
       # - uses: actions/cache@v4
       #   env:
       #     cache-name: cache-artifacts
