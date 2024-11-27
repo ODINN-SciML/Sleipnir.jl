@@ -1,4 +1,5 @@
 export rioxarray, netCDF, cfg, utils, workflow, tasks, global_tasks, graphics, bedtopo, millan22, MBsandbox, salem, pd, xr
+# export openssl
 
 using Libdl: dlopen
 
@@ -11,13 +12,13 @@ function __init__()
     end
 
     # Avoid issue with dylib files
-    # try
+    try
         load_libxml()
         load_spatialite()
-    # catch e
-    #     @error "Failed to load required libraries" exception=(e, catch_backtrace())
-    #     rethrow(e)
-    # end
+    catch e
+        @error "Failed to load required libraries" exception=(e, catch_backtrace())
+        rethrow(e)
+    end
     
     # Load Python packages
     # Only load Python packages if not previously loaded by Sleipnir
@@ -40,9 +41,7 @@ end
 
 function load_libxml()
     lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
-    # lib_dir = "/Users/sapienza/.julia/artifacts/3fe8e47e7750d32cfb194a7927fc1d886d1fdfaa/lib"
-    # lib_dir = "/Users/sapienza/.conda/envs/oggm_env/lib/"
-    @show lib_dir
+    # @show lib_dir
 
     # Find all libspatialite files in the directory
     if Sys.isapple()
@@ -71,9 +70,7 @@ end
 
 function load_spatialite()
     lib_dir = joinpath(root_dir, ".CondaPkg/env/lib")
-    # lib_dir = "/Users/sapienza/.julia/artifacts/3fe8e47e7750d32cfb194a7927fc1d886d1fdfaa/lib"
-    # lib_dir = "/Users/sapienza/.conda/envs/oggm_env/lib/"
-    @show lib_dir
+    # @show lib_dir
     
     # Find all libspatialite files in the directory
     if Sys.isapple()

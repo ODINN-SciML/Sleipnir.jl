@@ -15,6 +15,9 @@ using CairoMakie
 using Downloads
 using HDF5
 
+include("setup/ssl.jl")
+using PythonCall, CondaPkg
+
 # ##############################################
 # ############    PARAMETERS     ###############
 # ##############################################
@@ -25,13 +28,6 @@ const global root_dir::String = dirname(Base.current_project())
 # ##############################################
 # ############  PYTHON LIBRARIES  ##############
 # ##############################################
-
-# We first load the SSL package 
-# @eval using OpenSSL_jll
-using PythonCall, CondaPkg
-# @eval using PythonCall, CondaPkg
-# const openssl = Ref{Py}()
-# @eval const openssl = pyimport("ssl")
 
 # We define empty objects for the Python packages
 const netCDF4 = Ref{Py}()

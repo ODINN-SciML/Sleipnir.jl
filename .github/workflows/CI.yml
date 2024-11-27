@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - main
+      - pythoncall2
   push:
     branches: []
     tags: '*'
@@ -23,7 +24,11 @@ jobs:
           - '1.10'
         python:
           - '3.10'
-        os: [ubuntu-latest, macos-latest]
+          - '3.12'
+        os: 
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
         arch:
           - x64
     steps:
@@ -32,59 +37,37 @@ jobs:
         with:
           access_token: ${{ github.token }}
       - uses: actions/checkout@v4
-      - name: Set up Python 🐍 ${{ matrix.python }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Install certifi and set SSL_CERT_FILE
-        run: |
-          pip install --upgrade certifi
-          echo "SSL_CERT_FILE=$(python -c 'import certifi; print(certifi.where())')" >> $GITHUB_ENV
       - uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - name: Install dependencies on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
-          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install libxml2 libspatialite
-          export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
-      - name: Debug library information on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
-          ldconfig -p | grep libxml
-          ldconfig -p | grep libspatialite
-          ldd $(find /usr/lib -name "libspatialite.so*" | head -n 1) || true
-          ldd $(find /home/runner/work/Sleipnir.jl/Sleipnir.jl/.CondaPkg/env/lib -name "libspatialite.so*" | head -n 1) || true
-          pkg-config --modversion libxml-2.0
-          pkg-config --modversion spatialite
+      # - name: Install dependencies on Ubuntu
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
+      #     # export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+      # - name: Install dependencies on macOS
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     brew install libxml2 libspatialite
+      #     # export PKG_CONFIG_PATH="/usr/local/opt/libxml2/lib/pkgconfig"
       - uses: julia-actions/cache@v2
         with:
-          cache-registries: "true"
-          cache-compiled: "true"
-      - uses: actions/cache@v4
-        env:
-          cache-name: cache-artifacts
-        with:
-          path: ~/.julia/artifacts
-          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-test-${{ env.cache-name }}-
-            ${{ runner.os }}-test-
-            ${{ runner.os }}-
-      - name: Pin CondaPkg to avoid issues
-        run: |
-          julia --project=@. -e 'import Pkg; Pkg.add(Pkg.PackageSpec(name="CondaPkg", version="0.2.22")); import CondaPkg; Pkg.pin("CondaPkg")'
+          cache-registries: "false"
+          cache-compiled: "false"
+      # - uses: actions/cache@v4
+      #   env:
+      #     cache-name: cache-artifacts
+      #   with:
+      #     path: ~/.julia/artifacts
+      #     key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-test-${{ env.cache-name }}-
+      #       ${{ runner.os }}-test-
+      #       ${{ runner.os }}-
+      - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@latest
-        env:
-          JULIA_SSL_CA_ROOTS_PATH: ""
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with:
