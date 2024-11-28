@@ -71,8 +71,8 @@ jobs:
         uses: julia-actions/julia-runtest@v1
         if: matrix.os == 'ubuntu-latest'
         env:
-          JULIA_SSL_CA_ROOTS_PATH: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
-          SSL_CERT_FILE: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
+          JULIA_SSL_CA_ROOTS_PATH: /etc/ssl/certs/ca-certificates.crt
+          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       - name: Run tests in MacOS
         uses: julia-actions/julia-runtest@v1
         if: matrix.os == 'macos-latest'
