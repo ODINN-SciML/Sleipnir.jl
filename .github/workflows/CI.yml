@@ -72,9 +72,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         env:
           # Specify the file or directory containing the certificate authority roots. See NetworkOptions.ca_roots
-          JULIA_SSL_CA_ROOTS_PATH: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
+          JULIA_SSL_CA_ROOTS_PATH: /etc/ssl/certs/ca-certificates.crt
+          # JULIA_SSL_CA_ROOTS_PATH: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
           # The default value returned by ca_roots_path() may be overridden by setting the JULIA_SSL_CA_ROOTS_PATH, SSL_CERT_DIR, or SSL_CERT_FILE environment variables,
-          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+          SSL_CERT_FILE: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
+          # SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       - name: Run tests in MacOS
         uses: julia-actions/julia-runtest@v1
         if: matrix.os == 'macos-latest'
