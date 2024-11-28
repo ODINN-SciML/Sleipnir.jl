@@ -8,13 +8,15 @@ module Sleipnir
 using Base: @kwdef
 using Infiltrator
 import Pkg
-using PythonCall, CondaPkg
 using JLD2
 using Distributed
 using Statistics
 using CairoMakie
 using Downloads
 using HDF5
+
+include("setup/ssl.jl")
+using PythonCall, CondaPkg
 
 # ##############################################
 # ############    PARAMETERS     ###############
