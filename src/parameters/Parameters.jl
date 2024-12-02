@@ -4,7 +4,7 @@ abstract type AbstractParameters end
 
 const AbstractEmptyParams = Union{AbstractParameters,Nothing}
 
-struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
+mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
         PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
         physical::PPHY
         simulation::PSIM

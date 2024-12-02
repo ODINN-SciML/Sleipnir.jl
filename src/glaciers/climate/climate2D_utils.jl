@@ -204,7 +204,7 @@ end
 
 function partial_year(period::Type{<:Period}, float)
     _year, Δ = divrem(float, 1)
-    year_start = Date(_year)
+    year_start = Date(convert(Int,_year))
     year = period((year_start + Year(1)) - year_start)
     partial = period(round(Dates.value(year) * Δ))
     year_start + partial

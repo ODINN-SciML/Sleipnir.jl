@@ -14,6 +14,7 @@ using Statistics
 using CairoMakie
 using Downloads
 using HDF5
+using ComponentArrays
 
 include("setup/ssl.jl")
 using PythonCall, CondaPkg
