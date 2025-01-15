@@ -18,6 +18,7 @@ using ComponentArrays
 
 include("setup/ssl.jl")
 using PythonCall, CondaPkg
+using Rasters
 
 # ##############################################
 # ############    PARAMETERS     ###############

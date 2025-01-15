@@ -69,15 +69,14 @@ end
 
 
 """
-    initialize_glacier(gdir::Py, tspan, step; smoothing=false, velocities=true)
+    initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, velocities=true)
 
-Initialize a single `Glacier`s, including its `Climate`, based on a `gdir` and timestepping arguments.
-    
+Initialize a single `Glacier`s, including its `Climate`, based on a `rgi_id` and timestepping arguments.
+
 Keyword arguments
 =================
-    - `gdir`: Glacier directory
-    - `tspan`: Tuple specifying the initial and final year of the simulation
-    - `step`: Step in years for the surface mass balance processing
+    - `rgi_id`: Glacier RGI ID
+    - `parameters`: Parameters including the physical and simulation ones
     - `smoothing` Flag determining if smoothing needs to be applied to the surface elevation and ice thickness.
     - `velocities` Flag determining if the ice surface velocities need to be retrieved.
 """
@@ -89,7 +88,7 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
     initialize_glacier_climate!(glacier, parameters)
 
     if test
-        glacier.gdir = nothing
+        glacier.rgi_id = nothing # not sure of that line
         glacier.S_coords = nothing
     end
 
@@ -97,7 +96,7 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
 end
 
 """
-    initialize_glacier(gdir::Py; smoothing=false, velocities=true)
+    initialize_glacier(rgi_id::String, params::Parameters; smoothing=false, velocities=true)
 
 Retrieves the initial glacier geometry (bedrock + ice thickness) for a glacier with other necessary data (e.g. grid size and ice surface velocities).
 """
@@ -192,20 +191,21 @@ function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=fa
     end
     jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
 
-   # Apply deletion to both gtd_grids and gdirs using the same set of indices
+   # Apply deletion to both gtd_grids and glaciers using the same set of indices
     indices_to_remove = findall(x -> length(x[x .!= 0.0]) == 0, gtd_grids)
     deleteat!(gtd_grids, indices_to_remove)
     deleteat!(glaciers, indices_to_remove)
-   
+
     return gtd_grids, glaciers
 end
 
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
-    gtd_path = joinpath(gdir.dir, "glathida.h5")
+    rgi_path = params.simulation.rgi_paths[rgi_id]
+    gtd_path = joinpath(rgi_path, "glathida.h5")
     if isfile(gtd_path) && !force
         gtd_grid = h5read(gtd_path, "gtd_grid")
     else
-        glathida = CSV.File(joinpath(params.simulation.rgi_path, "glathida.csv")) 
+        glathida = CSV.File(joinpath(rgi_path, "glathida.csv"))
         gtd_grid = zeros(size(glacier.H₀))
         count = zeros(size(glacier.H₀))
         for (thick, i, j) in zip(glathida["elevation"], glathida["i_grid"], glathida["j_grid"])
@@ -214,10 +214,10 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         end
 
         gtd_grid .= ifelse.(count > 0, gtd_grid ./ count, 0.0)
-        
-        # Save file 
-        h5open(joinpath(gdir.dir, "glathida.h5"), "w") do file
-            write(file, "gtd_grid", gtd_grid)  
+
+        # Save file
+        h5open(joinpath(params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
+            write(file, "gtd_grid", gtd_grid)
         end
     end
     return gtd_grid
@@ -277,6 +277,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
 
     # Check which glaciers we can actually process
     rgi_stats = pd[].read_csv(utils[].file_downloader("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv"), index_col=0)
+    TODO: update here
     # rgi_stats = rgi_stats.loc[rgi_ids]
 
     # if any(rgi_stats.Connect .== 2)

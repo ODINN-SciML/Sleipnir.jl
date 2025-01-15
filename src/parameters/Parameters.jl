@@ -4,14 +4,14 @@ abstract type AbstractParameters end
 
 const AbstractEmptyParams = Union{AbstractParameters,Nothing}
 
-mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams, 
-        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
+mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
+        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
         physical::PPHY
         simulation::PSIM
         hyper::PHY
         solver::PSOL
         UDE::PUDE
-        inversion::PINV  
+        inversion::PINV
 end
 
 include("PhysicalParameters.jl")
@@ -19,8 +19,8 @@ include("SimulationParameters.jl")
 
 """
 Parameters(;
+        physical::PhysicalParameters = PhysicalParameters(),
         simulation::SimulationParameters = SimulationParameters()
-        physical::PhysicalParameters = PhysicalParameters()
         )
 Initialize ODINN parameters
 
@@ -35,7 +35,7 @@ function Parameters(;
 
     # Build the parameters based on all the subtypes of parameters
     parameters = Parameters(physical, simulation,
-                            nothing, nothing, nothing, nothing)  
+                            nothing, nothing, nothing, nothing)
 
     if parameters.simulation.multiprocessing
             enable_multiprocessing(parameters.simulation.workers)
