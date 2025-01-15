@@ -1,4 +1,4 @@
-export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, OGGMparameters, AbstractEmptyParams
+export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, AbstractEmptyParams
 
 abstract type AbstractParameters end
 
@@ -8,7 +8,6 @@ struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY 
         PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, POGGM <: AbstractEmptyParams, PINV <: AbstractEmptyParams}  
         physical::PPHY
         simulation::PSIM
-        OGGM::POGGM
         hyper::PHY
         solver::PSOL
         UDE::PUDE
@@ -17,7 +16,6 @@ end
 
 include("PhysicalParameters.jl")
 include("SimulationParameters.jl")
-include("OGGMparameters.jl")
 
 """
 Parameters(;
@@ -32,23 +30,20 @@ Keyword arguments
 """
 function Parameters(;
         physical::PhysicalParameters = PhysicalParameters(),
-        simulation::SimulationParameters = SimulationParameters(),
-        OGGM::OGGMparameters = OGGMparameters(),
+        simulation::SimulationParameters = SimulationParameters()
     ) 
 
     # Build the parameters based on all the subtypes of parameters
-    parameters = Parameters(physical, simulation, OGGM,
+    parameters = Parameters(physical, simulation,
                             nothing, nothing, nothing, nothing)  
 
     if parameters.simulation.multiprocessing
             enable_multiprocessing(parameters.simulation.workers)
     end
-            
-    oggm_config(parameters)
     
     return parameters
 end
 
 Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && 
-                                           a.OGGM == b.OGGM && a.solver == b.solver && a.hyper == b.hyper && 
+                                           a.solver == b.solver && a.hyper == b.hyper && 
                                            a.UDE == b.UDE && a.inversion == b.inversion  

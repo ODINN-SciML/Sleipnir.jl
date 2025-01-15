@@ -17,37 +17,37 @@ Initializes the `Climate` data structure for a given `Glacier``
 function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
 
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
-    raw_climate = xr[].open_dataset(joinpath(pyconvert(String,glacier.gdir.dir), "raw_climate_$(params.simulation.tspan).nc"))
-    climate_step = Ref{Py}(get_cumulative_climate(raw_climate.sel(time=dummy_period)))
-    climate_2D_step = downscale_2D_climate(climate_step[], glacier)
-    longterm_temps = get_longterm_temps(glacier.gdir, raw_climate)
+    raw_climate = RasterStack(joinpath(params.simulation.rgi_path, "raw_climate_$(params.simulation.tspan).nc"))
+    climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
+    climate_2D_step = downscale_2D_climate(climate_step, glacier)
+    longterm_temps = get_longterm_temps(params, raw_climate)
     glacier.climate = Climate2D(raw_climate = raw_climate,
-                            climate_raw_step = Ref{Py}(raw_climate.sel(time=dummy_period)),
+                            climate_raw_step = raw_climate[At(dummy_period)],
                             #climate_cum_step = raw_climate.sel(time=dummy_period).sum(),
                             climate_step = climate_step,
                             climate_2D_step = climate_2D_step,
-                            longterm_temps = pyconvert(Vector,longterm_temps),
-                            avg_temps = Ref{Py}(raw_climate.sel(time=dummy_period).temp.mean()),
-                            avg_gradients = Ref{Py}(raw_climate.sel(time=dummy_period).gradient.mean()))
+                            longterm_temps = longterm_temps,
+                            avg_temps = mean(raw_climate[At(dummy_period)].temp),
+                            avg_gradients = mean(raw_climate[At(dummy_period)].gradient))
 
 end
 
-function generate_raw_climate_files(gdir::Py, tspan::Tuple{F, F}) where {F <: AbstractFloat}
-    if !ispath(joinpath(pyconvert(String,gdir.dir), "raw_climate_$tspan.nc"))
-        println("Getting raw climate data for: ", gdir.rgi_id)
+function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters) where {F <: AbstractFloat}
+    rgi_path = simparams.rgi_paths[rgi_id]
+    if !ispath(joinpath(rgi_path, "raw_climate_$tspan.nc"))
+        println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
-        tspan_date = partial_year(Day, tspan[1]):Day(1):partial_year(Day, tspan[2])
-        climate =  get_raw_climate_data(gdir)
+        tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
+        climate =  get_raw_climate_data(rgi_path)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate) 
-        if any((jldate(climate.time, 0) <= period[1]) & any(jldate(climate.time, -1) >= period[end]))
-            climate = climate.sel(time=period) # Crop desired time period
+        if any((climate[Ti=begin] <= period[begin]) & any(climate[Ti=end] >= period[end]))
+            climate = climate[At(period)] # Crop desired time period
         else
             @warn "No overlapping period available between climate tspan!" 
         end
         # Save raw gdir climate on disk 
-        climate.to_netcdf(joinpath(pyconvert(String,gdir.dir), "raw_climate_$tspan.nc"))
-        climate.close()
+        write(joinpath(rgi_path, "raw_climate_$tspan.nc"), climate)
         GC.gc()
     end
 end
@@ -72,27 +72,23 @@ function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.00
 end
 
 function get_cumulative_climate(climate, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
-    avg_temp = climate.temp.mean() 
-    avg_gradients = climate.gradient.mean() 
-    climate.temp.data = climate.temp.where(climate.temp > 0, 0).data # get PDDs
-    climate.gradient.data = utils[].clip_array(climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    attributes = climate.attrs
-    climate_sum = climate.sum() # get monthly cumulative values
-    climate_sum = climate_sum.assign(Dict("avg_temp"=>avg_temp)) 
-    climate_sum = climate_sum.assign(Dict("avg_gradient"=>avg_gradients))
-    climate_sum.attrs = attributes
+    climate.temp.data .= max.(climate.temp.data, 0.0) # get PDDs
+    climate.gradient.data .= clamp.(climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values attributes 
+    climate_sum = Dict("temp" => sum(climate.temp), 
+                       "prcp" => sum(climate.prcp), 
+                       "avg_temp" => mean(climate.temp), 
+                       "avg_gradient" => mean(climate.gradient),
+                       "ref_hgt" => metadata(climate)["ref_hgt"])
     return climate_sum
 end
 
 """
-    get_raw_climate_data(gdir, temp_resolution="daily", climate="W5E5")
+    get_raw_climate_data(rgi_path::String)
 
-Downloads the raw W5E5 climate data with a given resolution (daily by default). Returns an xarray Dataset. 
+Load the netCDF file containing the climate data for that glacier.
 """
-function get_raw_climate_data(gdir; temp_resolution="daily", climate="W5E5")
-    MBsandbox[].process_w5e5_data(gdir, climate_type=climate, temporal_resol=temp_resolution) 
-    fpath = gdir.get_filepath("climate_historical", filesuffix="_daily_W5E5")
-    climate = xr[].open_dataset(fpath)
+function get_raw_climate_data(rgi_path::String)
+    climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
     return climate
 end
 
@@ -113,10 +109,9 @@ end
 
 Applies temperature gradients to the glacier 2D climate data based on a DEM.  
 """
-function apply_t_grad!(climate::Py, dem)
+function apply_t_grad!(climate::RasterStack, dem::Raster)
     # We apply the gradients to the temperature
-    # /!\ AVOID USING `.=` IN JULIA TO ASSIGN. IT'S NOT HANDLED BY XARRAY. USE `=` INSTEAD
-    climate.temp.data = climate.temp.data + climate.gradient.data .* (mean(dem.data.flatten()) .- climate.ref_hgt)
+    climate.temp.data .= climate.temp.data .+ climate.gradient.data .* (mean(dem.data[:]) .- climate.ref_hgt) 
 end
 
 """
@@ -128,39 +123,35 @@ Generates a new xarray Dataset which is returned.
 function downscale_2D_climate!(glacier::Glacier2D)
     # Update 2D climate structure
     climate = glacier.climate
-    FT = eltype(glacier.S[1])
-
-    climate.climate_2D_step.temp .= pyconvert(FT,climate.climate_step[].avg_temp.data[()])
-    climate.climate_2D_step.PDD .= pyconvert(FT,climate.climate_step[].temp.data[()])
-    climate.climate_2D_step.snow .= pyconvert(FT,climate.climate_step[].prcp.data[()])
-    climate.climate_2D_step.rain .= pyconvert(FT,climate.climate_step[].prcp.data[()]) 
+    climate.climate_2D_step.temp .= climate.climate_step.avg_temp.data
+    climate.climate_2D_step.PDD .= climate.climate_step.temp.data
+    climate.climate_2D_step.snow .= climate.climate_step.prcp.data
+    climate.climate_2D_step.rain .= climate.climate_step.prcp.data
     # Update gradients
-    climate.climate_2D_step.gradient[] = pyconvert(FT,climate.climate_step[].gradient.data[()])
-    climate.climate_2D_step.avg_gradient[] = pyconvert(FT,climate.climate_step[].avg_gradient.data[()])
+    climate.climate_2D_step.gradient .= climate.climate_step.gradient.data
+    climate.climate_2D_step.avg_gradient .= climate.climate_step.avg_gradient.data
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
 end
 
-function downscale_2D_climate(climate_step::Py, glacier::Glacier2D)
+function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     FT = typeof(glacier.S[1])
-    dummy_grid = ones(size(glacier.S))
-    temp_2D = pyconvert(FT, climate_step.avg_temp.data[()]) .* dummy_grid
-    PDD_2D = pyconvert(FT, climate_step.temp.data[()]) .* dummy_grid
-    snow_2D = pyconvert(FT, climate_step.prcp.data[()]) .* dummy_grid
-    rain_2D = pyconvert(FT, climate_step.prcp.data[()]) .* dummy_grid
-
-    # We generate a new dataset with the scaled data
+    dummy_grid = zeros(size(glacier.S))
+    temp_2D = climate_step["avg_temp"] .+ dummy_grid
+    PDD_2D = climate_step["temp"] .+ dummy_grid
+    snow_2D = climate_step["prcp"] .+ dummy_grid
+    rain_2D = climate_step["prcp"] .+ dummy_grid
     climate_2D_step = Climate2Dstep(temp=temp_2D,
-                                   PDD=PDD_2D,
-                                   snow=snow_2D,
-                                   rain=rain_2D,
-                                   gradient=Ref{FT}(pyconvert(FT,climate_step.gradient.data[()])),
-                                   avg_gradient=Ref{FT}(pyconvert(FT,climate_step.avg_gradient.data[()])),
-                                   x=pyconvert(Vector{FT},glacier.S_coords.x.data),
-                                   y=pyconvert(Vector{FT},glacier.S_coords.y.data),
-                                   ref_hgt=Ref{FT}(pyconvert(FT,climate_step.ref_hgt)))
+                       PDD=PDD_2D,
+                       snow=snow_2D,
+                       rain=rain_2D,
+                       gradient=climate_step["gradient"],
+                       avg_gradient=climate_step["avg_gradient"],
+                       x=glacier.S_coords.x.data,
+                       y=glacier.S_coords.y.data,
+                       ref_hgt=climate_step["ref_hgt"]) # TODO: add ref_hgt to the climate data
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
@@ -175,27 +166,17 @@ function downscale_2D_climate(glacier::Glacier2D)
 end
 
 """
-    jldate(pydate, 0)
-
-Converts a Python date (generally from xarray) to a Julia `Date`. WARNING: it requires Python indices, e.g. 
-0 for the beginning and -1 for the end.  
-"""
-function jldate(pydate, idx)
-    return Date(pyconvert(Int, pydate.dt.year.data[idx]), pyconvert(Int,pydate.dt.month.data[idx]), pyconvert(Int,pydate.dt.day.data[idx]))
-end
-
-"""
     trim_period(period, climate)
 
 Trims a time period based on the time range of a climate series. 
 """
 function trim_period(period, climate)
-    if any(jldate(climate.time, 0) > period[1])
-        head = jldate(climate.time, 0)
+    head = climate[Ti=begin]
+    if any(head > period[begin])
         period = Date(year(head), 10, 1):Day(1):period[end] # make it a hydrological year
     end
-    if any(jldate(climate.time, -1) > period[end])
-        tail = jldate(climate.time, -1)
+    tail = climate[Ti=end]
+    if any(tail > period[end])
         period = period[1]:Day(1):Date(year(tail), 9, 30) # make it a hydrological year
     end
 
@@ -212,18 +193,18 @@ end
 partial_year(float) = partial_year(Day, float) 
 
 
-function get_longterm_temps(gdir::Py, tspan)
-    climate = xr[].open_dataset(joinpath(gdir.dir, "raw_climate_$tspan.nc")) # load only once at the beginning
-    dem = rioxarray[].open_rasterio(gdir.get_filepath("dem"))
-    apply_t_grad!(climate, dem)
-    longterm_temps = climate.groupby("time.year").mean().temp.data
+function get_longterm_temps(params::Parameters, tspan)
+    glacier_gd = RasterStack(joinpath(params.simulation.rgi_path, "gridded_data.nc"))
+    climate = RasterStack(joinpath(gdir.dir, "raw_climate_$tspan.nc"))
+    apply_t_grad!(climate, glacier_gd.topo)
+    longterm_temps = climate.groupby("time.year").mean().temp.data # TODO: change to Rasters.jl syntax
     return longterm_temps
 end
 
-function get_longterm_temps(gdir::Py, climate::Py)
-    dem = rioxarray[].open_rasterio(gdir.get_filepath("dem"))
-    apply_t_grad!(climate, dem)
-    longterm_temps = climate.groupby("time.year").mean().temp.data
+function get_longterm_temps(params::Parameters, climate::RasterStack)
+    glacier_gd = RasterStack(joinpath(params.simulation.rgi_path, "gridded_data.nc"))
+    apply_t_grad!(climate, glacier_gd.topo)
+    longterm_temps = climate.groupby("time.year").mean().temp.data # TODO: change to Rasters.jl syntax
     return longterm_temps
 end
 
