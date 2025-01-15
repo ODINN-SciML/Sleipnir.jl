@@ -4,7 +4,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     use_MB::Bool
     use_iceflow::Bool
     plots::Bool
-    velocities::Bool 
+    velocities::Bool
     overwrite_climate::Bool
     use_glathida_data::Bool
     float_type::DataType
@@ -12,9 +12,10 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     tspan::Tuple{F, F}
     step::F
     multiprocessing::Bool
-    workers::I 
+    workers::I
     working_dir::String
     test_mode::Bool
+    rgi_paths::Dict
 end
 
 
@@ -29,8 +30,12 @@ end
                         float_type::DataType = Float64,
                         int_type::DataType = Int64,
                         tspan::Tuple{F, F} = (2010.0,2015.0),
+                        step::F = 1/12,
                         multiprocessing::Bool = true,
-                        workers::I = 4
+                        workers::I = 4,
+                        working_dir::String = "",
+                        test_mode::Bool = false,
+                        rgi_paths::Dict{String, String} = Dict()
         )
 Initialize the parameters for a simulation.
 Keyword arguments
@@ -55,7 +60,7 @@ function SimulationParameters(;
             workers::I = 4,
             working_dir::String = "",
             test_mode::Bool = false,
-            rgi_paths::Dict{String, String} = Dict()
+            rgi_paths::Dict = Dict() # TODO: once the mismatch in the prototype is fixed, revert to rgi_paths::Dict{String, String} = Dict()
             ) where {I <: Integer, F <: AbstractFloat}
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,

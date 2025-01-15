@@ -14,6 +14,7 @@ using Statistics
 using CairoMakie
 using Downloads
 using HDF5
+using Rasters
 
 # ##############################################
 # ############    PARAMETERS     ###############

@@ -1,20 +1,19 @@
 
 
-function glaciers2D_constructor(; save_refs::Bool = false)
+function glaciers2D_constructor(; save_refs::Bool = true) # TODO: update
 
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 
     params = Parameters(simulation=SimulationParameters(velocities=false,
                                                         use_glathida_data=false,
                                                         working_dir=Sleipnir.root_dir,
-                                                        test_mode=true),
-                        OGGM=OGGMparameters(ice_thickness_source="Farinotti19"))
+                                                        test_mode=true))
 
     glaciers = initialize_glaciers(rgi_ids, params; test=true)
 
     # Empty all PyCall stuff to avoid issues
+    # TODO: remove the lines below
     for glacier in glaciers
-        glacier.gdir = nothing
         glacier.climate = nothing
         glacier.S_coords = nothing
     end
