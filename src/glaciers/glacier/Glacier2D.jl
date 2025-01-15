@@ -7,7 +7,6 @@ include("../climate/Climate2D.jl")
 
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
-    gdir::Union{Py, Nothing} 
     climate::Union{Climate2D, Nothing}
     H₀::Union{Matrix{F}, Nothing}
     H_glathida::Union{Matrix{F}, Nothing}

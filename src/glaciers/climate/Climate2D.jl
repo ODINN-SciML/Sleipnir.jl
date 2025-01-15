@@ -14,12 +14,12 @@ export Climate2Dstep, Climate2D
 end
 
 @kwdef mutable struct Climate2D{F <: AbstractFloat} 
-    raw_climate::Py # Raw climate dataset for the whole simulation
+    raw_climate::RasterStack # Raw climate dataset for the whole simulation
     # Buffers to avoid memory allocations
-    climate_raw_step::Ref{Py} # Raw climate trimmed for the current step
-    climate_step::Ref{Py} # Climate data for the current step
+    climate_raw_step::Ref{RasterStack} # Raw climate trimmed for the current step
+    climate_step::Ref{RasterStack} # Climate data for the current step
     climate_2D_step::Climate2Dstep # 2D climate data for the current step to feed to the MB model
     longterm_temps::Vector{F} # Longterm temperatures for the ice rheology
-    avg_temps::Ref{Py} # Intermediate buffer for computing average temperatures
-    avg_gradients::Ref{Py} # Intermediate buffer for computing average gradients
+    avg_temps::Ref{RasterStack} # Intermediate buffer for computing average temperatures
+    avg_gradients::Ref{RasterStack} # Intermediate buffer for computing average gradients
 end
