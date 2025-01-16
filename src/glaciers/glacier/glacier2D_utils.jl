@@ -120,12 +120,6 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         smooth!(H₀)  # Smooth initial ice thickness to help the solver
     end
 
-    # # Create path for simulation results
-    # gdir_path = dirname(pyconvert(String, gdir.get_filepath("dem")))
-    # if !isdir(gdir_path)
-    #     mkdir(gdir_path)
-    # end
-
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border = glacier_gd.dis_from_border.data

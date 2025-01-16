@@ -14,13 +14,6 @@ function glaciers2D_constructor(; save_refs::Bool = false)
 
     glaciers = initialize_glaciers(rgi_ids, params; test=true)
 
-    # Empty all PyCall stuff to avoid issues
-    # TODO: remove the lines below
-    for glacier in glaciers
-        glacier.climate = nothing
-        glacier.S_coords = nothing
-    end
-
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, "test/data/glaciers/glaciers2D.jld2"); glaciers)
     end
