@@ -7,10 +7,10 @@ export initialize_glacier_climate!, downscale_2D_climate!, downscale_2D_climate,
         get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
          apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
-using Dates # to provide correct Julian time slices 
+using Dates # to provide correct Julian time slices
 
 """
-    function initialize_glacier_climate!(glacier::Glacier, params::Parameters)
+    function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
 
 Initializes the `Climate` data structure for a given `Glacier``
 """
@@ -34,20 +34,20 @@ end
 
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters) where {F <: AbstractFloat}
     rgi_path = simparams.rgi_paths[rgi_id]
-    if !ispath(joinpath(rgi_path, "raw_climate_$tspan.nc"))
+    if !ispath(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
         println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
         tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
         climate =  get_raw_climate_data(rgi_path)
         # Make sure the desired period is covered by the climate data
-        period = trim_period(tspan_date, climate) 
-        if any((climate[Ti=begin] <= period[begin]) & any(climate[Ti=end] >= period[end]))
+        period = trim_period(tspan_date, climate)
+        if any((dims(climate, Ti)[begin] <= period[begin]) & any(dims(climate, Ti)[end] >= period[end]))
             climate = climate[At(period)] # Crop desired time period
         else
             @warn "No overlapping period available between climate tspan!" 
         end
         # Save raw gdir climate on disk 
-        write(joinpath(rgi_path, "raw_climate_$tspan.nc"), climate)
+        write(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"), climate)
         GC.gc()
     end
 end
@@ -151,11 +151,11 @@ function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
                        avg_gradient=climate_step["avg_gradient"],
                        x=glacier.S_coords.x.data,
                        y=glacier.S_coords.y.data,
-                       ref_hgt=climate_step["ref_hgt"]) # TODO: add ref_hgt to the climate data
+                       ref_hgt=climate_step["ref_hgt"])
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
-    
+
     return climate_2D_step
 
 end
@@ -171,12 +171,12 @@ end
 Trims a time period based on the time range of a climate series. 
 """
 function trim_period(period, climate)
-    head = climate[Ti=begin]
-    if any(head > period[begin])
+    head = dims(climate, Ti)[begin]
+    if head > period[begin]
         period = Date(year(head), 10, 1):Day(1):period[end] # make it a hydrological year
     end
-    tail = climate[Ti=end]
-    if any(tail > period[end])
+    tail = dims(climate, Ti)[end]
+    if tail > period[end]
         period = period[1]:Day(1):Date(year(tail), 9, 30) # make it a hydrological year
     end
 
@@ -196,7 +196,7 @@ partial_year(float) = partial_year(Day, float)
 function get_longterm_temps(rgi_id::String, params::Parameters)
     rgi_path = params.simulation.rgi_paths[rgi_id]
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
-    climate = get_raw_climate_data(rgi_path)
+    climate = RasterStack(joinpath(rgi_path, "raw_climate_$(params.simulation.tspan).nc"))
     apply_t_grad!(climate, glacier_gd.topo)
     longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
     return longterm_temps

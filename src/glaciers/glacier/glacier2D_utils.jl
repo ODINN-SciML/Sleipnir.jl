@@ -6,14 +6,13 @@ export initialize_glaciers
 ###############################################
 
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; velocities=true)
+    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
 
-Initialize multiple `Glacier`s based on a list of RGI IDs, a º span for a simulation and step.
-    
+Initialize multiple `Glacier`s based on a list of RGI IDs and on parameters.
+
 Keyword arguments
 =================
     - `rgi_ids`: List of RGI IDs of glaciers
-    - `tspan`: Tuple specifying the initial and final year of the simulation
     - `params`: `Parameters` object to be passed
 """
 function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
@@ -29,7 +28,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
     end
     filter_missing_glaciers!(rgi_ids, params)
-    
+
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
@@ -104,16 +103,16 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     # Load glacier gridded data
     F = params.simulation.float_type
     I = params.simulation.int_type
-    rgi_path = params.simulation.rgi_path[rgi_id]
+    rgi_path = params.simulation.rgi_paths[rgi_id]
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.OGGM.ice_thickness_source == "Millan22" && params.simulation.velocities
-        H₀ = F.(ifelse.(Matrix,glacier_gd.glacier_mask.data .== 1, Matrix,glacier_gd.millan_ice_thickness.data, 0.0))
-    elseif params.OGGM.ice_thickness_source == "Farinotti19"
-        H₀ = F.(ifelse.(Matrix,glacier_gd.glacier_mask.data .== 1, Matrix,glacier_gd.consensus_ice_thickness.data, 0.0))
+    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+    elseif params.simulation.ice_thickness_source == "Farinotti19"
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
     if smoothing 
@@ -273,21 +272,15 @@ function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameter
     return missing_glaciers
 end
 
-function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary and convert to Julia
+function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
     # Check which glaciers we can actually process
-    rgi_stats = pd[].read_csv(utils[].file_downloader("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv"), index_col=0)
-    TODO: update here
-    # rgi_stats = rgi_stats.loc[rgi_ids]
+    pathCsv = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
+    rgi_stats = CSV.read(pathCsv, DataFrame)
 
-    # if any(rgi_stats.Connect .== 2)
-    #     @warn "You have some level 2 glaciers... Removing..."
-    #     rgi_ids = [rgi_stats.loc[rgi_stats.Connect .!= 2].index]
-    # end
-
-    indices = [rgi_stats.index...]
+    # Remove level 2 glaciers
     for rgi_id in rgi_ids
-        if PyList(rgi_stats.Connect.values[indices .== rgi_id]) == 2
+        if rgi_stats.Connect[rgi_stats.RGIId .== rgi_id] == 2
             @warn "Filtering glacier $rgi_id..."
             deleteat!(rgi_ids, rgi_ids .== rgi_id)
         end
@@ -303,7 +296,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
     catch error
         @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
-    
+
 end
 
 """

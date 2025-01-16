@@ -15,6 +15,9 @@ using CairoMakie
 using Downloads
 using HDF5
 using Rasters
+using CSV
+using DataFrames
+using JSON
 
 # ##############################################
 # ############    PARAMETERS     ###############
