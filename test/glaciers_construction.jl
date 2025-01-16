@@ -2,7 +2,7 @@
 
 function glaciers2D_constructor(; save_refs::Bool = false)
 
-    rgi_paths = JSON.parsefile("/tmp/OGGM/ODINN_prepro/rgi_paths.json") # TODO: find a way to automatically determine the path
+    rgi_paths = JSON.parsefile(joinpath(Sleipnir.prepro_dir, "rgi_paths.json"))
     rgi_paths = Dict(k => string(v) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
     rgi_ids = ["RGI60-11.03638", "RGI60-11.01450"]
 

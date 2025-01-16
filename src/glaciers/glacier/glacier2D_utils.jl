@@ -270,7 +270,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
 
     # Check which glaciers we can actually process
     pathCsv = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
-    rgi_stats = CSV.read(pathCsv, DataFrame)
+    rgi_stats = CSV.File(pathCsv)
 
     # Remove level 2 glaciers
     for rgi_id in rgi_ids

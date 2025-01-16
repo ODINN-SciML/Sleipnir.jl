@@ -16,8 +16,9 @@ using Downloads
 using HDF5
 using Rasters
 using CSV
-using DataFrames
 using JSON
+using CodecZlib
+using Tar
 
 # ##############################################
 # ############    PARAMETERS     ###############
@@ -25,6 +26,7 @@ using JSON
 
 cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
+const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
 
 # ##############################################
 # ##########  SLEIPNIR LIBRARIES  ##############
