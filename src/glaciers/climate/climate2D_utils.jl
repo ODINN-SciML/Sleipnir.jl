@@ -59,24 +59,24 @@ end
 Computes Positive Degree Days (PDDs) and cumulative rainfall and snowfall from climate data.
 """
 function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
-    climate.climate_raw_step[] = climate.raw_climate.sel(time=period)
-    climate.avg_temps[] = climate.climate_raw_step[].temp.mean() 
+    climate.climate_raw_step = climate.raw_climate[At(period)]
+    climate.avg_temps = mean(climate.climate_raw_step.temp)
 
-    climate.avg_gradients[] = climate.climate_raw_step[].gradient.mean() 
-    climate.climate_raw_step[].temp.data = climate.climate_raw_step[].temp.where(climate.climate_raw_step[].temp > 0.0, 0.0).data # get PDDs
-    climate.climate_raw_step[].gradient.data = utils[].clip_array(climate.climate_raw_step[].gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate.climate_step[] = climate.climate_raw_step[].sum() # get monthly cumulative values
-    climate.climate_step[] = climate.climate_step[].assign(Dict("avg_temp"=>climate.avg_temps[])) 
-    climate.climate_step[] = climate.climate_step[].assign(Dict("avg_gradient"=>climate.avg_gradients[]))
-    climate.climate_step[].attrs = climate.climate_raw_step[].attrs
+    climate.avg_gradients = mean(climate.climate_raw_step.gradient)
+    climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp, 0.0) # get PDDs
+    climate.climate_raw_step.gradient.data = clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
+    climate.climate_step = sum(climate.climate_raw_step)
+    climate.climate_step["avg_temp"] = climate.avg_temps
+    climate.climate_step["avg_gradient"] = climate.avg_gradients
+    climate.climate_step["ref_hgt"] = metadata(climate.climate_raw_step)["ref_hgt"]
 end
 
 function get_cumulative_climate(climate, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
     climate.temp.data .= max.(climate.temp.data, 0.0) # get PDDs
-    climate.gradient.data .= clamp.(climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values attributes 
-    climate_sum = Dict("temp" => sum(climate.temp), 
-                       "prcp" => sum(climate.prcp), 
-                       "avg_temp" => mean(climate.temp), 
+    climate.gradient.data .= clamp.(climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
+    climate_sum = Dict("temp" => sum(climate.temp),
+                       "prcp" => sum(climate.prcp),
+                       "avg_temp" => mean(climate.temp),
                        "avg_gradient" => mean(climate.gradient),
                        "ref_hgt" => metadata(climate)["ref_hgt"])
     return climate_sum
@@ -161,7 +161,7 @@ function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
 end
 
 function downscale_2D_climate(glacier::Glacier2D)
-    climate_2D_step = downscale_2D_climate(glacier.climate.climate_step[], glacier)
+    climate_2D_step = downscale_2D_climate(glacier.climate.climate_step, glacier)
     return climate_2D_step
 end
 
