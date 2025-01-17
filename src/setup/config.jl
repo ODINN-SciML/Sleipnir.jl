@@ -1,3 +1,4 @@
+export get_rgi_paths
 
 function __init__()
 
@@ -49,6 +50,12 @@ function filter_existing_paths(paths::Vector{String})
     # Use `filter` to retain only the paths that exist
     existing_paths = filter(ispath, paths)
     return existing_paths
+end
+
+function get_rgi_paths()
+    rgi_paths = JSON.parsefile(joinpath(prepro_dir, "rgi_paths.json"))
+    rgi_paths = Dict(k => string(v) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
+    return rgi_paths
 end
 
 

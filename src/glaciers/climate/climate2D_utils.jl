@@ -105,9 +105,9 @@ function apply_t_cumul_grad!(climate_2D_step::Climate2Dstep, S::Matrix{F}) where
 end
 
 """
-    apply_t_grad!(climate, g_dem)
+    apply_t_grad!(climate::RasterStack, dem::Raster)
 
-Applies temperature gradients to the glacier 2D climate data based on a DEM.  
+Applies temperature gradients to the glacier 2D climate data based on a DEM.
 """
 function apply_t_grad!(climate::RasterStack, dem::Raster)
     # We apply the gradients to the temperature
@@ -115,10 +115,10 @@ function apply_t_grad!(climate::RasterStack, dem::Raster)
 end
 
 """
-    downscale_2D_climate(climate, g_dem)
+    downscale_2D_climate(glacier::Glacier2D)
 
 Projects climate data to the glacier matrix by simply copying the closest gridpoint to all matrix gridpoints.
-Generates a new xarray Dataset which is returned.   
+Generates a new RasterStack which is returned.
 """
 function downscale_2D_climate!(glacier::Glacier2D)
     # Update 2D climate structure
@@ -132,7 +132,7 @@ function downscale_2D_climate!(glacier::Glacier2D)
     climate.climate_2D_step.avg_gradient .= climate.climate_step.avg_gradient.data
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
+    apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with the RasterStack structure
 end
 
 function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)

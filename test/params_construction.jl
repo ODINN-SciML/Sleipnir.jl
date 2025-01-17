@@ -1,7 +1,7 @@
 
 function params_constructor_specified(; save_refs::Bool = false)
 
-    rgi_paths = JSON.parsefile(joinpath(Sleipnir.prepro_dir, "rgi_paths.json"))
+    rgi_paths = get_rgi_paths()
     rgi_paths = Dict(k => string(v) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
 
     physical_params = PhysicalParameters(ρ = 900.0,
