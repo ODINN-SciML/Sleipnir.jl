@@ -103,7 +103,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     # Load glacier gridded data
     F = params.simulation.float_type
     I = params.simulation.int_type
-    rgi_path = params.simulation.rgi_paths[rgi_id]
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # println("Using $ice_thickness_source for initial state")
@@ -115,7 +115,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
-    if smoothing 
+    if smoothing
         println("Smoothing is being applied to initial condition.")
         smooth!(H₀)  # Smooth initial ice thickness to help the solver
     end
@@ -193,7 +193,7 @@ function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=fa
 end
 
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
-    rgi_path = params.simulation.rgi_paths[rgi_id]
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     gtd_path = joinpath(rgi_path, "glathida.h5")
     if isfile(gtd_path) && !force
         gtd_grid = h5read(gtd_path, "gtd_grid")
@@ -209,7 +209,7 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         gtd_grid .= ifelse.(count > 0, gtd_grid ./ count, 0.0)
 
         # Save file
-        h5open(joinpath(params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
+        h5open(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
             write(file, "gtd_grid", gtd_grid)
         end
     end

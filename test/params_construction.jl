@@ -2,7 +2,6 @@
 function params_constructor_specified(; save_refs::Bool = false)
 
     rgi_paths = get_rgi_paths()
-    rgi_paths = Dict(k => string(v) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
 
     physical_params = PhysicalParameters(ρ = 900.0,
                                         g = 9.81,
@@ -27,8 +26,6 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             workers = 10,
                                             working_dir = "",
                                             rgi_paths = rgi_paths)
-
-    # TODO: check that the tests pass if script is launched from a different computer with different values inside rgi_paths
 
     params = Parameters(physical=physical_params,
                         simulation=simulation_params)

@@ -17,7 +17,7 @@ Initializes the `Climate` data structure for a given `Glacier``
 function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
 
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
-    raw_climate = RasterStack(joinpath(params.simulation.rgi_paths[glacier.rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
+    raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
     climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
     climate_2D_step = downscale_2D_climate(climate_step, glacier)
     longterm_temps = get_longterm_temps(glacier.rgi_id, params, raw_climate)
@@ -33,7 +33,7 @@ function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameter
 end
 
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters) where {F <: AbstractFloat}
-    rgi_path = simparams.rgi_paths[rgi_id]
+    rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
     if !ispath(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
         println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
@@ -198,7 +198,7 @@ partial_year(float) = partial_year(Day, float)
 
 
 function get_longterm_temps(rgi_id::String, params::Parameters)
-    rgi_path = params.simulation.rgi_paths[rgi_id]
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     climate = RasterStack(joinpath(rgi_path, "raw_climate_$(params.simulation.tspan).nc"))
     apply_t_grad!(climate, glacier_gd.topo)
@@ -207,7 +207,7 @@ function get_longterm_temps(rgi_id::String, params::Parameters)
 end
 
 function get_longterm_temps(rgi_id::String, params::Parameters, climate::RasterStack)
-    glacier_gd = RasterStack(joinpath(params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
+    glacier_gd = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
     apply_t_grad!(climate, glacier_gd.topo)
     longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
     return longterm_temps
