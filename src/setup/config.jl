@@ -54,7 +54,7 @@ end
 
 function get_rgi_paths()
     rgi_paths = JSON.parsefile(joinpath(prepro_dir, "rgi_paths.json"))
-    rgi_paths = Dict(k => string(v) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
+    rgi_paths = Dict(k => joinpath(prepro_dir, string(v)) for (k,v) in pairs(rgi_paths)) # Convert Dict{String, Any} to Dict{String, String}
     return rgi_paths
 end
 

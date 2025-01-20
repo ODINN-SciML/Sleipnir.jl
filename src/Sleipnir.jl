@@ -19,6 +19,7 @@ using CSV
 using JSON
 using CodecZlib
 using Tar
+import NCDatasets
 
 # ##############################################
 # ############    PARAMETERS     ###############

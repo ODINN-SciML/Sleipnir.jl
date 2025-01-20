@@ -19,7 +19,7 @@ mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     λ::Union{Vector{F}, Nothing}
     slope::Union{Vector{F}, Nothing}
     dist_border::Union{Vector{F}, Nothing}
-    S_coords::Union{Dict{String, Integer}, Nothing}
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing}
     Δx::Union{F, Nothing}
     Δy::Union{F, Nothing}
     nx::Union{I, Nothing}
@@ -41,7 +41,7 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Integer}, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -64,7 +64,7 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Integer}, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,

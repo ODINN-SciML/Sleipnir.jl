@@ -122,15 +122,15 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border = glacier_gd.dis_from_border.data
+        dist_border::Matrix{Float64} = glacier_gd.dis_from_border.data
         
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
 
         B = glacier_gd.topo.data .- H₀ # bedrock
         
-        S_coords = Dict{"x"=> glacier_gd.topo.dims[1], "y"=> glacier_gd.topo.dims[2]}
-        S = glacier_gd.topo.data
+        S_coords = Dict{String,Vector{Float64}}("x"=> dims(glacier_gd, 1).val, "y"=> dims(glacier_gd, 2).val)
+        S::Matrix{Float64} = glacier_gd.topo.data
         #smooth!(S)
         
         if params.simulation.velocities
@@ -149,7 +149,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         ny = glacier_grid["nxny"][2] 
         Δx = abs.(glacier_grid["dxdy"][1])
         Δy = abs.(glacier_grid["dxdy"][2])
-        slope = glacier_gd.slope.data
+        slope::Matrix{Float64} = glacier_gd.slope.data
 
         # We initialize the Glacier with all the initial topographical 
         glacier = Glacier2D(rgi_id = rgi_id, 

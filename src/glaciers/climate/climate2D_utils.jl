@@ -72,12 +72,16 @@ function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.00
 end
 
 function get_cumulative_climate(climate, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
-    climate.temp.data .= max.(climate.temp.data, 0.0) # get PDDs
-    climate.gradient.data .= clamp.(climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate_sum = Dict("temp" => sum(climate.temp),
+    avg_temp = mean(climate.temp)
+    avg_gradient = mean(climate.gradient)
+    copy_climate = deepcopy(climate)
+    copy_climate.temp.data .= max.(copy_climate.temp.data, 0.0) # get PDDs
+    copy_climate.gradient.data .= clamp.(copy_climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
+    climate_sum = Dict("temp" => sum(copy_climate.temp),
                        "prcp" => sum(climate.prcp),
-                       "avg_temp" => mean(climate.temp),
-                       "avg_gradient" => mean(climate.gradient),
+                       "gradient" => sum(copy_climate.gradient),
+                       "avg_temp" => avg_temp,
+                       "avg_gradient" => avg_gradient,
                        "ref_hgt" => metadata(climate)["ref_hgt"])
     return climate_sum
 end
@@ -111,7 +115,7 @@ Applies temperature gradients to the glacier 2D climate data based on a DEM.
 """
 function apply_t_grad!(climate::RasterStack, dem::Raster)
     # We apply the gradients to the temperature
-    climate.temp.data .= climate.temp.data .+ climate.gradient.data .* (mean(dem.data[:]) .- climate.ref_hgt) 
+    climate.temp.data .= climate.temp.data .+ climate.gradient.data .* (mean(dem.data[:]) .- metadata(climate)["ref_hgt"])
 end
 
 """
@@ -147,11 +151,11 @@ function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
                        PDD=PDD_2D,
                        snow=snow_2D,
                        rain=rain_2D,
-                       gradient=climate_step["gradient"],
-                       avg_gradient=climate_step["avg_gradient"],
-                       x=glacier.S_coords.x.data,
-                       y=glacier.S_coords.y.data,
-                       ref_hgt=climate_step["ref_hgt"])
+                       gradient=Float64(climate_step["gradient"]),
+                       avg_gradient=Float64(climate_step["avg_gradient"]),
+                       x=glacier.S_coords["x"],
+                       y=glacier.S_coords["y"],
+                       ref_hgt=Float64(climate_step["ref_hgt"]))
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
