@@ -64,8 +64,10 @@ function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.00
 
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
     climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp, 0.0) # get PDDs
-    climate.climate_raw_step.gradient.data = clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate.climate_step = sum(climate.climate_raw_step)
+    climate.climate_raw_step.gradient.data .= clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
+    climate.climate_step["prcp"] = sum(climate.climate_raw_step.prcp)
+    climate.climate_step["temp"] = sum(climate.climate_raw_step.temp)
+    climate.climate_step["gradient"] = sum(climate.climate_raw_step.gradient)
     climate.climate_step["avg_temp"] = climate.avg_temps
     climate.climate_step["avg_gradient"] = climate.avg_gradients
     climate.climate_step["ref_hgt"] = metadata(climate.climate_raw_step)["ref_hgt"]
@@ -127,13 +129,13 @@ Generates a new RasterStack which is returned.
 function downscale_2D_climate!(glacier::Glacier2D)
     # Update 2D climate structure
     climate = glacier.climate
-    climate.climate_2D_step.temp .= climate.climate_step.avg_temp.data
-    climate.climate_2D_step.PDD .= climate.climate_step.temp.data
-    climate.climate_2D_step.snow .= climate.climate_step.prcp.data
-    climate.climate_2D_step.rain .= climate.climate_step.prcp.data
+    climate.climate_2D_step.temp .= climate.climate_step["avg_temp"]
+    climate.climate_2D_step.PDD .= climate.climate_step["temp"]
+    climate.climate_2D_step.snow .= climate.climate_step["prcp"]
+    climate.climate_2D_step.rain .= climate.climate_step["prcp"]
     # Update gradients
-    climate.climate_2D_step.gradient .= climate.climate_step.gradient.data
-    climate.climate_2D_step.avg_gradient .= climate.climate_step.avg_gradient.data
+    climate.climate_2D_step.gradient = climate.climate_step["gradient"]
+    climate.climate_2D_step.avg_gradient = climate.climate_step["avg_gradient"]
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with the RasterStack structure

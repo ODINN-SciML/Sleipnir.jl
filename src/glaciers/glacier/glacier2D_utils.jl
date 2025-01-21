@@ -132,11 +132,11 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         S_coords = Dict{String,Vector{Float64}}("x"=> dims(glacier_gd, 1).val, "y"=> dims(glacier_gd, 2).val)
         S::Matrix{Float64} = glacier_gd.topo.data
         #smooth!(S)
-        
+
         if params.simulation.velocities
-            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+            V::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+            Vx::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+            Vy::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
