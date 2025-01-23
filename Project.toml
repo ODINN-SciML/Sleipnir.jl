@@ -25,9 +25,12 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 CSV = "0.10.15"
+CairoMakie = "0.12.18"
 CodecZlib = "0.7.6"
+ComponentArrays = "0.15"
 Downloads = "1"
 HDF5 = "0.17"
+Infiltrator = "1.8"
 JLD2 = "0.4"
 JSON = "0.21.4"
 NCDatasets = "0.14.6"
