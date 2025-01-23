@@ -32,7 +32,7 @@ function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameter
 
 end
 
-function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters) where {F <: AbstractFloat}
+function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
     rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
     if !ispath(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
         println("Getting raw climate data for: ", rgi_id)
@@ -44,9 +44,9 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         if any((dims(climate, Ti)[begin] <= period[begin]) & any(dims(climate, Ti)[end] >= period[end]))
             climate = climate[At(period)] # Crop desired time period
         else
-            @warn "No overlapping period available between climate tspan!" 
+            @warn "No overlapping period available between climate tspan!"
         end
-        # Save raw gdir climate on disk 
+        # Save raw gdir climate on disk
         write(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"), climate)
         GC.gc()
     end
@@ -98,7 +98,7 @@ function get_raw_climate_data(rgi_path::String)
     return climate
 end
 
-# TODO: make snow/rain thresholds customizable 
+# TODO: make snow/rain thresholds customizable
 function apply_t_cumul_grad!(climate_2D_step::Climate2Dstep, S::Matrix{F}) where {F <: AbstractFloat}
     # We apply the gradients to the temperature
     climate_2D_step.temp .= climate_2D_step.temp .+ climate_2D_step.avg_gradient .* (S .- climate_2D_step.ref_hgt)
@@ -106,7 +106,7 @@ function apply_t_cumul_grad!(climate_2D_step::Climate2Dstep, S::Matrix{F}) where
     climate_2D_step.PDD .= ifelse.(climate_2D_step.PDD .< 0.0, 0.0, climate_2D_step.PDD) # Crop negative PDD values
 
     # We adjust the rain/snow fractions with the updated temperature
-    climate_2D_step.snow .= ifelse.(climate_2D_step.temp .> 0.0, 0.0, climate_2D_step.snow) 
+    climate_2D_step.snow .= ifelse.(climate_2D_step.temp .> 0.0, 0.0, climate_2D_step.snow)
     climate_2D_step.rain .= ifelse.(climate_2D_step.temp .< 0.0, 0.0, climate_2D_step.rain)
 end
 
