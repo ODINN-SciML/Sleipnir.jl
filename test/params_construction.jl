@@ -1,5 +1,7 @@
 
-function params_constructor_specified(; save_refs::Bool = true) # TODO: change
+function params_constructor_specified(; save_refs::Bool = false)
+
+    rgi_paths = get_rgi_paths()
 
     physical_params = PhysicalParameters(ρ = 900.0,
                                         g = 9.81,
@@ -23,8 +25,7 @@ function params_constructor_specified(; save_refs::Bool = true) # TODO: change
                                             multiprocessing = false,
                                             workers = 10,
                                             working_dir = "",
-                                            rgi_paths = Dict("RGI60-08.00087" => "/tmp/OGGM/ODINN_prepro/per_glacier/RGI60-08/RGI60-08.00/RGI60-08.00087")) # TODO: set the appropriate path
-
+                                            rgi_paths = rgi_paths)
 
     params = Parameters(physical=physical_params,
                         simulation=simulation_params)
@@ -45,7 +46,7 @@ function params_constructor_specified(; save_refs::Bool = true) # TODO: change
 
 end
 
-function params_constructor_default(; save_refs::Bool = true) # TODO: change
+function params_constructor_default(; save_refs::Bool = false)
 
     physical_params = PhysicalParameters()
 

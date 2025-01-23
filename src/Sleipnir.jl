@@ -19,6 +19,11 @@ using ComponentArrays
 include("setup/ssl.jl")
 using PythonCall, CondaPkg
 using Rasters
+using CSV
+using JSON
+using CodecZlib
+using Tar
+import NCDatasets
 
 # ##############################################
 # ############    PARAMETERS     ###############
@@ -26,6 +31,7 @@ using Rasters
 
 cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
+const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
 
 # ##############################################
 # ##########  SLEIPNIR LIBRARIES  ##############

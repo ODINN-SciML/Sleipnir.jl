@@ -20,7 +20,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     n::Union{F, Nothing}
     slope::Union{Matrix{F}, Nothing}
     dist_border::Union{Matrix{F}, Nothing}
-    S_coords::Union{Dict{String, Integer}, Nothing}
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing}
     Δx::Union{F, Nothing}
     Δy::Union{F, Nothing}
     nx::Union{I, Nothing}
@@ -45,7 +45,7 @@ function Glacier2D(;
     n::Union{F, Nothing} = nothing,
     slope::Union{Matrix{F}, Nothing} = nothing,
     dist_border::Union{Matrix{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Integer}, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -71,7 +71,7 @@ function Glacier2D(;
     n::Union{F, Nothing} = nothing,
     slope::Union{Matrix{F}, Nothing} = nothing,
     dist_border::Union{Matrix{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Integer}, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -105,7 +105,7 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
                                         safe_approx(a.A, b.A) && safe_approx(a.C, b.C) && safe_approx(a.n, b.n) &&
                                         isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
-                                        a.S_coords == b.S_coords && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
+                                        safe_approx(a.S_coords, b.S_coords) && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
                                         safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny) &&
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
 

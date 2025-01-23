@@ -1,13 +1,12 @@
 name = "Sleipnir"
-uuid = "f5e6c550-199f-11ee-3608-394420200519"
+uuid = "10baed72-45ec-4fdd-b59b-ebd9654d36be"
 authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>"]
-version = "0.7.0"
+version = "0.7.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
-CondaPkg = "992eb4ea-22a4-4c89-a5bb-47a3300528ab"
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
@@ -22,10 +21,12 @@ PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
 Rasters = "a3a2b9e3-a471-40c9-b274-f788e487c689"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 CSV = "0.10.15"
+CodecZlib = "0.7.6"
 Downloads = "1"
 HDF5 = "0.17"
 JLD2 = "0.4"
@@ -36,6 +37,7 @@ NCDatasets = "0.14.6"
 Rasters = "0.13.0"
 Revise = "3"
 Statistics = "1"
+Tar = "1.10.0"
 julia = "1.9"
 
 [extras]

@@ -1,13 +1,12 @@
 
 export Glacier1D, Climate1D, AbstractGlacier
 
-abstract type AbstractGlacier end 
+abstract type AbstractGlacier end
 
 include("../climate/Climate1D.jl")
 
 mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
-    gdir::Union{Py, Nothing} 
     climate::Union{Climate1D, Nothing}
     H₀::Union{Vector{F}, Nothing}
     S::Union{Vector{F}, Nothing}
@@ -20,7 +19,7 @@ mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     λ::Union{Vector{F}, Nothing}
     slope::Union{Vector{F}, Nothing}
     dist_border::Union{Vector{F}, Nothing}
-    S_coords::Union{Py, Nothing}
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing}
     Δx::Union{F, Nothing}
     Δy::Union{F, Nothing}
     nx::Union{I, Nothing}
@@ -30,26 +29,6 @@ end
 """
 function Glacier1D(;
     rgi_id::Union{String, Nothing} = nothing,
-    gdir::Union{Py, Nothing} = nothing,
-    climate::Union{Climate1D, Nothing} = nothing,
-    H₀::Union{Vector{F}, Nothing} = nothing,
-    S::Union{Vector{F}, Nothing} = nothing,
-    B::Union{Vector{F}, Nothing} = nothing,
-    V::Union{Vector{F}, Nothing}= nothing,
-    slope::Union{Vector{F}, Nothing} = nothing,
-    dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Py, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer} 
-
-Constructor for empty 2D Glacier object.
-"""
-function Glacier1D(;
-    rgi_id::Union{String, Nothing} = nothing,
-    gdir::Union{Py, Nothing} = nothing,
     climate::Union{Climate1D, Nothing} = nothing,
     H₀::Union{Vector{F}, Nothing} = nothing,
     S::Union{Vector{F}, Nothing} = nothing,
@@ -62,12 +41,35 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Py, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
     ny::Union{I, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer} 
+    ) where {F <: AbstractFloat, I <: Integer}
+
+Constructor for empty 2D Glacier object.
+"""
+function Glacier1D(;
+    rgi_id::Union{String, Nothing} = nothing,
+    climate::Union{Climate1D, Nothing} = nothing,
+    H₀::Union{Vector{F}, Nothing} = nothing,
+    S::Union{Vector{F}, Nothing} = nothing,
+    B::Union{Vector{F}, Nothing} = nothing,
+    V::Union{Vector{F}, Nothing}= nothing,
+    A::Union{F, Nothing} = nothing,
+    C::Union{F, Nothing} = nothing,
+    n::Union{F, Nothing} = nothing,
+    w₀::Union{Vector{F}, Nothing} = nothing,
+    λ::Union{Vector{F}, Nothing} = nothing,
+    slope::Union{Vector{F}, Nothing} = nothing,
+    dist_border::Union{Vector{F}, Nothing} = nothing,
+    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+    Δx::Union{F, Nothing} = nothing,
+    Δy::Union{F, Nothing} = nothing,
+    nx::Union{I, Nothing} = nothing,
+    ny::Union{I, Nothing} = nothing
+    ) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
     ft = Float64
@@ -79,7 +81,7 @@ end
 ################### UTILS #####################
 ###############################################
 
-Base.:(==)(a::Glacier1D, b::Glacier1D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate && 
+Base.:(==)(a::Glacier1D, b::Glacier1D) = a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate &&
                                       a.H₀ == b.H₀ && a.S == b.S && a.B == b.B && a.V == b.V &&
                                       a.A == b.A && a.C == b.C && a.n == b.n && a.w₀ == b.w₀ && a.λ == b.λ &&
                                       a.slope == b.slope && a.dist_border == b.dist_border && a.rgi_id == b.rgi_id &&

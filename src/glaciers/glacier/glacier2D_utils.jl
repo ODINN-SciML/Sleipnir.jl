@@ -6,14 +6,13 @@ export initialize_glaciers
 ###############################################
 
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; velocities=true)
+    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
 
-Initialize multiple `Glacier`s based on a list of RGI IDs, a º span for a simulation and step.
-    
+Initialize multiple `Glacier`s based on a list of RGI IDs and on parameters.
+
 Keyword arguments
 =================
     - `rgi_ids`: List of RGI IDs of glaciers
-    - `tspan`: Tuple specifying the initial and final year of the simulation
     - `params`: `Parameters` object to be passed
 """
 function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
@@ -29,7 +28,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
     end
     filter_missing_glaciers!(rgi_ids, params)
-    
+
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
@@ -104,46 +103,40 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     # Load glacier gridded data
     F = params.simulation.float_type
     I = params.simulation.int_type
-    rgi_path = params.simulation.rgi_path[rgi_id]
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.OGGM.ice_thickness_source == "Millan22" && params.simulation.velocities
-        H₀ = F.(ifelse.(Matrix,glacier_gd.glacier_mask.data .== 1, Matrix,glacier_gd.millan_ice_thickness.data, 0.0))
-    elseif params.OGGM.ice_thickness_source == "Farinotti19"
-        H₀ = F.(ifelse.(Matrix,glacier_gd.glacier_mask.data .== 1, Matrix,glacier_gd.consensus_ice_thickness.data, 0.0))
+    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+    elseif params.simulation.ice_thickness_source == "Farinotti19"
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
-    if smoothing 
+    if smoothing
         println("Smoothing is being applied to initial condition.")
         smooth!(H₀)  # Smooth initial ice thickness to help the solver
     end
 
-    # # Create path for simulation results
-    # gdir_path = dirname(pyconvert(String, gdir.get_filepath("dem")))
-    # if !isdir(gdir_path)
-    #     mkdir(gdir_path)
-    # end
-
     try
         # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border = glacier_gd.dis_from_border.data
+        dist_border::Matrix{Float64} = glacier_gd.dis_from_border.data
         
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
 
         B = glacier_gd.topo.data .- H₀ # bedrock
         
-        S_coords = Dict{"x"=> glacier_gd.topo.dims[1], "y"=> glacier_gd.topo.dims[2]}
-        S = glacier_gd.topo.data
+        S_coords = Dict{String,Vector{Float64}}("x"=> dims(glacier_gd, 1).val, "y"=> dims(glacier_gd, 2).val)
+        S::Matrix{Float64} = glacier_gd.topo.data
         #smooth!(S)
-        
+
         if params.simulation.velocities
-            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+            V::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+            Vx::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+            Vy::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
@@ -156,7 +149,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         ny = glacier_grid["nxny"][2] 
         Δx = abs.(glacier_grid["dxdy"][1])
         Δy = abs.(glacier_grid["dxdy"][2])
-        slope = glacier_gd.slope.data
+        slope::Matrix{Float64} = glacier_gd.slope.data
 
         # We initialize the Glacier with all the initial topographical 
         glacier = Glacier2D(rgi_id = rgi_id, 
@@ -200,7 +193,7 @@ function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=fa
 end
 
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
-    rgi_path = params.simulation.rgi_paths[rgi_id]
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     gtd_path = joinpath(rgi_path, "glathida.h5")
     if isfile(gtd_path) && !force
         gtd_grid = h5read(gtd_path, "gtd_grid")
@@ -216,7 +209,7 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         gtd_grid .= ifelse.(count > 0, gtd_grid ./ count, 0.0)
 
         # Save file
-        h5open(joinpath(params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
+        h5open(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
             write(file, "gtd_grid", gtd_grid)
         end
     end
@@ -273,21 +266,15 @@ function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameter
     return missing_glaciers
 end
 
-function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary and convert to Julia
+function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
     # Check which glaciers we can actually process
-    rgi_stats = pd[].read_csv(utils[].file_downloader("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv"), index_col=0)
-    TODO: update here
-    # rgi_stats = rgi_stats.loc[rgi_ids]
+    pathCsv = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
+    rgi_stats = CSV.File(pathCsv)
 
-    # if any(rgi_stats.Connect .== 2)
-    #     @warn "You have some level 2 glaciers... Removing..."
-    #     rgi_ids = [rgi_stats.loc[rgi_stats.Connect .!= 2].index]
-    # end
-
-    indices = [rgi_stats.index...]
+    # Remove level 2 glaciers
     for rgi_id in rgi_ids
-        if PyList(rgi_stats.Connect.values[indices .== rgi_id]) == 2
+        if rgi_stats.Connect[rgi_stats.RGIId .== rgi_id] == 2
             @warn "Filtering glacier $rgi_id..."
             deleteat!(rgi_ids, rgi_ids .== rgi_id)
         end
@@ -303,7 +290,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
     catch error
         @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
-    
+
 end
 
 """

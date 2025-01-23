@@ -15,7 +15,8 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     workers::I
     working_dir::String
     test_mode::Bool
-    rgi_paths::Dict
+    rgi_paths::Dict{String, String}
+    ice_thickness_source::String
 end
 
 
@@ -35,7 +36,8 @@ end
                         workers::I = 4,
                         working_dir::String = "",
                         test_mode::Bool = false,
-                        rgi_paths::Dict{String, String} = Dict()
+                        rgi_paths::Dict{String, String} = Dict{String, String}(),
+                        ice_thickness_source::String = "Farinotti19",
         )
 Initialize the parameters for a simulation.
 Keyword arguments
@@ -60,23 +62,27 @@ function SimulationParameters(;
             workers::I = 4,
             working_dir::String = "",
             test_mode::Bool = false,
-            rgi_paths::Dict = Dict() # TODO: once the mismatch in the prototype is fixed, revert to rgi_paths::Dict{String, String} = Dict()
+            rgi_paths::Dict{String, String} = Dict{String, String}(),
+            ice_thickness_source::String = "Farinotti19",
             ) where {I <: Integer, F <: AbstractFloat}
+
+    @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
                                                 float_type, int_type,
-                                                tspan, step, multiprocessing, workers, working_dir, test_mode, rgi_paths)
+                                                tspan, step, multiprocessing, workers, working_dir, test_mode, rgi_paths, ice_thickness_source)
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
-    end  
+    end
 
     return simulation_parameters
 end
 
-Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots && 
+Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots &&
                                       a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
                                       a.float_type == b.float_type && a.int_type == b.int_type &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
-                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths
+                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
+                                      a.ice_thickness_source == b.ice_thickness_source
