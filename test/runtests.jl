@@ -7,6 +7,8 @@ using Test
 using JLD2
 using Infiltrator
 using CairoMakie
+using JSON
+import NCDatasets
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
