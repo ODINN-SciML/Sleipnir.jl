@@ -15,9 +15,12 @@ using CairoMakie
 using Downloads
 using HDF5
 using ComponentArrays
-
-include("setup/ssl.jl")
-using PythonCall, CondaPkg
+using Rasters
+using CSV
+using JSON
+using CodecZlib
+using Tar
+import NCDatasets
 
 # ##############################################
 # ############    PARAMETERS     ###############
@@ -25,28 +28,7 @@ using PythonCall, CondaPkg
 
 cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
-
-# ##############################################
-# ############  PYTHON LIBRARIES  ##############
-# ##############################################
-
-# We define empty objects for the Python packages
-const netCDF4 = Ref{Py}()
-const cfg = Ref{Py}()
-const utils = Ref{Py}()
-const workflow = Ref{Py}()
-const tasks = Ref{Py}()
-const global_tasks = Ref{Py}()
-const graphics = Ref{Py}()
-const bedtopo = Ref{Py}()
-const millan22 = Ref{Py}()
-const MBsandbox = Ref{Py}()
-const salem = Ref{Py}()
-
-# Essential Python libraries
-const xr = Ref{Py}()
-const rioxarray = Ref{Py}()
-const pd = Ref{Py}()
+const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
 
 # ##############################################
 # ##########  SLEIPNIR LIBRARIES  ##############

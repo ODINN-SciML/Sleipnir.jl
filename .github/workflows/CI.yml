@@ -21,66 +21,104 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
-        python:
-          - '3.12'
-        os: 
-          - ubuntu-latest
+          - '1.11'
+        # python:
+        #   - 3.9
+        #   - 3.12
+        os:
+          # - ubuntu-latest 
           - macos-latest
         arch:
           - x64
     steps:
-      # - name: Cancel ongoing test runs for previous commits
-      #   uses: styfle/cancel-workflow-action@0.12.1
-      #   with:
-      #     access_token: ${{ github.token }}
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@latest
+      # - name: Set up Python 🐍 ${{ matrix.python }}
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: ${{ matrix.python }}  
+      # - name: Create environment with micromamba 🐍🖤
+      #   uses: mamba-org/setup-micromamba@v1
+      #   with: 
+      #     micromamba-version: '2.0.2-2'
+      #     environment-file: ./environment.yml
+      #     environment-name: oggm_env                # it is recommendable to add both name and yml file. 
+      #     init-shell: bash
+      #     cache-environment: false
+      #     cache-downloads: false
+      #     # If necessary, we can include .condarc to configure environment
+      #     # condarc-file: ./condarc.yml                
+      # - name: Test creation of environment with micromamba 🔧🐍🖤
+      #   run: | 
+      #       which python
+      #       micromamba env export
+      # #   shell: bash -el {0}
+      # - name: Update certifi
+      #   run: | 
+      #       pip install --upgrade certifi
+      # #   shell: bash -el {0}
+      # - name: Set ENV Variables for PyCall.jl 🐍 📞
+      #   run: | 
+      #     echo "PYTHON=/Users/runner/micromamba/envs/oggm_env/bin/python" >> "$GITHUB_ENV"
+      #   # shell: bash -el {0}
+      - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - name: Install dependencies on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
-      - name: Install dependencies on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install libxml2 libspatialite
-      - uses: julia-actions/cache@v2
-        with:
-          cache-registries: "false"
-          cache-compiled: "false"
-      # - uses: actions/cache@v4
-      #   env:
-      #     cache-name: cache-artifacts
-      #   with:
-      #     path: ~/.julia/artifacts
-      #     key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-      #     restore-keys: |
-      #       ${{ runner.os }}-test-${{ env.cache-name }}-
-      #       ${{ runner.os }}-test-
-      #       ${{ runner.os }}-
-      - uses: julia-actions/julia-buildpkg@v1
       - name: Check Julia SSL certifications 🔎🔐
         run: |
-          julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
+          julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
           # echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
+        # shell: bash -el {0}
+      # - name: Install dependencies on Ubuntu
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libxml2 libxml2-dev libspatialite7 libspatialite-dev
+      #     echo "LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+      # - name: Install dependencies on macOS
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     brew install libxml2 libspatialite
+      #     echo "PKG_CONFIG_PATH=/opt/homebrew/opt/libxml2/lib/pkgconfig" >> "$GITHUB_ENV"
+      # - name: Check that new paths had been exported
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     echo $PYTHON
+      #     echo $PKG_CONFIG_PATH
+      #     echo $SSL_CERT_FILE
+      - uses: julia-actions/cache@v1
+        with:
+          cache-registries: "true"
+          cache-compiled: "true"
+      - name: Build Julia packages in Ubuntu
+        uses: julia-actions/julia-buildpkg@v1
+        if: matrix.os == 'ubuntu-latest'
+      #   env:
+      #     PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
+      #     # The SSL certificate path can be readed from the action "Check Julia SSL certifications"
+      #     # JULIA_SSL_CA_ROOTS_PATH: /etc/ssl/certs/ca-certificates.crt
+      #     SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      - name: Build Julia packages in MacOS
+        uses: julia-actions/julia-buildpkg@v1
+        if: matrix.os == 'macos-latest'
+        # env:
+        #   PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
+        #   JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
+        #   SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
       - name: Run tests in Ubuntu
         uses: julia-actions/julia-runtest@v1
         if: matrix.os == 'ubuntu-latest'
-        env:
-          # Specify the file or directory containing the certificate authority roots. See NetworkOptions.ca_roots
-          JULIA_SSL_CA_ROOTS_PATH: /opt/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
-          # The default value returned by ca_roots_path() may be overridden by setting the JULIA_SSL_CA_ROOTS_PATH, SSL_CERT_DIR, or SSL_CERT_FILE environment variables,
-          SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      #   env:
+      #     PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
+      #     # JULIA_SSL_CA_ROOTS_PATH: /etc/ssl/certs/ca-certificates.crt
+      #     SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       - name: Run tests in MacOS
         uses: julia-actions/julia-runtest@v1
         if: matrix.os == 'macos-latest'
-        env:
-          JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
-          SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.10.7/x64/share/julia/cert.pem
+        # env:
+        #   PYTHON : /Users/runner/micromamba/envs/oggm_env/bin/python
+        #   JULIA_SSL_CA_ROOTS_PATH: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
+        #   SSL_CERT_FILE: /Users/runner/hostedtoolcache/julia/1.11.1/x64/share/julia/cert.pem
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with:
