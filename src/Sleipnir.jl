@@ -15,9 +15,6 @@ using CairoMakie
 using Downloads
 using HDF5
 using ComponentArrays
-
-include("setup/ssl.jl")
-using PythonCall, CondaPkg
 using Rasters
 using CSV
 using JSON
