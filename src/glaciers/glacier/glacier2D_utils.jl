@@ -36,7 +36,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
     
-    glaciers = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
     
     if params.simulation.use_glathida_data == true
         
@@ -85,11 +85,6 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
-
-    if test
-        glacier.rgi_id = nothing # not sure of that line
-        glacier.S_coords = nothing
-    end
 
     return glacier
 end
@@ -193,23 +188,23 @@ function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=fa
 end
 
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id])
     gtd_path = joinpath(rgi_path, "glathida.h5")
     if isfile(gtd_path) && !force
         gtd_grid = h5read(gtd_path, "gtd_grid")
     else
-        glathida = CSV.File(joinpath(rgi_path, "glathida.csv"))
+        glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
         gtd_grid = zeros(size(glacier.H₀))
         count = zeros(size(glacier.H₀))
-        for (thick, i, j) in zip(glathida["elevation"], glathida["i_grid"], glathida["j_grid"])
+        for (thick, i, j) in zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
             count[i,j] += 1
             gtd_grid[i,j] += thick
         end
 
-        gtd_grid .= ifelse.(count > 0, gtd_grid ./ count, 0.0)
+        gtd_grid .= ifelse.(count .> 0, gtd_grid ./ count, 0.0)
 
         # Save file
-        h5open(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "glathida.h5"), "w") do file
+        h5open(joinpath(rgi_path, "glathida.h5"), "w") do file
             write(file, "gtd_grid", gtd_grid)
         end
     end
