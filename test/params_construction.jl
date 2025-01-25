@@ -1,7 +1,10 @@
 
 function params_constructor_specified(; save_refs::Bool = false)
 
+    rgi_id = "RGI60-11.03638"
     rgi_paths = get_rgi_paths()
+    # Filter out glaciers that are not used to avoid having references that depend on all the glaciers processed in Gungnir
+    rgi_paths = Dict(rgi_id => rgi_paths[rgi_id])
 
     physical_params = PhysicalParameters(ρ = 900.0,
                                         g = 9.81,
