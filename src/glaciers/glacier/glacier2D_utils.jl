@@ -127,12 +127,15 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         # Mercator Projection 
         params_projection = parse_proj(glacier_grid["proj"])
-        transform(X,Y) = UTMercantor(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
+        transform(X,Y) = UTMercator(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
                         x0=params_projection["x_0"], y0=params_projection["y_0"])
         easting = dims(glacier_gd, 1).val
         northing = dims(glacier_gd, 2).val
         latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
+        if maximum(abs.(latitudes)) > 80
+            @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80 degrees."
+        end
 
         B = glacier_gd.topo.data .- H₀ # bedrock
         
@@ -345,9 +348,9 @@ end
 
 """
 
-Transverse Mercantor Projection
+Transverse Mercator Projection
 """
-function UTMercantor(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0) where {F <: AbstractFloat}
+function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0) where {F <: AbstractFloat}
   
     # Convert to right units 
     lonₒ = cenlon * 1.0°
