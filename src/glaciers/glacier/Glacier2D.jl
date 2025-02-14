@@ -110,19 +110,19 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
 
 # Display setup
-function Base.show(io::IO, glacier::Glacier2D)
-    println(io) 
-    println("Glacier:  $(glacier.rgi_id)")
-    println("Available fields:")
-    for key in fieldnames(Glacier2D)
-        value = getproperty(glacier, key)
-        if !isnothing(value)
-            println("  * ", string(key))
-        end
-    end
-end
-# Vectorial form 
-Base.show(io::IO, glaciers::Vector{Glacier2D}) = Base.show.(Ref(io), glaciers)
+# function Base.show(io::IO, glacier::Glacier2D)
+#     println(io) 
+#     println("Glacier:  $(glacier.rgi_id)")
+#     println("Available fields:")
+#     for key in fieldnames(Glacier2D)
+#         value = getproperty(glacier, key)
+#         if !isnothing(value)
+#             println("  * ", string(key))
+#         end
+#     end
+# end
+# # Vectorial form 
+# Base.show(io::IO, glaciers::Vector{Glacier2D}) = Base.show.(Ref(io), glaciers)
 
                                         
 include("glacier2D_utils.jl")
