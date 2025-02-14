@@ -32,7 +32,6 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
-        # @infiltrate
         # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
@@ -359,22 +358,26 @@ Keyword arguments
     - `cenlat`: Central latitude used in the projection
     - `x0`: Shift in easting
     - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
 """
-function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0) where {F <: AbstractFloat}
+function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
   
-    # Convert to right units 
-    lonₒ = cenlon * 1.0°
-    latₒ = cenlat * 1.0°
-    xₒ = x0 * 1.0m
-    yₒ = y0 * 1.0m
+    if !isnothing(zone)
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}(x, y)
+    end
 
-    # Define shift in new coordinate system
-    S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
-
-    datum = WGS84Latest
-    location = TransverseMercator{k, latₒ, datum, S}(x, y)
-
-    return convert(LatLon, location)
+    return convert(LatLon, projection)
 end
 """
     smooth!(A)
