@@ -347,8 +347,18 @@ function parse_proj(proj::String)
 end
 
 """
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0)
 
-Transverse Mercator Projection
+Transverse Mercator Projection. 
+This function reprojects northing/easting coordinates into latitude/longitude. 
+
+Keyword arguments
+=================
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
 """
 function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0) where {F <: AbstractFloat}
   
