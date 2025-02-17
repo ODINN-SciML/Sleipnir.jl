@@ -3,10 +3,13 @@ on:
   pull_request:
     branches:
       - main
-      - pythoncall2
   push:
     branches: []
     tags: '*'
+permissions:
+  # needed to allow julia-actions/cache to delete old caches that it has created
+  actions: write
+  contents: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
@@ -37,7 +40,7 @@ jobs:
         run: |
           julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots()); println(NetworkOptions.ca_roots_path()); println(NetworkOptions.ssh_key_path()); println(NetworkOptions.ssh_key_name()); println(NetworkOptions.ssh_pub_key_path())'
           # echo "SSL_CERT_PATH=$(julia -e 'using NetworkOptions; println(NetworkOptions.bundled_ca_roots())')" >> "$GITHUB_ENV"
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
         with:
           cache-registries: "true"
           cache-compiled: "true"
