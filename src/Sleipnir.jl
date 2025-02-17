@@ -21,6 +21,8 @@ using JSON
 using CodecZlib
 using Tar
 import NCDatasets
+using Unitful: m, rad, °
+using CoordRefSystems
 
 # ##############################################
 # ############    PARAMETERS     ###############

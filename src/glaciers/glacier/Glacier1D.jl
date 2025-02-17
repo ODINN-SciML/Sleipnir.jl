@@ -19,7 +19,7 @@ mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     λ::Union{Vector{F}, Nothing}
     slope::Union{Vector{F}, Nothing}
     dist_border::Union{Vector{F}, Nothing}
-    S_coords::Union{Dict{String, Vector{Float64}}, Nothing}
+    Coords::Union{Dict{String, Vector{Float64}}, Nothing}
     Δx::Union{F, Nothing}
     Δy::Union{F, Nothing}
     nx::Union{I, Nothing}
@@ -41,7 +41,7 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -64,7 +64,7 @@ function Glacier1D(;
     λ::Union{Vector{F}, Nothing} = nothing,
     slope::Union{Vector{F}, Nothing} = nothing,
     dist_border::Union{Vector{F}, Nothing} = nothing,
-    S_coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
     Δx::Union{F, Nothing} = nothing,
     Δy::Union{F, Nothing} = nothing,
     nx::Union{I, Nothing} = nothing,
@@ -74,7 +74,7 @@ function Glacier1D(;
     # Define default float and integer type for constructor
     ft = Float64
     it = Int64
-    return Glacier1D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀, λ, slope, dist_border, S_coords, Δx, Δy, nx, ny)
+    return Glacier1D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀, λ, slope, dist_border, Coords, Δx, Δy, nx, ny)
 end
 
 ###############################################
@@ -85,7 +85,7 @@ Base.:(==)(a::Glacier1D, b::Glacier1D) = a.rgi_id == b.rgi_id && a.gdir == b.gdi
                                       a.H₀ == b.H₀ && a.S == b.S && a.B == b.B && a.V == b.V &&
                                       a.A == b.A && a.C == b.C && a.n == b.n && a.w₀ == b.w₀ && a.λ == b.λ &&
                                       a.slope == b.slope && a.dist_border == b.dist_border && a.rgi_id == b.rgi_id &&
-                                      a.S_coords == b.S_coords && a.Δx == b.Δx && a.Δy == b.Δy && a.Δx == b.Δx && a.nx == b.nx && a.ny == b.ny
+                                      a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.Δx == b.Δx && a.nx == b.nx && a.ny == b.ny
 
 include("glacier1D_utils.jl")
 include("../climate/climate1D_utils.jl")

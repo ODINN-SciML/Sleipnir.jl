@@ -32,12 +32,14 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
+        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
+        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
     end
-    
+        
     glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
-    
+
     if params.simulation.use_glathida_data == true
         
         # Obtain H_glathida values for the valid RGI IDs
@@ -122,9 +124,21 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
 
+        # Mercator Projection 
+        params_projection = parse_proj(glacier_grid["proj"])
+        transform(X,Y) = UTMercator(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
+                        x0=params_projection["x_0"], y0=params_projection["y_0"])
+        easting = dims(glacier_gd, 1).val
+        northing = dims(glacier_gd, 2).val
+        latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
+        longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
+        if maximum(abs.(latitudes)) > 80
+            @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80 degrees."
+        end
+
         B = glacier_gd.topo.data .- H₀ # bedrock
         
-        S_coords = Dict{String,Vector{Float64}}("x"=> dims(glacier_gd, 1).val, "y"=> dims(glacier_gd, 2).val)
+        Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
         S::Matrix{Float64} = glacier_gd.topo.data
         #smooth!(S)
 
@@ -152,7 +166,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
                           H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
                           A = 4e-17, C = 0.0, n = 3.0,
                           slope = slope, dist_border = dist_border,
-                          S_coords = S_coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
+                          Coords = Coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
                           cenlon = glacier_grid["x0y0"][1] , cenlat = glacier_grid["x0y0"][2])
         return glacier
 
@@ -313,6 +327,58 @@ function fillZeros(A, fill=NaN)
     return @. ifelse(iszero(A), fill, A)
 end
 
+"""
+    parse_proj(proj::String)
+
+Parses the string containing the information of the projection to filter for important information
+"+proj=tmerc +lat_0=0 +lon_0=6.985 +k=0.9996 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+"""
+function parse_proj(proj::String)
+    res = Dict()
+    ℓ = split(proj, (' ', '+', '='))
+    ℓ = ℓ[ℓ .!= ""]
+    for (i, key) in enumerate(ℓ)
+        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0"]
+            res[key] = parse(Float64, ℓ[i+1])
+        end
+    end
+    return res
+end
+
+"""
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0)
+
+Transverse Mercator Projection. 
+This function reprojects northing/easting coordinates into latitude/longitude. 
+
+Keyword arguments
+=================
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
+"""
+function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+  
+    if !isnothing(zone)
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}(x, y)
+    end
+
+    return convert(LatLon, projection)
+end
 """
     smooth!(A)
 

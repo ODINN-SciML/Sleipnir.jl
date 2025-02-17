@@ -155,8 +155,8 @@ function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
                        rain=rain_2D,
                        gradient=Float64(climate_step["gradient"]),
                        avg_gradient=Float64(climate_step["avg_gradient"]),
-                       x=glacier.S_coords["x"],
-                       y=glacier.S_coords["y"],
+                       x=glacier.Coords["lon"],
+                       y=glacier.Coords["lat"],
                        ref_hgt=Float64(climate_step["ref_hgt"]))
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
