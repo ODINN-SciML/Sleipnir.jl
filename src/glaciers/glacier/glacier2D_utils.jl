@@ -132,6 +132,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         northing = dims(glacier_gd, 2).val
         latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
+        x0y0 = transform(glacier_grid["x0y0"][1], glacier_grid["x0y0"][2])
         if maximum(abs.(latitudes)) > 80
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80 degrees."
         end
@@ -167,7 +168,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
                           A = 4e-17, C = 0.0, n = 3.0,
                           slope = slope, dist_border = dist_border,
                           Coords = Coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
-                          cenlon = glacier_grid["x0y0"][1] , cenlat = glacier_grid["x0y0"][2])
+                          cenlon = x0y0.lon.val, cenlat = x0y0.lat.val)
         return glacier
 
     catch error
