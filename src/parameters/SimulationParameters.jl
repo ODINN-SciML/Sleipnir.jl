@@ -17,6 +17,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::String
+    complete_report::Bool
 end
 
 
@@ -38,6 +39,7 @@ end
                         test_mode::Bool = false,
                         rgi_paths::Dict{String, String} = Dict{String, String}(),
                         ice_thickness_source::String = "Farinotti19",
+                        complete_report::Bool = false,
         )
 Initialize the parameters for a simulation.
 Keyword arguments
@@ -64,6 +66,7 @@ function SimulationParameters(;
             test_mode::Bool = false,
             rgi_paths::Dict{String, String} = Dict{String, String}(),
             ice_thickness_source::String = "Farinotti19",
+            complete_report::Bool = false,
             ) where {I <: Integer, F <: AbstractFloat}
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
@@ -71,7 +74,7 @@ function SimulationParameters(;
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
                                                 float_type, int_type,
-                                                tspan, step, multiprocessing, workers, working_dir, test_mode, rgi_paths, ice_thickness_source)
+                                                tspan, step, multiprocessing, workers, working_dir, test_mode, rgi_paths, ice_thickness_source, complete_report)
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
@@ -85,4 +88,4 @@ Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use
                                       a.float_type == b.float_type && a.int_type == b.int_type &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
                                       a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
-                                      a.ice_thickness_source == b.ice_thickness_source
+                                      a.ice_thickness_source == b.ice_thickness_source && a.complete_report == b.complete_report

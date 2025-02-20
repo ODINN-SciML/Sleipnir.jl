@@ -28,7 +28,8 @@ function params_constructor_specified(; save_refs::Bool = false)
                                             multiprocessing = false,
                                             workers = 10,
                                             working_dir = "",
-                                            rgi_paths = rgi_paths)
+                                            rgi_paths = rgi_paths,
+                                            complete_report = true)
 
     params = Parameters(physical=physical_params,
                         simulation=simulation_params)
