@@ -2,7 +2,14 @@ export initialize_surfacevelocitydata
 export plot_timeseries, plot_count
 
 """
+    initialize_surfacevelocitydata(file::String; interp=false)
 
+Initialize SurfaceVelocityData from Rabatel et. al (2023). 
+
+Arguments
+=================
+    - `file`: name of netcdf file with data
+    - `interp`: boolean variable indicating if we use the inporpolated data or not
 """
 function initialize_surfacevelocitydata(file::String; interp=false)
 
@@ -42,12 +49,20 @@ function initialize_surfacevelocitydata(file::String; interp=false)
     vy = ncread(file, "vy")    
 
     # Compute absolute velocity
-    vabs = (vx.^2 .+ vy.^2).^0.5          
+    vabs = (vx.^2 .+ vy.^2).^0.5  
+    # The sqrt operation in Julia promotes Float32 to Float64. We convert manually 
+    # to keep type consistency     
+    vabs = convert(typeof(vx), vabs)   
     
+    # Error is reported once per timespan, so upper bounds are given by absolute error
     if !interp
         vx_error = ncread(file, "error_vx")
         vy_error = ncread(file, "error_vy")
-        vabs_error = (vx_error.^2 .+ vy_error.^2 ).^0.5
+        # Absolute error uncertanty using propagation of uncertanties 
+        vx_ratio_max = map(i -> max_or_empyt(abs.(vx[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vx)[3])
+        vy_ratio_max = map(i -> max_or_empyt(abs.(vy[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vy)[3])
+        vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
+        vabs_error = convert(typeof(vx_error), vabs_error)  
     else         
         vx_error = nothing
         vy_error = nothing
@@ -69,85 +84,16 @@ function initialize_surfacevelocitydata(file::String; interp=false)
     return SurfaceVelocityData(x=x, y=y, lat=latitudes, lon=longitudes, vx=vx, vy=vy, vabs=vabs, vx_error=vx_error, vy_error=vy_error, vabs_error=vabs_error, date=date_mean, date1=date1, date2=date2, date_error=date_error)
 end
 
-
-# Plot if ice surface velocity data 
-
 """
+    max_or_empyt(A::Array)
 
+Return maximum value for non-empty arrays. 
+This is just required to compute the error in the absolute velocity.
 """
-function plot_timeseries(data::SurfaceVelocityData, idx::Int, idy::Int; ignore_zeros=false, saveas::Union{Nothing, String}=nothing)
-
-    vabs = data.vabs[idx, idy, :]
-
-    # Define begining of hydrologic year
-    yrs = 2015:2021
-    mealt_max = [DateTime("$(yr)-08-01") for yr in yrs]
-    mealt_max_raw = Dates.datetime2julian.(mealt_max) .- 2400000.5
-    mealt_max = Date.(mealt_max)
-
-    date_raw = Dates.datetime2julian.(data.date) .- 2400000.5
-    date1_raw = Dates.datetime2julian.(data.date1) .- 2400000.5
-    date2_raw = Dates.datetime2julian.(data.date2) .- 2400000.5
-
-    # Unfortunately, Plots does not support horizonal error bar in Date format, so 
-    # we do this manually for now...
-
-    if ignore_zeros
-        vmax = 1.2 * maximum(vabs[vabs .> 0.0])
-        vmin = 0.8 * minimum(vabs[vabs .> 0.0])
+function max_or_empyt(A::Array)
+    if length(A) == 0
+        return 0.0
     else
-        vmax = maximum(vabs)
-        vmin = minimum(vabs)
-    end
-
-    _plot = Plots.scatter(date_raw, vabs, label="Velocity", yerr=data.vabs_error, ms=3, msw=0.5)
-
-    for i in 1:length(date_raw)
-        Plots.plot!(_plot, [date1_raw[i], date2_raw[i]], [vabs[i], vabs[i]], lw=0.5, lc=:black, legend=false)
-    end 
-
-    vline!(mealt_max_raw, label="August 1st")
-
-    Plots.plot!(fontfamily="Computer Modern",
-                title="Ice Surface Velocities",
-                titlefontsize=18,
-                tickfontsize=15,
-                legendfontsize=15,
-                guidefontsize=18,
-                xlabel="Date",
-                ylabel="Velocity (m/yr)",
-                xticks=(mealt_max_raw, mealt_max),
-                ylimits=(vmin,vmax),
-                #xlimits=(10^(-4),10^(-1)),
-                legend=false,
-                margin= 10mm,
-                size=(1400,500),
-                dpi=600)
-
-    if isnothing(saveas)
-        return plot 
-    else
-        Plots.savefig(_plot, saveas)
-    end
-end
-
-"""
-
-"""
-function plot_count(data::SurfaceVelocityData; saveas::Union{Nothing, String}=nothing)
-
-    fig_count = Figure(size=(800, 600), axis=(;title="Counts"));
-
-    v_count = mean((data.vabs .!== 0.0) .* (.!isnan.(data.vabs)), dims=3)[:,:,1]
-
-    max_count = maximum(v_count)
-
-    ax_ct, hm = heatmap(fig_count[1,1], v_count, colorrange=(0.0, max_count));
-    Colorbar(fig_count[:, end+1], hm);     
-
-    if isnothing(saveas)
-        return fig_count
-    else
-        save(saveas, fig_count)  
+        return maximum(A)
     end
 end

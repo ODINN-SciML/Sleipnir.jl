@@ -7,27 +7,42 @@ mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
     lon::Vector{F}
     vx::Array{F, 3}
     vy::Array{F, 3}
-    vabs
-    vx_error
-    vy_error
-    vabs_error
-    date
-    date1
-    date2
-    date_error
-    # vx_error::Union{Nothing, Vector{F}} = nothing
-    # vy_error::Union{Nothing, Vector{F}} = nothing
-    # vabs_error::Union{Nothing, Vector{F}} = nothing
-    # date::Vector{Date}
-    # date1::Vector{Date}
-    # date2::Vector{Date}
-    # date_error::Vector{Day}
+    vabs::Array{F, 3}
+    vx_error::Array{F, 1}
+    vy_error::Array{F, 1}
+    vabs_error::Array{F, 1}
+    date::Vector{DateTime}
+    date1::Vector{DateTime}
+    date2::Vector{DateTime}
+    date_error::Vector{Day}
 end
 
 """
-
+function SurfaceVelocityData(;
+    x::Union{Vector{F}, Nothing} = nothing,
+    y::Union{Vector{F}, Nothing} = nothing, 
+    lat::Union{Vector{F}, Nothing} = nothing,
+    lon::Union{Vector{F}, Nothing} = nothing, 
+    vx::Union{Array{F, 3}, Nothing} = nothing,
+    vy::Union{Array{F, 3}, Nothing} = nothing,
+    vabs::Union{Array{F, 3}, Nothing} = nothing,
+    vx_error::Union{Array{F, 1}, Nothing} = nothing,
+    vy_error::Union{Array{F, 1}, Nothing} = nothing,
+    vabs_error::Union{Array{F, 1}, Nothing} = nothing,
+    date::Union{Vector{DateTime}, Nothing} = nothing,
+    date1::Union{Vector{DateTime}, Nothing} = nothing,
+    date2::Union{Vector{DateTime}, Nothing} = nothing,
+    date_error::Union{Vector{Day}, Nothing} = nothing,
+    ) where {F <: AbstractFloat}
 
 Constructor for ice surface velocity data based on Rabatel et. al (2023). 
+
+
+Important remarks:
+- Projections in longitude and latitude assume we are working in the north hemisphere. 
+  If working with south hemisphere glaciers, this needs to be changed.
+- The error in velocity is unique per timestamp, rather than being pixel distributed. 
+- The error in the absolute velocities `vabs_error` is overestimated.
 
 References:
     - Rabatel, A., Ducasse, E., Millan, R. & Mouginot, J. 
@@ -41,14 +56,14 @@ function SurfaceVelocityData(;
     lon::Union{Vector{F}, Nothing} = nothing, 
     vx::Union{Array{F, 3}, Nothing} = nothing,
     vy::Union{Array{F, 3}, Nothing} = nothing,
-    vabs::Union{Any, Nothing} = nothing,
-    vx_error::Union{Any, Nothing} = nothing,
-    vy_error::Union{Any, Nothing} = nothing,
-    vabs_error::Union{Any, Nothing} = nothing,
-    date::Union{Any, Nothing} = nothing,
-    date1::Union{Any, Nothing} = nothing,
-    date2::Union{Any, Nothing} = nothing,
-    date_error::Union{Any, Nothing} = nothing,
+    vabs::Union{Array{F, 3}, Nothing} = nothing,
+    vx_error::Union{Array{F, 1}, Nothing} = nothing,
+    vy_error::Union{Array{F, 1}, Nothing} = nothing,
+    vabs_error::Union{Array{F, 1}, Nothing} = nothing,
+    date::Union{Vector{DateTime}, Nothing} = nothing,
+    date1::Union{Vector{DateTime}, Nothing} = nothing,
+    date2::Union{Vector{DateTime}, Nothing} = nothing,
+    date_error::Union{Vector{Day}, Nothing} = nothing,
     ) where {F <: AbstractFloat}
 
     ft = typeof(x[begin])
