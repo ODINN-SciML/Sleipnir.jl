@@ -1,20 +1,20 @@
 export SurfaceVelocityData
 
 mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
-    x::Vector{F}
-    y::Vector{F}
-    lat::Vector{F}
-    lon::Vector{F}
-    vx::Array{F, 3}
-    vy::Array{F, 3}
-    vabs::Array{F, 3}
-    vx_error::Array{F, 1}
-    vy_error::Array{F, 1}
-    vabs_error::Array{F, 1}
-    date::Vector{DateTime}
-    date1::Vector{DateTime}
-    date2::Vector{DateTime}
-    date_error::Vector{Day}
+    x::Union{Vector{F}, Nothing}
+    y::Union{Vector{F}, Nothing}
+    lat::Union{Vector{F}, Nothing}
+    lon::Union{Vector{F}, Nothing}
+    vx::Union{Array{F, 3}, Nothing}
+    vy::Union{Array{F, 3}, Nothing}
+    vabs::Union{Array{F, 3}, Nothing}
+    vx_error::Union{Array{F, 1}, Nothing}
+    vy_error::Union{Array{F, 1}, Nothing}
+    vabs_error::Union{Array{F, 1}, Nothing}
+    date::Union{Vector{DateTime}, Nothing}
+    date1::Union{Vector{DateTime}, Nothing}
+    date2::Union{Vector{DateTime}, Nothing}
+    date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}
 end
 
 """
@@ -63,7 +63,7 @@ function SurfaceVelocityData(;
     date::Union{Vector{DateTime}, Nothing} = nothing,
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
-    date_error::Union{Vector{Day}, Nothing} = nothing,
+    date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
     ) where {F <: AbstractFloat}
 
     ft = typeof(x[begin])

@@ -24,9 +24,15 @@ function initialize_surfacevelocitydata(file::String; interp=false)
         date_mean_offset = date1_offset = date2_offset = 0
     else 
         date_mean = ncread(file, "mid_date")
-        date_mean_offset = datetime2julian(DateTime("2015-08-14")) - 2400000.5
-        date1_offset = datetime2julian(DateTime("2015-07-30")) - 2400000.5
-        date2_offset = datetime2julian(DateTime("2015-08-29")) - 2400000.5
+        # Extract string from metadata of when days start counting
+        # Default format of attribute "units" is "days since 2015-08-14 00:00:00"
+        date_mean_since = ncgetatt(file, "mid_date", "units")[12:21] # e.g., "2015-08-14"
+        date1_offset_since = ncgetatt(file, "date1", "units")[12:21] # e.g., "2015-07-30"
+        date2_offset_since = ncgetatt(file, "date2", "units")[12:21] # e.g., "2015-08-29"
+        # Convertion to Julia datetime
+        date_mean_offset = datetime2julian(DateTime(date_mean_since)) - 2400000.5
+        date1_offset = datetime2julian(DateTime(date1_offset_since)) - 2400000.5
+        date2_offset = datetime2julian(DateTime(date_mean_offset)) - 2400000.5
     end
 
     # Convert dates from Modified Julian Days to datetipes
