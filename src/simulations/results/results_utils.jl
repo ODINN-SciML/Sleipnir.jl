@@ -30,6 +30,9 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
                       Δy = simulation.glaciers[glacier_idx].Δy,
                       lon = simulation.glaciers[glacier_idx].cenlon,
                       lat = simulation.glaciers[glacier_idx].cenlat,
+                      nx = simulation.glaciers[glacier_idx].nx,
+                      ny = simulation.glaciers[glacier_idx].ny,  
+                      tspan = simulation.parameters.simulation.tspan,
                       θ = θ,
                       loss = loss
                     )              
@@ -42,7 +45,7 @@ end
 
 Save simulation `Results` into a `.jld2` file.
 """
-function save_results_file!(results_list::Vector{Results{F}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, SIM <: Simulation}
+function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Int, SIM <: Simulation}
     # Create path for simulation results
     predictions_path = joinpath(dirname(Base.current_project()), "data/results/predictions")
     if !ispath(predictions_path)

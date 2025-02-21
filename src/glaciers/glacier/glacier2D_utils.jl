@@ -107,9 +107,9 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
     if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
-        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+        H₀ = F.(reverse((ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0)), dims=2)) # all matrices are reversed
     elseif params.simulation.ice_thickness_source == "Farinotti19"
-        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
+        H₀ = F.(reverse((ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0)), dims=2)) # all matrices are reversed
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
     if smoothing
@@ -119,7 +119,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border::Matrix{Float64} = glacier_gd.dis_from_border.data
+        dist_border::Matrix{Float64} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
         
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
@@ -134,19 +134,20 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
         x0y0 = transform(glacier_grid["x0y0"][1], glacier_grid["x0y0"][2])
         if maximum(abs.(latitudes)) > 80
-            @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80 degrees."
+            @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
 
-        B = glacier_gd.topo.data .- H₀ # bedrock
+        B = reverse(glacier_gd.topo.data, dims=2) .- H₀ # bedrock (matrix also needs to be reversed)
         
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
-        S::Matrix{Float64} = glacier_gd.topo.data
+        S::Matrix{Float64} = reverse(glacier_gd.topo.data, dims=2)
         #smooth!(S)
 
         if params.simulation.velocities
-            V::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy::Matrix{Float64} = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+            # All matrices need to be reversed
+            V::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
+            Vx::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
+            Vy::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
