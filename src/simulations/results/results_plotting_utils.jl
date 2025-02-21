@@ -1,6 +1,22 @@
-export plot_glacier
+export plot_glacier, plot_glacier_heatmaps, plot_glacier_difference_evolution, plot_glacier_statistics_evolution, plot_glacier_integrated_volume
 
-function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_size::Union{Nothing,Float64}=nothing)
+using CairoMakie: Axis
+
+"""
+    plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, title_mapping::Dict; scale_text_size::Union{Nothing,Float64}=nothing) -> Figure
+
+Plot heatmaps for glacier variables.
+
+# Arguments
+- `results::Results`: The results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: A list of variables to be plotted.
+- `title_mapping::Dict`: A dictionary mapping variable names to their titles and colormaps.
+- `scale_text_size::Union{Nothing,Float64}`: Optional argument to scale the text size.
+
+# Returns
+- A plot of the glacier heatmaps.
+"""
+function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, title_mapping::Dict; scale_text_size::Union{Nothing,Float64}=nothing)
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
@@ -10,16 +26,12 @@ function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_siz
     # Extract longitude and latitude 
     lon = if hasproperty(results, :lon)
         results.lon
-    elseif hasproperty(results.gdir, :cenlon)
-        results.gdir.cenlon
     else
         nothing
     end
     
     lat = if hasproperty(results, :lat)
         results.lat
-    elseif hasproperty(results.gdir, :cenlat)
-        results.gdir.cenlat
     else
         nothing
     end
@@ -76,7 +88,6 @@ function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_siz
         end
 
         ny, nx = size(data)
-        data = reverse(data', dims=2)
         colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
 
         # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
@@ -124,9 +135,22 @@ function plot_glacier_heatmaps(results, variables, title_mapping; scale_text_siz
     return fig
 end
 
+"""
+    plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
 
-function plot_glacier_difference_evolution(results, variables, title_mapping; tspan, metrics)
-        
+Plot the evolution of the difference in a glacier variable over time.
+
+# Arguments
+- `results::Results`: The simulation results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: The variable to be plotted.
+- `title_mapping`: A dictionary mapping variable names to their titles.
+- `tspan::Tuple{F,F}`: A tuple representing the start and end time for the simulation.
+- `metrics::Vector{String}`: Metrics to visualize, e.g., `["difference"]`.
+
+# Returns
+- A plot of the glacier difference evolution.
+"""
+function plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
         # Check if more than one variable is passed
         if length(variables) > 1
             error("Only one variable can be passed to this function.")
@@ -162,7 +186,6 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
         # Print plot information
         variable_title = get(title_mapping, variables[1], variables[1])
               
-    
         # Create a time vector
         t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
     
@@ -191,15 +214,13 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
                 ax.limits[] = (minimum(data_diff), maximum(data_diff), nothing, nothing)
             elseif metric == "difference"
                 
-                
                 ny, nx = size(data_diff)
-                data_diff = reverse(data_diff',dims=2) # Fix alignment
                 
                 # Calculate the symmetric color range
                 max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
 
                     
-                hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, halign=:right, colorrange=(-max_abs_value, max_abs_value))
+                hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
 
                 ax_diff.xlabel = "Longitude"
                 ax_diff.ylabel = "Latitude"
@@ -238,9 +259,23 @@ function plot_glacier_difference_evolution(results, variables, title_mapping; ts
     
 end
 
+"""
+    plot_glacier_statistics_evolution(results::Results, variables::Vector{Symbol}, title_mapping; metrics="median", tspan, threshold=0.5)
 
-function plot_glacier_statistics_evolution(results, variables, title_mapping; tspan, metrics, threshold=0.5)
-    
+Plot the evolution of statistics for multiple glacier variables over time.
+
+# Arguments
+- `results::Results`: The simulation results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: A list of variables to be plotted.
+- `title_mapping`: A dictionary mapping variable names to their titles.
+- `metrics`: Metrics to visualize, e.g., "average", "median", "min", "max", and "std". Default is "median".
+- `tspan`: A tuple representing the start and end time for the simulation.
+- `threshold`: A threshold value to filter the data. Default is 0.5.
+
+# Returns
+- A plot of the glacier statistics evolution.
+"""
+function plot_glacier_statistics_evolution(results::Results, variables::Vector{Symbol}, title_mapping; metrics="median", tspan, threshold=0.5)
 
     # Check if more than one variable is passed
     if length(variables) > 1
@@ -308,7 +343,20 @@ function plot_glacier_statistics_evolution(results, variables, title_mapping; ts
     fig  # Return the main figure
 end
 
+"""
+    plot_glacier_integrated_volume(results::Results, variables::Vector{Symbol}, title_mapping; tspan)
 
+Plot the integrated volume of a glacier variable over time.
+
+# Arguments
+- `results::Results`: The results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: The variable to be plotted.
+- `title_mapping`: A dictionary mapping variable names to their titles.
+- `tspan`: A tuple representing the start and end time for the simulation.
+
+# Returns
+- A plot of the glacier integrated volume.
+"""
 function plot_glacier_integrated_volume(results, variables, title_mapping; tspan)
     
     # Determine pixel area
@@ -352,10 +400,24 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     return fig  # Return the main figure with the plot
 end
 
-function plot_bias(data, keys; treshold = [0, 0])
-    # Check for exactly two keys
-    if length(keys) != 2
-        error("Exactly two keys are required for the scatter plot.")
+"""
+    plot_bias(data::Results, variables::Vector{Symbol}; treshold::Vector{Float64}=[0, 0])
+
+Plot the bias of the glacier integrated volume over the specified time span.
+
+# Arguments
+- `results::Results`: The results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: The variables to be plotted.
+- `title_mapping::Dict{Symbol, String}`: A dictionary mapping variable names to their titles.
+- `tspan::Tuple{Float64, Float64}`: A tuple representing the start and end time for the simulation.
+
+# Returns
+- A plot of the glacier integrated volume bias.
+"""
+function plot_bias(data, variables; treshold = [0, 0])
+    # Check for exactly two variables
+    if length(variables) != 2
+        error("Exactly two variables are required for the scatter plot.")
     end
 
      # Ensure treshold is an array of length 2
@@ -365,19 +427,17 @@ function plot_bias(data, keys; treshold = [0, 0])
     
     # Extract data
     rgi_id = data.rgi_id
-    x_values = getfield(data,keys[1])
-    y_values = getfield(data,keys[2])
+    x_values = getfield(data, variables[1])
+    y_values = getfield(data, variables[2])
     
     # Filter non-zero observations if necessary
-    if :H_obs in keys || :V_obs in keys
-        obs_key = :H_obs in keys ? :H_obs : :V_obs
-        #non_zero_indices = findall(getfield(data,obs_key) .!= 0)
-        mask_H = getfield(data,obs_key) .> treshold[1] * maximum(getfield(data,obs_key))
-        mask_H_2 = getfield(data,obs_key) .< (1-treshold[2]) * maximum(getfield(data,obs_key))
+    if :H_obs in variables || :V_obs in variables
+        obs_key = :H_obs in variables ? :H_obs : :V_obs
+        mask_H = getfield(data, obs_key) .> treshold[1] * maximum(getfield(data, obs_key))
+        mask_H_2 = getfield(data, obs_key) .< (1 - treshold[2]) * maximum(getfield(data, obs_key))
         x_values = x_values[mask_H .& mask_H_2]
         y_values = y_values[mask_H .& mask_H_2]
     end
-    
     
     # Calculate metrics
     differences = x_values .- y_values
@@ -389,7 +449,7 @@ function plot_bias(data, keys; treshold = [0, 0])
 
     # Plotting
     fig = Figure(size = (600, 400))
-    ax = Axis(fig[1, 1], xlabel = string(keys[1]), ylabel = string(keys[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
+    ax = Axis(fig[1, 1], xlabel = string(variables[1]), ylabel = string(variables[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
 
     scatter!(ax, vec(x_values), vec(y_values), markersize = 5, color = :blue, label = "Data")
     xmin, xmax = minimum(x_values), maximum(x_values)
@@ -404,24 +464,26 @@ function plot_bias(data, keys; treshold = [0, 0])
 end
 
 
-
 """
-    plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) -> Figure
+    plot_glacier(results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...) -> Figure
 
 Generate various types of plots for glacier data.
 
 # Arguments
-- `results`: A custom type containing the results of a glacier simulation.
-- `plot_type`: Type of plot to generate. Options are:
+- `results::Results`: The results object containing the data to be plotted.
+- `plot_type::String`: Type of plot to generate. Options are:
   * "heatmaps": Heatmaps for glacier variables like `:H`, `:S`, `:B`, `:V`, `:Vx`, and `:Vy`.
-  * "difference": Temporal difference metrics (between start and end) for a variable, with optional metrics like "hist" (histogram) and "difference".
-  * "statistics": Temporal statistical metrics for a variable, with optional metrics like "average", "median", "min", "max", and "std".
-  * "integrated_volume": Temporal evolution of the integrated ice volume for a variable.
-- `variables`: Variables to be plotted, e.g., `:H`.
+  * "evolution difference": Temporal difference metrics (between start and end) for a variable, with optional metrics like "hist" (histogram) and "difference".
+  * "evolution statistics": Temporal statistical metrics for a variable, with optional metrics like "average", "median", "min", "max", and "std".
+  * "integrated volume": Temporal evolution of the integrated ice volume for a variable.
+  * "bias": Scatter plot to visualize the bias between two variables.
+- `variables::Vector{Symbol}`: Variables to be plotted, e.g., `:H`.
 
 # Optional Keyword Arguments
 - `tspan`: A tuple representing the start and end time for the simulation.
 - `metrics`: Metrics to visualize, e.g., `["average"]` for statistics, `["difference"]` for difference.
+- `scale_text_size::Union{Nothing,Float64}`: Optional argument to scale the text size for heatmaps.
+- `threshold::Vector{F}`: Threshold values for filtering data in bias plots.
 
 # Returns
 - A `Figure` object containing the desired visualization.
@@ -430,7 +492,7 @@ Generate various types of plots for glacier data.
 - Ensure the `variables` and `kwargs` match the requirements of the specified `plot_type`.
 - The function routes requests to specific plotting functions based on `plot_type`.
 """
-function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; kwargs...) where T
+function plot_glacier(results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...) 
     
     title_mapping = Dict(
         "H" => ("Ice Thickness", "m", :YlGnBu),
@@ -451,11 +513,11 @@ function plot_glacier(results::T, plot_type::String, variables::Vector{Symbol}; 
 
     if plot_type == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "evolution_difference"
+    elseif plot_type == "evolution difference"
         return plot_glacier_difference_evolution(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "evolution_statistics"
+    elseif plot_type == "evolution statistics"
         return plot_glacier_statistics_evolution(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "integrated_volume"
+    elseif plot_type == "integrated volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
     elseif plot_type == "bias"  
         return plot_bias(results, variables; kwargs...)
