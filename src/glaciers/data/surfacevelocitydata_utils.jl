@@ -59,8 +59,8 @@ function initialize_surfacevelocitydata(file::String; interp=false)
         vx_error = ncread(file, "error_vx")
         vy_error = ncread(file, "error_vy")
         # Absolute error uncertanty using propagation of uncertanties 
-        vx_ratio_max = map(i -> max_or_empyt(abs.(vx[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vx)[3])
-        vy_ratio_max = map(i -> max_or_empyt(abs.(vy[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vy)[3])
+        vx_ratio_max = map(i -> max_or_empty(abs.(vx[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vx)[3])
+        vy_ratio_max = map(i -> max_or_empty(abs.(vy[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vy)[3])
         vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
         vabs_error = convert(typeof(vx_error), vabs_error)  
     else         
@@ -90,7 +90,7 @@ end
 Return maximum value for non-empty arrays. 
 This is just required to compute the error in the absolute velocity.
 """
-function max_or_empyt(A::Array)
+function max_or_empty(A::Array)
     if length(A) == 0
         return 0.0
     else
