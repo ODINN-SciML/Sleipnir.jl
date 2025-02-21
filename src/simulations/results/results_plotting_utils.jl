@@ -136,13 +136,13 @@ function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, titl
 end
 
 """
-    plot_glacier_difference_evolution(results::Results, variables::Symbol, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
+    plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
 
 Plot the evolution of the difference in a glacier variable over time.
 
 # Arguments
 - `results::Results`: The simulation results object containing the data to be plotted.
-- `variables::Symbol`: The variable to be plotted.
+- `variables::Vector{Symbol}`: The variable to be plotted.
 - `title_mapping`: A dictionary mapping variable names to their titles.
 - `tspan::Tuple{F,F}`: A tuple representing the start and end time for the simulation.
 - `metrics::Vector{String}`: Metrics to visualize, e.g., `["difference"]`.
@@ -150,7 +150,7 @@ Plot the evolution of the difference in a glacier variable over time.
 # Returns
 - A plot of the glacier difference evolution.
 """
-function plot_glacier_difference_evolution(results::Results, variables::Symbol, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
+function plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
         # Check if more than one variable is passed
         if length(variables) > 1
             error("Only one variable can be passed to this function.")
