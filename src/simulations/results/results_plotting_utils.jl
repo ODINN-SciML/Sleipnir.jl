@@ -23,21 +23,11 @@ function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, titl
     # Extract the rgi_id 
     rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
 
-    # Extract longitude and latitude 
-    lon = if hasproperty(results, :lon)
-        results.lon
-    else
-        nothing
-    end
-    
-    lat = if hasproperty(results, :lat)
-        results.lat
-    else
-        nothing
-    end
+    # Extract longitude and latitude
+    lon = results.lon
+    lat = results.lat
+    Δx = results.Δx
 
-    Δx = results.Δx 
-    
     ice_thickness_vars = [:H, :H₀, :H_glathida, :H_pred, :H_obs] # Ice thickness variables
     velocity_vars = [:V, :Vx, :Vy, :V_pred, :V_obs] # Velocity variables, excluding V_diff
     
@@ -167,14 +157,14 @@ function plot_glacier_difference_evolution(results::Results, variables::Vector{S
     
         # Extract data for the variable
         data = getfield(results, variables[1])
-        
-        #Extract longitude and latitude 
-        lon = hasproperty(results, :lon) ? results.lon : "none"
-        lat = hasproperty(results, :lat) ? results.lat : "none"
-        
+
+        #Extract longitude and latitude
+        lon = results.lon
+        lat = results.lat
+
         #pixel width
         Δx = results.Δx
-    
+
         # Check the shape of the extracted data
         if typeof(data) ≠ Vector{Matrix{Float64}}
             error("Only temporal quantities can be used in this function.")
