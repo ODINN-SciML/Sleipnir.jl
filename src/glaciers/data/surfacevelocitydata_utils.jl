@@ -11,7 +11,7 @@ Arguments
     - `file`: name of netcdf file with data
     - `interp`: boolean variable indicating if we use the inporpolated data or not
 """
-function initialize_surfacevelocitydata(file::String; interp=false)
+function initialize_surfacevelocitydata(file::String; interp=false, compute_vabs_error::Bool=true)
 
     # Date of first adquisition
     date1 = ncread(file, "date1")
@@ -65,10 +65,14 @@ function initialize_surfacevelocitydata(file::String; interp=false)
         vx_error = ncread(file, "error_vx")
         vy_error = ncread(file, "error_vy")
         # Absolute error uncertanty using propagation of uncertanties 
-        vx_ratio_max = map(i -> max_or_empty(abs.(vx[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vx)[3])
-        vy_ratio_max = map(i -> max_or_empty(abs.(vy[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vy)[3])
-        vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
-        vabs_error = convert(typeof(vx_error), vabs_error)  
+        if compute_vabs_error
+            vx_ratio_max = map(i -> max_or_empty(abs.(vx[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vx)[3])
+            vy_ratio_max = map(i -> max_or_empty(abs.(vy[:,:,i][vabs[:,:,i] .> 0.0]) ./ vabs[:,:,i][vabs[:,:,i] .> 0.0]), 1:size(vy)[3])
+            vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
+            vabs_error = convert(typeof(vx_error), vabs_error)  
+        else
+            vabs_error = nothing
+        end
     else         
         vx_error = nothing
         vy_error = nothing

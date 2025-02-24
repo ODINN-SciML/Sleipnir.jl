@@ -32,7 +32,7 @@ function SurfaceVelocityData(;
     date::Union{Vector{DateTime}, Nothing} = nothing,
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
-    date_error::Union{Vector{Day}, Nothing} = nothing,
+    date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
     ) where {F <: AbstractFloat}
 
 Constructor for ice surface velocity data based on Rabatel et. al (2023). 
