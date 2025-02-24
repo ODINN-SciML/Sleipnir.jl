@@ -23,6 +23,8 @@ using Tar
 import NCDatasets
 using Unitful: m, rad, °
 using CoordRefSystems
+using Dates, DateFormats
+using NetCDF
 
 # ##############################################
 # ############    PARAMETERS     ###############
@@ -39,8 +41,10 @@ const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
 include("setup/config.jl")
 # All parameters needed for the models
 include("parameters/Parameters.jl")
-# Anything related to managing glacier topographical and climate data
+# Anything related to managing glacier topographical and climate variables
 include("glaciers/glacier/Glacier.jl")
+# Anything related to managing glacier data used for data assimilation
+include("glaciers/data/Data.jl")
 # All structures and functions related to ODINN models
 include("models/Model.jl")
 # Everything related to running simulations in ODINN
