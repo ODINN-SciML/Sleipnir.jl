@@ -9,7 +9,7 @@ function params_constructor_specified(; save_refs::Bool = false)
     physical_params = PhysicalParameters(ρ = 900.0,
                                         g = 9.81,
                                         ϵ = 1e-3,
-                                        η₀ = 1.0, 
+                                        η₀ = 1.0,
                                         maxA = 8e-17,
                                         minA = 8.5e-20,
                                         maxTlaw = 1.0,

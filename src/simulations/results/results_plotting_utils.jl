@@ -309,7 +309,7 @@ function plot_glacier_statistics_evolution(results::Results, variables::Vector{S
     for metric in metrics
         if metric == "average"
             if "std" in metrics
-                band!(ax, t, avg_vals .- std_vals, avg_vals .+ std_vals, fillalpha=0.1, label="Std Dev", color=:lightgray)
+                band!(ax, t, avg_vals .- std_vals, avg_vals .+ std_vals, alpha=0.1, label="Std Dev", color=:lightgray)
             end
             lines!(ax, t, avg_vals, label="Average")
         elseif metric == "median"

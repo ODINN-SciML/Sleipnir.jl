@@ -227,55 +227,8 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
     return gtd_grid
 end
 
-function get_glathida_path_and_IDs()
-    gtd_file = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/glathida/glathida-v3.1.0/data/TTT_per_rgi_id.h5")
-    glathida = h5open(gtd_file, "r")
-    rgi_ids = keys(glathida)
-    rgi_ids = String[id[2:end] for id in rgi_ids]
-    return gtd_file, rgi_ids
-end
 # [End] Glathida Utilities
 
-
-function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
-    task_log = CSV.File(joinpath(params.simulation.working_dir, "task_log.csv"))
-    if params.simulation.velocities & params.simulation.use_glathida_data
-        glacier_filter = (task_log.velocity_to_gdir .!= "SUCCESS") .&& (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    elseif params.simulation.use_glathida_data
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    else
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS")
-    end
-    
-    glacier_ids = Vector{String}([])
-
-    for id in task_log["index"]
-        push!(glacier_ids, id)
-    end
-    missing_glaciers = glacier_ids[glacier_filter]
-
-    try
-        missing_glaciers_old = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-        for missing_glacier in missing_glaciers_old
-            @show missing_glacier
-            if all(missing_glacier .!= missing_glaciers) # if the glacier is already not present, let's add it
-                push!(missing_glaciers, missing_glacier)
-            end
-        end
-    catch error
-        @warn "$error: No missing_glaciers.jld file available. Skipping..."
-    end
-
-    for id in missing_glaciers
-        deleteat!(glaciers, findall(x->x.rgi_id==id, glaciers))
-    end
-    
-    # Save missing glaciers in a file
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
-    #@warn "Filtering out these glaciers from gdir list: $missing_glaciers"
-    
-    return missing_glaciers
-end
 
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
