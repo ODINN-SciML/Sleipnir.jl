@@ -1,9 +1,8 @@
 export plot_glacier_vid
 
-function make_thickness_video(res::Results, glacier::Glacier2D, simuparams::SimulationParameters, pathVideo::String; framerate::Int=24, baseTitle::String="")
+function make_thickness_video(H::Vector{Matrix{Float64}}, glacier::Glacier2D, simuparams::SimulationParameters, pathVideo::String; framerate::Int=24, baseTitle::String="")
     lat = glacier.Coords["lat"]
     lon = glacier.Coords["lon"]
-    H = res.H
     mask = glacier.H₀ .!= 0
     X, Y = GR.meshgrid(lon,lat)
 
@@ -41,20 +40,22 @@ end
 """
     plot_glacier_vid(
         plot_type::String,
-        results::T,
+        H::Vector{Matrix{Float64}},
         glacier::Glacier2D,
         simuparams::SimulationParameters,
         pathVideo::String;
         framerate::Int=24,
         baseTitle::String=""
-    ) where T
+    )
 
 Generate various types of videos for glacier data.
 
 # Arguments
 - `plot_type`: Type of plot to generate. Options are:
   * "thickness": Heatmap of the glacier thickness.
-- `results`: A custom type containing the results of a glacier simulation.
+- `H`: A vector of matrices containing the ice thickness over time. This should be
+    replaced by a Results instance in the future once Results no longer depends on
+    an iceflow model.
 - `glacier`: A glacier instance.
 - `simuparams`: The simulation parameters.
 - `pathVideo`: Path of the mp4 file to generate.
@@ -66,16 +67,16 @@ Generate various types of videos for glacier data.
 """
 function plot_glacier_vid(
         plot_type::String,
-        results::T,
+        H::Vector{Matrix{Float64}},
         glacier::Glacier2D,
         simuparams::SimulationParameters,
         pathVideo::String;
         framerate::Int=24,
         baseTitle::String=""
-    ) where T
+    )
 
     if plot_type == "thickness"
-        make_thickness_video(results, glacier, simuparams, pathVideo; framerate=framerate, baseTitle=baseTitle)
+        make_thickness_video(H, glacier, simuparams, pathVideo; framerate=framerate, baseTitle=baseTitle)
     else
         error("Invalid plot_type: $plot_type")
     end
