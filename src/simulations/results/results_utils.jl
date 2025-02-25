@@ -8,7 +8,9 @@ Store the results of a simulation of a single glacier into a `Results`.
 function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    solStepIndices = [findlast(==(val), solution.t) for val in unique(solution.t)]
+    nSteps = (simulation.parameters.simulation.tspan[2]-simulation.parameters.simulation.tspan[1])/simulation.parameters.simulation.step
+    timeSteps = simulation.parameters.simulation.tspan[1].+collect(0:nSteps).*simulation.parameters.simulation.step
+    solStepIndices = [findlast(==(val), solution.t) for val in timeSteps]
 
     H = light ? [solution.u[begin],solution.u[end]] : solution.u[solStepIndices]
     # Simulations using Reverse Diff require an iceflow model per glacier

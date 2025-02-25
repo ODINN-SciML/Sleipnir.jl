@@ -53,7 +53,12 @@ function glaciers2D_plots()
 end
 
 
+function make_thickness_video_test()
+    @load (joinpath(@__DIR__,"data/prediction/results2D_test.jld2")) results
+    @load (joinpath(@__DIR__,"data/prediction/glaciers2D_test.jld2")) glaciers
+    @load (joinpath(@__DIR__,"data/prediction/simuparams2D_test.jld2")) simulation
 
+    tempPath = mktempdir()*".mp4"
 
-
-
+    plot_glacier_vid("thickness", results[1], glaciers[1], simulation, tempPath; baseTitle="Bossons glacier")
+end

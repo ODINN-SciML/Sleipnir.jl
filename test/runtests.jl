@@ -29,4 +29,6 @@ ENV["GKSwstype"]="nul"
 
 #@testset "Glaciers 2D plots" glaciers2D_plots()
 
+@testset "Video plot test" make_thickness_video_test()
+
 end
