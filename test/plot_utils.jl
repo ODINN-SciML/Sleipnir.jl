@@ -7,7 +7,7 @@ function glaciers2D_plots()
     @testset "plot_glacier tests" begin
         @testset "Heatmaps" begin
             try
-                plot_glacier(results[2], "heatmaps", [:H,:B])
+                plot_glacier(results[1], "heatmaps", [:H,:B])
                 @test true
             catch
                 @test false
@@ -16,7 +16,7 @@ function glaciers2D_plots()
 
         @testset "Statistics Evolution" begin
             try
-                plot_glacier(results[2], "evolution_statistics", [:H], tspan=(2010.0,2015.0), metrics=["average","std","max","median","min"])
+                plot_glacier(results[1], "evolution statistics", [:H], tspan=(2010.0,2015.0), metrics=["average","std","max","median","min"])
                 @test true
             catch
                 @test false
@@ -25,7 +25,7 @@ function glaciers2D_plots()
 
         @testset "Difference Evolution" begin
             try
-                plot_glacier(results[2], "evolution_difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"])
+                plot_glacier(results[1], "evolution difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"])
                 @test true
             catch
                 @test false
@@ -34,7 +34,7 @@ function glaciers2D_plots()
 
         @testset "Integrated Volume" begin
             try
-                plot_glacier(results[2], "integrated_volume", [:H], tspan=(2010.0,2015.0))
+                plot_glacier(results[1], "integrated volume", [:H], tspan=(2010.0,2015.0))
                 @test true
             catch
                 @test false
@@ -43,7 +43,7 @@ function glaciers2D_plots()
 
         @testset "Bias" begin
             try
-                plot_glacier(results[2], "bias", [:B,:S])
+                plot_glacier(results[1], "bias", [:B,:S])
                 @test true
             catch
                 @test false
