@@ -34,7 +34,7 @@ using GR
 cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
 const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
-const doublePrec::Bool = parse(Bool, get(ENV, "ODINN_doublePrec", "true"))
+const doublePrec::Bool = parse(Bool, get(ENV, "ODINN_DOUBLE_PREC", "true"))
 const Float = doublePrec ? Float64 : Float32
 const Int = doublePrec ? Int64 : Int32
 if !doublePrec
