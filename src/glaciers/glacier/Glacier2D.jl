@@ -81,8 +81,8 @@ function Glacier2D(;
     ) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
-    ft = typeof(Δx)
-    it = typeof(nx)
+    ft = Sleipnir.Float
+    it = Sleipnir.Int
 
     return Glacier2D{ft,it}(rgi_id, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat)
 end

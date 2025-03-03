@@ -66,7 +66,7 @@ function SurfaceVelocityData(;
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
     ) where {F <: AbstractFloat}
 
-    ft = typeof(x[begin])
+    ft = Sleipnir.Float
 
     return SurfaceVelocityData{ft}(x, y, lat, lon, vx, vy, vabs, vx_error, vy_error, vabs_error, date, date1, date2, date_error)
 end
