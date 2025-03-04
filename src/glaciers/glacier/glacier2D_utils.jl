@@ -117,6 +117,22 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
     return glacier
 end
 
+function convertRasterStackToFloat64(rs::RasterStack)
+    layerNames = names(rs)
+    return RasterStack(
+        NamedTuple{Tuple(layerNames)}([Float64.(rs[n]) for n in layerNames]),
+        metadata=metadata(rs)
+    )
+end
+
+function convertRasterStackToFloat64(rs::RasterStack)
+    layerNames = names(rs)
+    return RasterStack(
+        NamedTuple{Tuple(layerNames)}([Float64.(rs[n]) for n in layerNames]),
+        metadata=metadata(rs)
+    )
+end
+
 """
     initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
 
@@ -141,10 +157,12 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 """
 function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
     # Load glacier gridded data
-    F = params.simulation.float_type
-    I = params.simulation.int_type
+    F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    if Sleipnir.doublePrec
+        glacier_gd = convertRasterStackToFloat64(glacier_gd)
+    end
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
@@ -162,7 +180,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border::Matrix{Float64} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
+        dist_border::Matrix{Sleipnir.Float} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
         
             # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
             # H₀[H_mask] .= 0.0
@@ -176,6 +194,8 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
         x0y0 = transform(glacier_grid["x0y0"][1], glacier_grid["x0y0"][2])
+        cenlon::Sleipnir.Float = x0y0.lon.val
+        cenlat::Sleipnir.Float = x0y0.lat.val
         if maximum(abs.(latitudes)) > 80
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
@@ -183,14 +203,14 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         B = reverse(glacier_gd.topo.data, dims=2) .- H₀ # bedrock (matrix also needs to be reversed)
         
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
-        S::Matrix{Float64} = reverse(glacier_gd.topo.data, dims=2)
+        S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
         #smooth!(S)
 
         if params.simulation.velocities
             # All matrices need to be reversed
-            V::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
-            Vx::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
-            Vy::Matrix{Float64} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
+            V::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
+            Vx::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
+            Vy::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
@@ -199,20 +219,20 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             Vx = zeros(F, size(H₀))
             Vy = zeros(F, size(H₀))
         end
-        nx = glacier_grid["nxny"][1] 
-        ny = glacier_grid["nxny"][2] 
-        Δx = abs.(glacier_grid["dxdy"][1])
-        Δy = abs.(glacier_grid["dxdy"][2])
-        slope::Matrix{Float64} = glacier_gd.slope.data
+        nx = glacier_grid["nxny"][1]
+        ny = glacier_grid["nxny"][2]
+        Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
+        Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
+        slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
 
         # We initialize the Glacier with all the initial topographical 
         glacier = Glacier2D(rgi_id = rgi_id, 
                           climate=nothing, 
                           H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
-                          A = 4e-17, C = 0.0, n = 3.0,
+                          A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
                           slope = slope, dist_border = dist_border,
                           Coords = Coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
-                          cenlon = x0y0.lon.val, cenlat = x0y0.lat.val)
+                          cenlon = cenlon, cenlat = cenlat)
         return glacier
 
     catch error

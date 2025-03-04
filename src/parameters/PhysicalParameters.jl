@@ -46,13 +46,13 @@ Keyword arguments
 =================
     - `ρ`: Ice density
     - `g`: Gravitational constant
-    - `n`: Glen's exponent
-    - `A`: Glen's coefficient
     - `ϵ`: Small number
-    - `C`: Sliding coefficient
     - `η₀`:  
     - `maxA`: Maximum value for `A` (Glen's coefficient)
     - `minA`: Minimum value for `A` (Glen's coefficient)
+    - `maxTlaw`: Maximum value of Temperature used in simulations on fake law
+    - `minTlaw`: Minimum value of Temperature used in simulations on fake law
+    - `noise_A_magnitude`: Magnitude of noise added to A
 """
 function PhysicalParameters(;
             ρ::F = 900.0,
