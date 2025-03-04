@@ -1,4 +1,20 @@
 
+"""
+A structure representing physical parameters used in simulations.
+
+    PhysicalParameters{F <: AbstractFloat}
+
+# Fields
+- `ρ::F`: Density of ice.
+- `g::F`: Gravitational acceleration.
+- `ϵ::F`: A small parameter, often used for perturbations.
+- `η₀::F`: Initial viscosity.
+- `maxA::F`: Maximum A.
+- `minA::F`: Minimum A.
+- `maxTlaw::F`: Maximum temperature according to some law.
+- `minTlaw::F`: Minimum temperature according to some law.
+- `noise_A_magnitude::F`: Magnitude of noise in A.
+"""
 struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     ρ::F
     g::F
@@ -12,6 +28,8 @@ struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
 end
 
 """
+Initialize the physical parameters of a model.
+
     PhysicalParameters(;
         ρ::Float64 = 900.0,
         g::Float64 = 9.81,
@@ -23,7 +41,7 @@ end
         minTlaw::Float64 = -25.0,
         noise_A_magnitude::Float64 = 5e-18
         )
-Initialize the physical parameters of a model.
+
 Keyword arguments
 =================
     - `ρ`: Ice density
