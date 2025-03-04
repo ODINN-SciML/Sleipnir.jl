@@ -57,7 +57,7 @@ end
             V_ref::Union{Nothing, Matrix{F}} = glacier.V, Vx_ref::Union{Nothing, Matrix{F}} = glacier.Vx, 
             Vy_ref::Union{Nothing, Matrix{F}} = glacier.Vy, Δx::F = glacier.Δx, Δy::F = glacier.Δy, 
             lon::Union{Nothing, F} = glacier.cenlon, lat::Union{Nothing, F} = glacier.cenlat, 
-            nx::I = glacier.nx, ny::I = glacier.ny, θ::Union{Nothing, ComponentArray{F}} = nothing, 
+            nx::I = glacier.nx, ny::I = glacier.ny, θ::Union{Nothing, ComponentArray{F}} = nothing,
             loss::Union{Nothing, Vector{F}} = Nothing) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel}
 
 Construct a `Results` object for a glacier simulation.

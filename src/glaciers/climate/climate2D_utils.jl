@@ -31,6 +31,9 @@ function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameter
 
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
     raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
+    if Sleipnir.doublePrec
+        raw_climate = convertRasterStackToFloat64(raw_climate)
+    end
     climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
     climate_2D_step = downscale_2D_climate(climate_step, glacier)
     longterm_temps = get_longterm_temps(glacier.rgi_id, params, raw_climate)
@@ -177,6 +180,9 @@ Load raw climate data from a specified path.
 """
 function get_raw_climate_data(rgi_path::String)
     climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
+    if Sleipnir.doublePrec
+        climate = convertRasterStackToFloat64(climate)
+    end
     return climate
 end
 
@@ -407,6 +413,10 @@ function get_longterm_temps(rgi_id::String, params::Parameters)
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     climate = RasterStack(joinpath(rgi_path, "raw_climate_$(params.simulation.tspan).nc"))
+    if Sleipnir.doublePrec
+        glacier_gd = convertRasterStackToFloat64(glacier_gd)
+        climate = convertRasterStackToFloat64(climate)
+    end
     apply_t_grad!(climate, glacier_gd.topo)
     longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
     return longterm_temps
