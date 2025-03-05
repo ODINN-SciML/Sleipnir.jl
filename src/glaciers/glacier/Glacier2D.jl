@@ -1,10 +1,45 @@
 
 export Glacier2D, Climate2D
 
+"""
+    AbstractGlacier
+
+An abstract type representing a glacier. This serves as a base type for different glacier implementations in the `Sleipnir` package.
+"""
 abstract type AbstractGlacier end
 
 include("../climate/Climate2D.jl")
 
+"""
+A mutable struct representing a 2D glacier. Notice that all fields can be empty by
+providing `nothing` as the default value. `Glacier` objects should not be constructed 
+manually, but rather through the `initialize_glaciers` function.
+
+`Glacier2D{F <: AbstractFloat, I <: Integer}`
+
+# Fields
+- `rgi_id::Union{String, Nothing}`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
+- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from the GLATHIDA dataset.
+- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
+- `B::Union{Matrix{F}, Nothing}`: Bedrock elevation matrix.
+- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
+- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
+- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `A::Union{F, Nothing}`: Flow law parameter.
+- `C::Union{F, Nothing}`: Sliding law parameter.
+- `n::Union{F, Nothing}`: Flow law exponent.
+- `slope::Union{Matrix{F}, Nothing}`: Surface slope matrix.
+- `dist_border::Union{Matrix{F}, Nothing}`: Distance to the glacier border matrix.
+- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
+- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
+- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
+- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
+- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
+- `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
+"""
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
     climate::Union{Climate2D, Nothing}
@@ -30,31 +65,55 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
 end
 
 """
-function Glacier2D(;
-    rgi_id::Union{String, Nothing} = nothing,
-    climate::Union{Climate2D, Nothing} = nothing,
-    H₀::Union{Matrix{F}, Nothing} = nothing,
-    H_glathida::Union{Matrix{F}, Nothing} = nothing,
-    S::Union{Matrix{F}, Nothing} = nothing,
-    B::Union{Matrix{F}, Nothing} = nothing,
-    V::Union{Matrix{F}, Nothing}= nothing,
-    Vx::Union{Matrix{F}, Nothing}= nothing,
-    Vy::Union{Matrix{F}, Nothing}= nothing,
-    A::Union{F, Nothing} = nothing,
-    C::Union{F, Nothing} = nothing,
-    n::Union{F, Nothing} = nothing,
-    slope::Union{Matrix{F}, Nothing} = nothing,
-    dist_border::Union{Matrix{F}, Nothing} = nothing,
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing,
-    cenlon::Union{F, Nothing} = nothing,
-    cenlat::Union{F, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer}
+Constructs a `Glacier2D` object with the given parameters, including default ones.
 
-Constructor for empty 2D Glacier object.
+    Glacier2D(; rgi_id::Union{String, Nothing} = nothing,
+              climate::Union{Climate2D, Nothing} = nothing,
+              H₀::Union{Matrix{F}, Nothing} = nothing,
+              H_glathida::Union{Matrix{F}, Nothing} = nothing,
+              S::Union{Matrix{F}, Nothing} = nothing,
+              B::Union{Matrix{F}, Nothing} = nothing,
+              V::Union{Matrix{F}, Nothing} = nothing,
+              Vx::Union{Matrix{F}, Nothing} = nothing,
+              Vy::Union{Matrix{F}, Nothing} = nothing,
+              A::Union{F, Nothing} = nothing,
+              C::Union{F, Nothing} = nothing,
+              n::Union{F, Nothing} = nothing,
+              slope::Union{Matrix{F}, Nothing} = nothing,
+              dist_border::Union{Matrix{F}, Nothing} = nothing,
+              Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+              Δx::Union{F, Nothing} = nothing,
+              Δy::Union{F, Nothing} = nothing,
+              nx::Union{I, Nothing} = nothing,
+              ny::Union{I, Nothing} = nothing,
+              cenlon::Union{F, Nothing} = nothing,
+              cenlat::Union{F, Nothing} = nothing) where {F <: AbstractFloat, I <: Integer}
+
+# Arguments
+- `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
+- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from GLATHIDA.
+- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
+- `B::Union{Matrix{F}, Nothing}`: Bed elevation matrix.
+- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
+- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
+- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `A::Union{F, Nothing}`: Flow law parameter.
+- `C::Union{F, Nothing}`: Sliding law parameter.
+- `n::Union{F, Nothing}`: Flow law exponent.
+- `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
+- `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
+- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys "lon" and "lat".
+- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
+- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
+- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
+- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
+- `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
+
+# Returns
+- A `Glacier2D` object with the specified parameters.
 """
 function Glacier2D(;
     rgi_id::Union{String, Nothing} = nothing,

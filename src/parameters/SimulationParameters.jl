@@ -1,5 +1,29 @@
 
 
+"""
+
+A structure to hold simulation parameters for a simulation in ODINN.
+
+    struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParameters
+
+# Fields
+- `use_MB::Bool`: Flag to indicate whether mass balance should be used.
+- `use_iceflow::Bool`: Flag to indicate whether ice flow should be used.
+- `plots::Bool`: Flag to indicate whether plots should be generated.
+- `velocities::Bool`: Flag to indicate whether velocities should be calculated.
+- `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
+- `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
+- `float_type::DataType`: Data type for floating-point numbers.
+- `int_type::DataType`: Data type for integer numbers.
+- `tspan::Tuple{F, F}`: Time span for the simulation.
+- `step::F`: Time step for the simulation.
+- `multiprocessing::Bool`: Flag to indicate whether multiprocessing should be used.
+- `workers::I`: Number of workers for multiprocessing.
+- `working_dir::String`: Directory for working files.
+- `test_mode::Bool`: Flag to indicate whether to run in test mode.
+- `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
+- `ice_thickness_source::String`: Source of ice thickness data.
+"""
 struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParameters
     use_MB::Bool
     use_iceflow::Bool
@@ -18,30 +42,51 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
 end
 
 
+
 """
-    SimulationParameters(;
-                        use_MB::Bool = true,
-                        use_iceflow::Bool = true,
-                        plots::Bool = true,
-                        velocities::Bool = true,
-                        overwrite_climate::Bool = false,
-                        use_glathida_data::Bool = false,
-                        tspan::Tuple{F, F} = (2010.0,2015.0),
-                        step::F = 1/12,
-                        multiprocessing::Bool = true,
-                        workers::I = 4,
-                        working_dir::String = "",
-                        test_mode::Bool = false,
-                        rgi_paths::Dict{String, String} = Dict{String, String}(),
-                        ice_thickness_source::String = "Farinotti19",
-        )
-Initialize the parameters for a simulation.
-Keyword arguments
-=================
-    - `use_MB`: Determines if surface mass balance should be used.
-    - `plots`: Determines if plots should be made.
-    - `overwrite_climate`: Determines if climate data should be overwritten
-    - 'use_glathida_data': Determines if data from the Glathida data set should be used
+Constructor for `SimulationParameters` type, including default values.
+
+    SimulationParameters(; use_MB::Bool = true,
+                          use_iceflow::Bool = true,
+                          plots::Bool = true,
+                          velocities::Bool = true,
+                          overwrite_climate::Bool = false,
+                          use_glathida_data::Bool = false,
+                          float_type::DataType = Float64,
+                          int_type::DataType = Int64,
+                          tspan::Tuple{F, F} = (2010.0, 2015.0),
+                          step::F = 1/12,
+                          multiprocessing::Bool = true,
+                          workers::I = 4,
+                          working_dir::String = "",
+                          test_mode::Bool = false,
+                          rgi_paths::Dict{String, String} = Dict{String, String}(),
+                          ice_thickness_source::String = "Farinotti19") where {I <: Integer, F <: AbstractFloat}
+
+
+# Keyword arguments
+- `use_MB::Bool`: Whether to use mass balance (default: `true`).
+- `use_iceflow::Bool`: Whether to use ice flow (default: `true`).
+- `plots::Bool`: Whether to generate plots (default: `true`).
+- `velocities::Bool`: Whether to calculate velocities (default: `true`).
+- `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
+- `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
+- `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
+- `int_type::DataType`: Data type for integers (default: `Int64`).
+- `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
+- `step::F`: Time step for the simulation (default: `1/12`).
+- `multiprocessing::Bool`: Whether to use multiprocessing (default: `true`).
+- `workers::I`: Number of workers for multiprocessing (default: `4`).
+- `working_dir::String`: Working directory for the simulation (default: `""`).
+- `test_mode::Bool`: Whether to run in test mode (default: `false`).
+- `rgi_paths::Dict{String, String}`: Dictionary of RGI paths (default: `Dict{String, String}()`).
+- `ice_thickness_source::String`: Source of ice thickness data, either `"Millan22"` or `"Farinotti19"` (default: `"Farinotti19"`).
+
+# Returns
+- `simulation_parameters`: A new `SimulationParameters` object.
+
+# Throws
+- `AssertionError`: If `ice_thickness_source` is not `"Millan22"` or `"Farinotti19"`.
 """
 function SimulationParameters(;
             use_MB::Bool = true,
