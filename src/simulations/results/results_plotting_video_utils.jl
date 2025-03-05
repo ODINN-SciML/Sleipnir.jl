@@ -48,7 +48,7 @@ end
         baseTitle::String=""
     )
 
-Generate various types of videos for glacier data.
+Generate various types of videos for glacier data. For now only the evolution of the glacier ice thickness is supported. More types of visualizations will be added in the future. 
 
 # Arguments
 - `plot_type`: Type of plot to generate. Options are:
