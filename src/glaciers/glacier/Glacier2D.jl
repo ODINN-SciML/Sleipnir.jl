@@ -111,7 +111,6 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
 
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)
-    # println(io)
     prec = 6
     println("Glacier $(glacier.rgi_id) with a $(glacier.nx)x$(glacier.ny) grid (Δx=$(glacier.Δx), Δy=$(glacier.Δy))")
     print("at position ($(round(glacier.cenlat;digits=prec))°, $(round(glacier.cenlon;digits=prec))°)")
@@ -120,7 +119,7 @@ function Base.show(io::IO, glacier::Glacier2D)
     println("A=$(glacier.A)  C=$(glacier.C)  n=$(glacier.n)")
 end
 # Vectorial form
-function Base.show(io::IO, glaciers::Vector{Glacier2D})
+function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{Glacier2D})
     len = length(glaciers)
     print("$(len)-element Vector{Glacier2D}")
     regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1] for glacier in glaciers])
