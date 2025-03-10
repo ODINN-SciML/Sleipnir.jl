@@ -125,14 +125,6 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
-function convertRasterStackToFloat64(rs::RasterStack)
-    layerNames = names(rs)
-    return RasterStack(
-        NamedTuple{Tuple(layerNames)}([Float64.(rs[n]) for n in layerNames]),
-        metadata=metadata(rs)
-    )
-end
-
 """
     initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
 

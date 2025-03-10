@@ -1,9 +1,21 @@
-
-
 """
-    store_results!(simulation::SIM, glacier_idx::I, solution) where {SIM <: Simulation, I <: Int}
+    create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
 
-Store the results of a simulation of a single glacier into a `Results`.
+Create a `Results` object from a given simulation and solution.
+
+# Arguments
+- `simulation::SIM`: The simulation object of type `Simulation`.
+- `glacier_idx::I`: The index of the glacier within the simulation.
+- `solution`: The solution object containing all the steps including intermediate ones.
+- `loss=nothing`: The loss value, default is `nothing`.
+- `light=false`: A boolean flag to indicate if only the first and last steps of the solution should be used.
+- `batch_id::Union{Nothing, I}=nothing`: The batch ID, default is `nothing`.
+
+# Returns
+- `results`: A `Results` object containing the processed simulation data.
+
+# Details
+The function processes the solution to select the last value for each time step. It then constructs a `Results` object containing various attributes from the simulation and the iceflow model.
 """
 function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
     # The solution contains all the steps including the intermediate ones
@@ -46,11 +58,19 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
     return results
 end
 
-"""
-    save_results_file!(results_list::Vector{Results{F}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, SIM <: Simulation}
 
-Save simulation results which are provided as a list of `Results` into a `.jld2` file.
-This function also overrides the `results`` attribute of `simulation`.
+"""
+    save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Int, SIM <: Simulation}
+
+Save the results of a simulation to a file.
+
+# Arguments
+- `results_list::Vector{Results{F, I}}`: A vector containing the results of the simulation.
+- `simulation::SIM`: The simulation object containing the parameters and results.
+- `path::Union{String,Nothing}`: Optional. The path where the results file will be saved. If not provided, a default path will be used.
+
+# Description
+This function saves the results of a simulation to a file in JLD2 format. If the `path` argument is not provided, the function will create a default path based on the current project directory. The results are saved in a file named `prediction_<nglaciers>glaciers_<tspan>.jld2`, where `<nglaciers>` is the number of glaciers in the simulation and `<tspan>` is the simulation time span.
 """
 function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Int, SIM <: Simulation}
     # Create path for simulation results
