@@ -43,6 +43,7 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
     lat::Union{Nothing, F} 
     nx::I
     ny::I
+    t::Union{Vector{F}, Nothing}
     tspan::Union{Tuple{F, F}, Nothing}
     θ::Union{Nothing, ComponentArray{F}}
     loss::Union{Nothing, Vector{F}}          
@@ -101,12 +102,13 @@ function Results(glacier::G, ifm::IF;
         V_ref::Union{Nothing, Matrix{F}} = glacier.V,
         Vx_ref::Union{Nothing, Matrix{F}} = glacier.Vx,
         Vy_ref::Union{Nothing, Matrix{F}} = glacier.Vy,
-        Δx::F = glacier.Δx,                
-        Δy::F = glacier.Δy,   
+        Δx::F = glacier.Δx,
+        Δy::F = glacier.Δy,
         lon::Union{Nothing, F}  = glacier.cenlon,
         lat::Union{Nothing, F}  = glacier.cenlat,
         nx::I = glacier.nx,
         ny::I = glacier.ny,
+        t::Union{Vector{F}, Nothing} = nothing, 
         tspan::Union{Tuple{F, F}, Nothing} = nothing,
         θ::Union{Nothing,ComponentArray{F}} = nothing,
         loss::Union{Nothing,Vector{F}} = nothing                 
@@ -115,7 +117,7 @@ function Results(glacier::G, ifm::IF;
     # Build the results struct based on input values
     results = Results(rgi_id, H, H_glathida, S, B,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
-                      Δx, Δy,lon,lat, nx, ny, tspan,
+                      Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)                
 
     return results

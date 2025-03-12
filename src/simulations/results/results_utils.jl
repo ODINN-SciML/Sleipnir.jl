@@ -8,11 +8,17 @@ Store the results of a simulation of a single glacier into a `Results`.
 function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    nSteps = (simulation.parameters.simulation.tspan[2]-simulation.parameters.simulation.tspan[1])/simulation.parameters.simulation.step
-    timeSteps = simulation.parameters.simulation.tspan[1].+collect(0:nSteps).*simulation.parameters.simulation.step
+    t₀ = simulation.parameters.simulation.tspan[1]
+    t₁ = simulation.parameters.simulation.tspan[2]
+    Δt = simulation.parameters.simulation.step
+
+    nSteps = (t₁-t₀) / Δt
+    timeSteps = t₀ .+ collect(0:nSteps) .* Δt
     solStepIndices = [findlast(==(val), solution.t) for val in timeSteps]
 
+    t = light ? nothing : solution.t[solStepIndices]
     H = light ? [solution.u[begin],solution.u[end]] : solution.u[solStepIndices]
+
     # Simulations using Reverse Diff require an iceflow model per glacier
     if isnothing(batch_id)
         iceflow_model = simulation.model.iceflow
@@ -37,7 +43,8 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
                       lon = simulation.glaciers[glacier_idx].cenlon,
                       lat = simulation.glaciers[glacier_idx].cenlat,
                       nx = simulation.glaciers[glacier_idx].nx,
-                      ny = simulation.glaciers[glacier_idx].ny,  
+                      ny = simulation.glaciers[glacier_idx].ny,
+                      t = t,
                       tspan = simulation.parameters.simulation.tspan,
                       θ = θ,
                       loss = loss
@@ -68,4 +75,19 @@ function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM
     tspan = simulation.parameters.simulation.tspan
     nglaciers = length(simulation.glaciers)
     jldsave(joinpath(predictions_path, "prediction_$(nglaciers)glaciers_$tspan.jld2"); simulation.results)
+end
+
+"""
+
+"""
+function get_result_id_from_rgi(glacier_id::I, simulation::SIM) where {I <: Integer, SIM <: Simulation}
+
+    rgi_id = simulation.glaciers[glacier_id].rgi_id
+
+    for id in 1:length(simulation.glaciers)
+        if simulation.results[id].rgi_id == rgi_id
+            return id
+        end
+    end
+    @warn "No glacier ID found for current simulation."
 end
