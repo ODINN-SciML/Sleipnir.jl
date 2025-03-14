@@ -15,6 +15,13 @@ function __init__()
         tempDir = Tar.extract(tar)
         close(tar)
         mv(joinpath(tempDir, "ODINN_prepro"), prepro_dir)
+
+    end
+    csvPath = joinpath(odinn_path, "rgi62_stats.csv")
+    if !isfile(csvPath)
+        @info "Downloading RGI stats from Bremen cluster"
+        csvPathTmp = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
+        mv(csvPathTmp, csvPath)
     end
 
 end
