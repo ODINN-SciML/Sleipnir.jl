@@ -26,6 +26,7 @@ using CoordRefSystems
 using Dates, DateFormats
 using NetCDF
 using GR
+using DataStructures
 
 # ##############################################
 # ############    PARAMETERS     ###############

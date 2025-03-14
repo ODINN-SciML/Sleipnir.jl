@@ -169,20 +169,30 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
 
 # Display setup
-# function Base.show(io::IO, glacier::Glacier2D)
-#     println(io) 
-#     println("Glacier:  $(glacier.rgi_id)")
-#     println("Available fields:")
-#     for key in fieldnames(Glacier2D)
-#         value = getproperty(glacier, key)
-#         if !isnothing(value)
-#             println("  * ", string(key))
-#         end
-#     end
-# end
-# # Vectorial form 
-# Base.show(io::IO, glaciers::Vector{Glacier2D}) = Base.show.(Ref(io), glaciers)
+function Base.show(io::IO, glacier::Glacier2D)
+    prec = 6
+    println("Glacier $(glacier.rgi_id) with a $(glacier.nx)x$(glacier.ny) grid (Δx=$(glacier.Δx), Δy=$(glacier.Δy))")
+    print("at position ($(round(glacier.cenlat;digits=prec))°, $(round(glacier.cenlon;digits=prec))°)")
+    glathidaTxt = !isnothing(glacier.H_glathida) ? "w/ glathida elevation" : "w/o glathida elevation"
+    println("   $(glathidaTxt)")
+    println("A=$(glacier.A)  C=$(glacier.C)  n=$(glacier.n)")
+end
+# Vectorial form
+function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{Glacier2D})
+    len = length(glaciers)
+    print("$(len)-element Vector{Glacier2D}")
+    regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1] for glacier in glaciers])
+    regionsFormatted = ["$(k[1]) (x$(k[2]))" for k in regions]
+    println(" distributed over regions $(join(regionsFormatted, ", "))")
+    if len>5
+        print(join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
+        print(" ... ")
+        println(join([glacier.rgi_id for glacier in glaciers[len-1:len]], " "))
+    else
+        println(join([glacier.rgi_id for glacier in glaciers], " "))
+    end
+end
 
-                                        
+
 include("glacier2D_utils.jl")
 include("../climate/climate2D_utils.jl")
