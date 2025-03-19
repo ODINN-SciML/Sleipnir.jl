@@ -62,6 +62,8 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     ny::Union{I, Nothing}
     cenlon::Union{F, Nothing}
     cenlat::Union{F, Nothing}
+    # data::Union{Vector{DAT}, Nothing} # We ideally want this, but not clear how to specify concrete DAT type.
+    data::Union{Vector, Nothing}
 end
 
 """
@@ -136,14 +138,16 @@ function Glacier2D(;
     nx::Union{I, Nothing} = nothing,
     ny::Union{I, Nothing} = nothing,
     cenlon::Union{F, Nothing} = nothing,
-    cenlat::Union{F, Nothing} = nothing
+    cenlat::Union{F, Nothing} = nothing,
+    # data::Union{Vector{DAT}, Nothing} = nothing
+    data::Union{Vector, Nothing} = nothing
     ) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
     ft = Sleipnir.Float
     it = Sleipnir.Int
 
-    return Glacier2D{ft,it}(rgi_id, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat)
+    return Glacier2D{ft,it}(rgi_id, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, data)
 end
 
 ###############################################
