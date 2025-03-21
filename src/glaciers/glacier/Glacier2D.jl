@@ -170,8 +170,6 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
 
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)
-    prec = 6
-
     if !isnothing(glacier.H₀)
         H=round.(255*glacier.H₀/maximum(glacier.H₀))
         display(Gray.(Int.(H'[end:-1:1,1:end])/255))
@@ -186,7 +184,7 @@ function Base.show(io::IO, glacier::Glacier2D)
     println("")
     if !isnothing(glacier.cenlat) & !isnothing(glacier.cenlon)
         print("at position ")
-        printstyled("($(round(glacier.cenlat;digits=prec))°, $(round(glacier.cenlon;digits=prec))°)";color=:green)
+        printstyled("($(round(glacier.cenlat;digits=6))°, $(round(glacier.cenlon;digits=6))°)";color=:green)
     else
         print("at undefined location")
     end
