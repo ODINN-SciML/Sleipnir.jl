@@ -27,6 +27,9 @@ using Dates, DateFormats
 using NetCDF
 using GR
 using DataStructures
+using ImageInTerminal
+using ImageCore
+using Printf
 
 # ##############################################
 # ############    PARAMETERS     ###############
