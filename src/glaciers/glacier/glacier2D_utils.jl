@@ -6,7 +6,7 @@ export initialize_glaciers
 ###############################################
 
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
+    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
 Initialize multiple `Glacier`s based on a list of RGI IDs and on parameters.
 
@@ -15,7 +15,7 @@ Keyword arguments
     - `rgi_ids`: List of RGI IDs of glaciers
     - `params`: `Parameters` object to be passed
 """
-function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
+function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
     # Generate missing glaciers file
     missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
@@ -32,13 +32,13 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
-        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
-        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     end
-        
-    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+
+    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
 
     if params.simulation.use_glathida_data == true
         
@@ -81,9 +81,9 @@ Keyword arguments
     - `smoothing` Flag determining if smoothing needs to be applied to the surface elevation and ice thickness.
     - `velocities` Flag determining if the ice surface velocities need to be retrieved.
 """
-function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, test=false)
+function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
     # Initialize glacier initial topography
-    glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing, test=test)
+    glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
@@ -104,7 +104,7 @@ end
 
 Retrieves the initial glacier geometry (bedrock + ice thickness) for a glacier with other necessary data (e.g. grid size and ice surface velocities).
 """
-function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
+function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
