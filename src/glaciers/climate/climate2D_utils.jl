@@ -7,7 +7,7 @@ export initialize_glacier_climate!, downscale_2D_climate!, downscale_2D_climate,
         get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
          apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
-using Dates # to provide correct Julian time slices
+# using Dates # to provide correct Julian time slice∫s
 
 """
     initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
@@ -71,8 +71,14 @@ This function generates raw climate files for a specified RGI ID if they do not 
     - Triggers garbage collection to free up memory.
 """
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
-    rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
-    if !ispath(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
+    rgi_path = "" # Initialize RGI path to be accessible outside the try block
+    try
+        rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
+    catch
+        @error "RGI path not found for: $rgi_id"
+    end
+
+    if !isfile(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
         println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
         tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
