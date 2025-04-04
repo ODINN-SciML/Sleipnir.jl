@@ -19,7 +19,7 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
                                                         test_mode=true,
                                                         rgi_paths=rgi_paths))
 
-    glaciers = initialize_glaciers(rgi_ids, params; test=true)
+    glaciers = initialize_glaciers(rgi_ids, params)
 
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, string("test/data/glaciers/glaciers2D_", file_suffix, ".jld2")); glaciers)

@@ -115,7 +115,7 @@ function Results(glacier::G, ifm::IF;
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
 
     # Build the results struct based on input values
-    results = Results(rgi_id, H, H_glathida, S, B,
+    results = Results{F, I}(rgi_id, H, H_glathida, S, B,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)                

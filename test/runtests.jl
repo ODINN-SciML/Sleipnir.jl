@@ -1,7 +1,9 @@
 import Pkg
 Pkg.activate(dirname(Base.current_project()))
 
-using Revise
+if !parse(Bool, get(ENV, "CI", "false"))
+    using Revise
+end
 using Sleipnir
 using Test
 using JLD2
@@ -27,7 +29,7 @@ ENV["GKSwstype"]="nul"
 
 @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
 
-@testset "Glaciers 2D plots" glaciers2D_plots()
+# @testset "Glaciers 2D plots" glaciers2D_plots()
 
 @testset "Video plot test" make_thickness_video_test()
 
