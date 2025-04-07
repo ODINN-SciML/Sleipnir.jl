@@ -72,8 +72,14 @@ This function generates raw climate files for a specified RGI ID if they do not 
     - Triggers garbage collection to free up memory.
 """
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
-    rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
-    if !ispath(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
+    rgi_path = "" # Initialize RGI path to be accessible outside the try block
+    try
+        rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
+    catch
+        @error "RGI path not found for: $rgi_id"
+    end
+
+    if !isfile(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
         println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
         tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
@@ -149,7 +155,7 @@ Calculate cumulative climate statistics from the given climate data.
   - `"ref_hgt"`: The reference height from the climate metadata.
 
 # Notes
-- The temperature data is modified to only include positive values (PDDs).
+- The temperature data is modified to only include positive degree-day values (PDDs).
 - The gradient data is clipped within the specified bounds to ensure plausible values.
 """
 function get_cumulative_climate(climate, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
@@ -191,7 +197,7 @@ end
 """
     apply_t_cumul_grad!(climate_2D_step::Climate2Dstep, S::Matrix{F}) where {F <: AbstractFloat}
 
-Apply temperature and precipitation degree day (PDD) gradients to the climate data in `climate_2D_step` based on the elevation matrix `S`.
+Apply temperature and precipitation gradients based on the positive degree day (PDD) and on the elevation matrix `S` to the climate data in `climate_2D_step`.
 
 # Arguments
 - `climate_2D_step::Climate2Dstep`: The climate data structure containing temperature, PDD, gradients, and reference height.

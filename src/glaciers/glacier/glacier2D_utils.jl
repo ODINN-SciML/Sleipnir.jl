@@ -95,7 +95,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 end
 
 """
-    initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, test=false)
+    initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
 
 Initialize a glacier with the given RGI ID and parameters.
 
@@ -103,7 +103,6 @@ Initialize a glacier with the given RGI ID and parameters.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
 - `parameters::Parameters`: A struct containing various parameters required for initialization.
 - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
-- `test::Bool`: Optional. If `true`, run in test mode. Default is `false`.
 
 # Returns
 - `glacier`: An initialized glacier object containing the initial topography and climate data.
@@ -329,7 +328,7 @@ end
 """
     filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
 
-Filters out glaciers from the provided `glaciers` vector that are marked as missing in the task log or in a previously saved file.
+Filters out glaciers from the provided `glaciers` vector that are marked as missing in the OGGM task log (provided by Gungnir) or in a previously saved file.
 
 # Arguments
 - `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects to be filtered.
