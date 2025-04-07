@@ -1,5 +1,6 @@
 
 export initialize_glaciers
+export is_in_glacier
 
 ###############################################
 ############  FUNCTIONS   #####################
@@ -66,11 +67,11 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
     glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
 
     if params.simulation.use_glathida_data == true
-        
+
         # Obtain H_glathida values for the valid RGI IDs
         H_glathida_values, valid_glaciers = get_glathida!(glaciers, params)
         valid_rgi_ids = [glacier.rgi_id for glacier in valid_glaciers]
-        
+
         if isempty(valid_rgi_ids)
             error("None of the provided RGI IDs have GlaThiDa.")
         end
@@ -78,7 +79,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
         if length(valid_rgi_ids) < length(rgi_ids)
             @warn "Not all glaciers have GlaThiDa data available."
         end
-        
+
         # Create a mapping from RGI ID to H_glathida value
         rgi_to_H_glathida = Dict(zip(valid_rgi_ids, H_glathida_values))
 
@@ -89,7 +90,7 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
             end
         end
     end
-    
+
     return glaciers
 end
 
@@ -173,11 +174,11 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{Sleipnir.Float} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
-        
-            # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
-            # H₀[H_mask] .= 0.0
 
-        # Mercator Projection 
+        # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
+        # H₀[H_mask] .= 0.0
+
+        # Mercator Projection
         params_projection = parse_proj(glacier_grid["proj"])
         transform(X,Y) = UTMercator(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
                         x0=params_projection["x_0"], y0=params_projection["y_0"])
@@ -193,7 +194,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         end
 
         B = reverse(glacier_gd.topo.data, dims=2) .- H₀ # bedrock (matrix also needs to be reversed)
-        
+
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
         S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
         #smooth!(S)
@@ -217,18 +218,20 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
         slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
 
-        # We initialize the Glacier with all the initial topographical 
-        glacier = Glacier2D(rgi_id = rgi_id, 
-                          climate=nothing, 
-                          H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
-                          A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
-                          slope = slope, dist_border = dist_border,
-                          Coords = Coords, Δx=Δx, Δy=Δy, nx=nx, ny=ny,
-                          cenlon = cenlon, cenlat = cenlat)
+        # We initialize the Glacier with all the initial topographical
+        glacier = Glacier2D(
+            rgi_id = rgi_id,
+            climate = nothing,
+            H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
+            A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
+            slope = slope, dist_border = dist_border,
+            Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
+            cenlon = cenlon, cenlat = cenlat
+        )
         return glacier
 
     catch error
-        @show error  
+        @show error
         missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
         push!(missing_glaciers, rgi_id)
         jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
@@ -347,7 +350,7 @@ function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameter
     else
         glacier_filter = (task_log.gridded_attributes .!= "SUCCESS")
     end
-    
+
     glacier_ids = Vector{String}([])
 
     for id in task_log["index"]
@@ -370,11 +373,11 @@ function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameter
     for id in missing_glaciers
         deleteat!(glaciers, findall(x->x.rgi_id==id, glaciers))
     end
-    
+
     # Save missing glaciers in a file
     jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
     #@warn "Filtering out these glaciers from gdir list: $missing_glaciers"
-    
+
     return missing_glaciers
 end
 
@@ -507,8 +510,8 @@ end
 """
     UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0)
 
-Transverse Mercator Projection. 
-This function reprojects northing/easting coordinates into latitude/longitude. 
+Transverse Mercator Projection.
+This function reprojects northing/easting coordinates into latitude/longitude.
 
 Keyword arguments
 =================
@@ -521,7 +524,7 @@ Keyword arguments
     - `hemisphere`: Either :north or :south
 """
 function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
-  
+
     if !isnothing(zone)
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
     else
@@ -561,3 +564,22 @@ end
 #     return A_smooth_pad
 # end
 
+"""
+    is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
+
+Return a matrix with booleans indicating if a given pixel is at distance at least
+`distance` in the set of non zero values of the matrix. This usually allows
+discarding the border pixels of a glacier.
+
+Arguments:
+- `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
+- `distance::I`: Distance to the border, computed as the number of pixels we need
+    to move to find a pixel with value zero.
+"""
+function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
+    B = convert.(F, (A .!= 0))
+    for i in 1:distance
+        B .= min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
+    end
+    return B .> 0.001
+end
