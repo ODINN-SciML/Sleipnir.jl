@@ -19,7 +19,7 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
                                                         test_mode=true,
                                                         rgi_paths=rgi_paths))
 
-    glaciers = initialize_glaciers(rgi_ids, params; test=true)
+    glaciers = initialize_glaciers(rgi_ids, params)
 
     # Test prints
     println(glaciers)
