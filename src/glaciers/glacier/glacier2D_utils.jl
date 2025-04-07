@@ -8,12 +8,37 @@ export initialize_glaciers
 """
     initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
-Initialize multiple `Glacier`s based on a list of RGI IDs and on parameters.
+Initialize glaciers based on provided RGI IDs and parameters.
 
-Keyword arguments
-=================
-    - `rgi_ids`: List of RGI IDs of glaciers
-    - `params`: `Parameters` object to be passed
+# Arguments
+- `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
+- `params::Parameters`: A `Parameters` object containing simulation parameters.
+- `test::Bool`: An optional boolean flag indicating whether to run in test mode. Default is `false`.
+
+# Returns
+- `glaciers::Vector{Glacier2D}`: A vector of initialized `Glacier2D` objects.
+
+# Description
+This function performs the following steps:
+1. Generates a file for missing glaciers if it does not already exist.
+2. Filters out missing glaciers from the provided RGI IDs.
+3. Generates raw climate data for the glaciers if necessary.
+4. Initializes the glaciers using the provided RGI IDs and parameters.
+5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers.
+
+# Errors
+- Throws an error if none of the provided RGI IDs have GlaThiDa data.
+
+# Warnings
+- Issues a warning if not all glaciers have GlaThiDa data available.
+
+# Example
+```julia
+# We declare a list of glaciers to be initialized with their RGI IDs
+rgi_ids = ["RGI60-11.03638", "RGI60-11.01450", "RGI60-11.02346", "RGI60-08.00203"]
+# We initialize those glaciers based on the RGI IDs and the parameters we previously specified
+glaciers = initialize_glaciers(rgi_ids, params)
+```
 """
 function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
@@ -68,18 +93,19 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
     return glaciers
 end
 
-
 """
-    initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, velocities=true)
+    initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, test=false)
 
-Initialize a single `Glacier`s, including its `Climate`, based on a `rgi_id` and timestepping arguments.
+Initialize a glacier with the given RGI ID and parameters.
 
-Keyword arguments
-=================
-    - `rgi_id`: Glacier RGI ID
-    - `parameters`: Parameters including the physical and simulation ones
-    - `smoothing` Flag determining if smoothing needs to be applied to the surface elevation and ice thickness.
-    - `velocities` Flag determining if the ice surface velocities need to be retrieved.
+# Arguments
+- `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
+- `parameters::Parameters`: A struct containing various parameters required for initialization.
+- `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+- `test::Bool`: Optional. If `true`, run in test mode. Default is `false`.
+
+# Returns
+- `glacier`: An initialized glacier object containing the initial topography and climate data.
 """
 function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
     # Initialize glacier initial topography
@@ -100,9 +126,26 @@ function convertRasterStackToFloat64(rs::RasterStack)
 end
 
 """
-    initialize_glacier(rgi_id::String, params::Parameters; smoothing=false, velocities=true)
+    initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
 
-Retrieves the initial glacier geometry (bedrock + ice thickness) for a glacier with other necessary data (e.g. grid size and ice surface velocities).
+Initialize glacier data for a given RGI ID and parameters.
+
+# Arguments
+- `rgi_id::String`: The RGI ID of the glacier.
+- `params::Parameters`: A `Parameters` object containing simulation parameters.
+- `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
+- `test::Bool=false`: Optional; test flag. Default is `false`.
+
+# Returns
+- `glacier::Glacier2D`: A `Glacier2D` object initialized with the glacier data.
+
+# Description
+This function loads and initializes the glacier data for a given RGI ID. It retrieves the initial ice thickness conditions based on the specified source in the parameters, applies optional smoothing, and initializes the glacier's topographical and velocity data. The function also handles Mercator projection for the glacier coordinates and filters glacier borders in high elevations to avoid overflow problems.
+
+# Notes
+- The function reverses the matrices for ice thickness, bedrock, and other data to match the required orientation.
+- If the Mercator projection includes latitudes larger than 80°, a warning is issued.
+- If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
 function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
@@ -194,6 +237,28 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 end
 
 # [Begin] Glathida Utilities
+"""
+    get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=false)
+
+Retrieve and process glacier thickness data for a vector of `Glacier2D` objects.
+
+# Arguments
+- `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects for which the glacier thickness data is to be retrieved.
+- `params::Parameters`: A `Parameters` object containing simulation parameters.
+- `force::Bool=false`: A boolean flag indicating whether to force the retrieval of glacier thickness data.
+
+# Returns
+- `gtd_grids::Vector`: A vector of glacier thickness data grids.
+- `glaciers::Vector{Glacier2D}`: The updated vector of `Glacier2D` objects after removing glaciers with no data.
+
+# Description
+This function retrieves glacier thickness data for each glacier in the input vector using parallel processing. It updates a list of missing glaciers if any glacier has all data points equal to zero. The function then removes glaciers with no data from both the `gtd_grids` and `glaciers` vectors and returns the updated vectors.
+
+# Notes
+- The function uses `pmap` for parallel processing of glaciers.
+- The list of missing glaciers is stored in a JLD2 file located at `params.simulation.working_dir/data/missing_glaciers.jld2`.
+- Glaciers with no data are identified and removed based on the condition that all data points in their thickness grid are zero.
+"""
 function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=false)
     gtd_grids = pmap(glacier -> get_glathida_glacier(glacier, params, force), glaciers)
 
@@ -215,6 +280,22 @@ function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=fa
     return gtd_grids, glaciers
 end
 
+"""
+    get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
+
+Retrieve or generate the glathida glacier grid for a given glacier.
+
+# Arguments
+- `glacier::Glacier2D`: The glacier object for which the glathida grid is to be retrieved or generated.
+- `params::Parameters`: The parameters object containing simulation settings.
+- `force`: A boolean flag indicating whether to force regeneration of the glathida grid even if it already exists.
+
+# Returns
+- `gtd_grid`: A 2D array representing the glathida glacier grid.
+
+# Description
+This function checks if the glathida glacier grid file (`glathida.h5`) exists in the specified path. If the file exists and `force` is `false`, it reads the grid from the file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`), computes the average thickness for each grid cell, and saves the resulting grid to an HDF5 file (`glathida.h5`).
+"""
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id])
     gtd_path = joinpath(rgi_path, "glathida.h5")
@@ -242,10 +323,83 @@ end
 # [End] Glathida Utilities
 
 
+"""
+    filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
+
+Filters out glaciers from the provided `glaciers` vector that are marked as missing in the task log or in a previously saved file.
+
+# Arguments
+- `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects to be filtered.
+- `params::Parameters`: A `Parameters` object containing simulation parameters.
+
+# Returns
+- `missing_glaciers::Vector{String}`: A vector of glacier IDs that were filtered out.
+
+# Details
+The function reads a task log CSV file from the working directory specified in `params`. It then determines which glaciers are missing based on the task log and additional conditions specified in `params`. If a previously saved file of missing glaciers exists, it loads and merges the missing glaciers from that file. Finally, it removes the missing glaciers from the `glaciers` vector and saves the updated list of missing glaciers to a file.
+"""
+function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
+    task_log = CSV.File(joinpath(params.simulation.working_dir, "task_log.csv"))
+    if params.simulation.velocities & params.simulation.use_glathida_data
+        glacier_filter = (task_log.velocity_to_gdir .!= "SUCCESS") .&& (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
+    elseif params.simulation.use_glathida_data
+        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
+    else
+        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS")
+    end
+    
+    glacier_ids = Vector{String}([])
+
+    for id in task_log["index"]
+        push!(glacier_ids, id)
+    end
+    missing_glaciers = glacier_ids[glacier_filter]
+
+    try
+        missing_glaciers_old = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        for missing_glacier in missing_glaciers_old
+            @show missing_glacier
+            if all(missing_glacier .!= missing_glaciers) # if the glacier is already not present, let's add it
+                push!(missing_glaciers, missing_glacier)
+            end
+        end
+    catch error
+        @warn "$error: No missing_glaciers.jld file available. Skipping..."
+    end
+
+    for id in missing_glaciers
+        deleteat!(glaciers, findall(x->x.rgi_id==id, glaciers))
+    end
+    
+    # Save missing glaciers in a file
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+    #@warn "Filtering out these glaciers from gdir list: $missing_glaciers"
+    
+    return missing_glaciers
+end
+
+"""
+    filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters)
+
+Filter out glaciers that cannot be processed from the given list of RGI IDs.
+
+# Arguments
+- `rgi_ids::Vector{String}`: A vector of RGI IDs representing glaciers.
+- `params::Parameters`: A `Parameters` object containing simulation parameters.
+
+# Description
+This function filters out glaciers from the provided `rgi_ids` list based on two criteria:
+1. Glaciers that are marked as level 2 in the RGI statistics CSV file.
+2. Glaciers listed in the `missing_glaciers.jld2` file located in the `params.simulation.working_dir` directory.
+
+# Notes
+- The RGI statistics CSV file is downloaded from a remote server.
+- If the `missing_glaciers.jld2` file is not available, a warning is logged and the function skips this filtering step.
+"""
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
     # Check which glaciers we can actually process
-    pathCsv = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
+    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
     rgi_stats = CSV.File(pathCsv)
 
     # Remove level 2 glaciers
@@ -270,9 +424,13 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
 end
 
 """
-fillNaN!(x, fill)
+    fillNaN!(A::AbstractArray, fill::Number=zero(eltype(A)))
 
-Convert empty matrix grid cells into fill value
+Replace all `NaN` values in the array `A` with the specified `fill` value.
+
+# Arguments
+- `A::AbstractArray`: The array in which `NaN` values will be replaced.
+- `fill::Number`: The value to replace `NaN` with. Defaults to `zero(eltype(A))`.
 """
 function fillNaN!(A, fill=zero(eltype(A)))
     for i in eachindex(A)
@@ -280,16 +438,50 @@ function fillNaN!(A, fill=zero(eltype(A)))
     end
 end
 
+"""
+    fillNaN(A::AbstractArray, fill::Number=zero(eltype(A)))
+
+Replace all NaN values in the array `A` with the specified `fill` value. 
+If no `fill` value is provided, it defaults to the zero value of the element type of `A`.
+
+# Arguments
+- `A::AbstractArray`: The input array that may contain NaN values.
+- `fill::Number`: The value to replace NaNs with. Defaults to `zero(eltype(A))`.
+
+# Returns
+- An array of the same type and shape as `A`, with all NaN values replaced by `fill`.
+"""
 function fillNaN(A, fill=zero(eltype(A)))
     return @. ifelse(isnan(A), fill, A)
 end
 
+"""
+    fillZeros!(A::AbstractArray, fill::Number=NaN)
+
+Replace all zero elements in the array `A` with the specified `fill` value.
+
+# Arguments
+- `A::AbstractArray`: The array in which to replace zero elements.
+- `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
+"""
 function fillZeros!(A, fill=NaN)
     for i in eachindex(A)
         @inbounds A[i] = ifelse(iszero(A[i]), fill, A[i])
     end
 end
 
+"""
+    fillZeros(A::AbstractArray, fill::Number=NaN) -> AbstractArray
+
+Replace all zero elements in the array `A` with the specified `fill` value.
+
+# Arguments
+- `A::AbstractArray`: The input array in which zero elements are to be replaced.
+- `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
+
+# Returns
+- `AbstractArray`: A new array with zero elements replaced by the `fill` value.
+"""
 function fillZeros(A, fill=NaN)
     return @. ifelse(iszero(A), fill, A)
 end
@@ -346,10 +538,17 @@ function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0
 
     return convert(LatLon, projection)
 end
+
 """
     smooth!(A)
 
-Smooth data contained in a matrix with one time step (CFL) of diffusion.
+Smooths the interior of a 2D array `A` using a simple averaging method. The function modifies the array `A` in place.
+
+# Arguments
+- `A::AbstractMatrix`: A 2D array to be smoothed.
+
+# Details
+The function updates the interior elements of `A` (excluding the boundary elements) by adding a weighted average of the second differences along both dimensions. The boundary elements are then set to the values of their nearest interior neighbors to maintain the boundary conditions.
 """
 @views function smooth!(A)
     A[2:end-1,2:end-1] .= A[2:end-1,2:end-1] .+ 1.0./4.1.*(diff(diff(A[:,2:end-1], dims=1), dims=1) .+ diff(diff(A[2:end-1,:], dims=2), dims=2))

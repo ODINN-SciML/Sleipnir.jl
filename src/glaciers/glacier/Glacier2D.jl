@@ -1,10 +1,45 @@
 
 export Glacier2D, Climate2D
 
+"""
+    AbstractGlacier
+
+An abstract type representing a glacier. This serves as a base type for different glacier implementations in the `Sleipnir` package.
+"""
 abstract type AbstractGlacier end
 
 include("../climate/Climate2D.jl")
 
+"""
+A mutable struct representing a 2D glacier. Notice that all fields can be empty by
+providing `nothing` as the default value. `Glacier` objects should not be constructed 
+manually, but rather through the `initialize_glaciers` function.
+
+`Glacier2D{F <: AbstractFloat, I <: Integer}`
+
+# Fields
+- `rgi_id::Union{String, Nothing}`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
+- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from the GLATHIDA dataset.
+- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
+- `B::Union{Matrix{F}, Nothing}`: Bedrock elevation matrix.
+- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
+- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
+- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `A::Union{F, Nothing}`: Flow law parameter.
+- `C::Union{F, Nothing}`: Sliding law parameter.
+- `n::Union{F, Nothing}`: Flow law exponent.
+- `slope::Union{Matrix{F}, Nothing}`: Surface slope matrix.
+- `dist_border::Union{Matrix{F}, Nothing}`: Distance to the glacier border matrix.
+- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
+- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
+- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
+- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
+- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
+- `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
+"""
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
     climate::Union{Climate2D, Nothing}
@@ -32,31 +67,55 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
 end
 
 """
-function Glacier2D(;
-    rgi_id::Union{String, Nothing} = nothing,
-    climate::Union{Climate2D, Nothing} = nothing,
-    H₀::Union{Matrix{F}, Nothing} = nothing,
-    H_glathida::Union{Matrix{F}, Nothing} = nothing,
-    S::Union{Matrix{F}, Nothing} = nothing,
-    B::Union{Matrix{F}, Nothing} = nothing,
-    V::Union{Matrix{F}, Nothing}= nothing,
-    Vx::Union{Matrix{F}, Nothing}= nothing,
-    Vy::Union{Matrix{F}, Nothing}= nothing,
-    A::Union{F, Nothing} = nothing,
-    C::Union{F, Nothing} = nothing,
-    n::Union{F, Nothing} = nothing,
-    slope::Union{Matrix{F}, Nothing} = nothing,
-    dist_border::Union{Matrix{F}, Nothing} = nothing,
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing,
-    cenlon::Union{F, Nothing} = nothing,
-    cenlat::Union{F, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer}
+Constructs a `Glacier2D` object with the given parameters, including default ones.
 
-Constructor for empty 2D Glacier object.
+    Glacier2D(; rgi_id::Union{String, Nothing} = nothing,
+              climate::Union{Climate2D, Nothing} = nothing,
+              H₀::Union{Matrix{F}, Nothing} = nothing,
+              H_glathida::Union{Matrix{F}, Nothing} = nothing,
+              S::Union{Matrix{F}, Nothing} = nothing,
+              B::Union{Matrix{F}, Nothing} = nothing,
+              V::Union{Matrix{F}, Nothing} = nothing,
+              Vx::Union{Matrix{F}, Nothing} = nothing,
+              Vy::Union{Matrix{F}, Nothing} = nothing,
+              A::Union{F, Nothing} = nothing,
+              C::Union{F, Nothing} = nothing,
+              n::Union{F, Nothing} = nothing,
+              slope::Union{Matrix{F}, Nothing} = nothing,
+              dist_border::Union{Matrix{F}, Nothing} = nothing,
+              Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+              Δx::Union{F, Nothing} = nothing,
+              Δy::Union{F, Nothing} = nothing,
+              nx::Union{I, Nothing} = nothing,
+              ny::Union{I, Nothing} = nothing,
+              cenlon::Union{F, Nothing} = nothing,
+              cenlat::Union{F, Nothing} = nothing) where {F <: AbstractFloat, I <: Integer}
+
+# Arguments
+- `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
+- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from GLATHIDA.
+- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
+- `B::Union{Matrix{F}, Nothing}`: Bed elevation matrix.
+- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
+- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
+- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `A::Union{F, Nothing}`: Flow law parameter.
+- `C::Union{F, Nothing}`: Sliding law parameter.
+- `n::Union{F, Nothing}`: Flow law exponent.
+- `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
+- `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
+- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys "lon" and "lat".
+- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
+- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
+- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
+- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
+- `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
+
+# Returns
+- A `Glacier2D` object with the specified parameters.
 """
 function Glacier2D(;
     rgi_id::Union{String, Nothing} = nothing,
@@ -114,20 +173,67 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
 
 # Display setup
-# function Base.show(io::IO, glacier::Glacier2D)
-#     println(io) 
-#     println("Glacier:  $(glacier.rgi_id)")
-#     println("Available fields:")
-#     for key in fieldnames(Glacier2D)
-#         value = getproperty(glacier, key)
-#         if !isnothing(value)
-#             println("  * ", string(key))
-#         end
-#     end
-# end
-# # Vectorial form 
-# Base.show(io::IO, glaciers::Vector{Glacier2D}) = Base.show.(Ref(io), glaciers)
+function Base.show(io::IO, glacier::Glacier2D)
+    if !isnothing(glacier.H₀)
+        H=round.(255*glacier.H₀/maximum(glacier.H₀))
+        display(Gray.(Int.(H'[end:-1:1,1:end])/255))
+    end
 
-                                        
+    print("Glacier2D ")
+    printstyled(glacier.rgi_id;color=:yellow)
+    print(" with a ")
+    printstyled("$(glacier.nx)x$(glacier.ny)";color=:red)
+    print(" grid ")
+    printstyled("(Δx=$(glacier.Δx), Δy=$(glacier.Δy))";color=:red)
+    println("")
+    if !isnothing(glacier.cenlat) & !isnothing(glacier.cenlon)
+        print("at position ")
+        printstyled("($(round(glacier.cenlat;digits=6))°, $(round(glacier.cenlon;digits=6))°)";color=:green)
+    else
+        print("at undefined location")
+    end
+    if isnothing(glacier.H_glathida)
+        printstyled("   w/o";color=:red)
+    else
+        printstyled("   w/";color=:blue)
+    end
+    println(" glathida elevation")
+
+    if !isnothing(glacier.S) & !isnothing(glacier.H₀)
+        print("Min,mean,max bedrock elevation S : ")
+        printstyled("$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
+        print("Mean,max ice thickness H₀ : ")
+        printstyled("$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
+    end
+
+    print("A= ")
+    printstyled(@sprintf("%.3e", glacier.A); color=:blue)
+    print("  C= ")
+    printstyled(glacier.C; color=:blue)
+    print("  n= ")
+    printstyled(glacier.n; color=:blue)
+end
+
+# Vectorial form
+function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
+    len = length(glaciers)
+    print("$(len)-element $(typeof(glaciers))")
+    try
+        regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1] for glacier in glaciers])
+        regionsFormatted = ["$(k[1]) (x$(k[2]))" for k in regions]
+        println(" distributed over regions $(join(regionsFormatted, ", "))")
+    catch
+        println(" distributed over undefined regions")
+    end
+    if len>5
+        print(join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
+        print(" ... ")
+        println(join([glacier.rgi_id for glacier in glaciers[len-1:len]], " "))
+    else
+        println(join([glacier.rgi_id for glacier in glaciers], " "))
+    end
+end
+
+
 include("glacier2D_utils.jl")
 include("../climate/climate2D_utils.jl")
