@@ -12,7 +12,9 @@ include("../climate/Climate2D.jl")
 
 """
 A mutable struct representing a 2D glacier. Notice that all fields can be empty by
-providing `nothing` as the default value. `Glacier` objects should not be constructed 
+providing `nothing` as the default value. 
+
+/!\\ WARNING /!\\ `Glacier` objects should not be constructed 
 manually, but rather through the `initialize_glaciers` function.
 
 `Glacier2D{F <: AbstractFloat, I <: Integer}`
