@@ -4,10 +4,11 @@
 ###############################################
 
 export initialize_glacier_climate!, downscale_2D_climate!, downscale_2D_climate,
-        get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
-         apply_t_grad!, trim_period, partial_year, get_longterm_temps
+    get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
+    apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
-using Dates # to provide correct Julian time slices
+# Required in order to provide correct Julian time slices
+using Dates
 
 """
     initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)

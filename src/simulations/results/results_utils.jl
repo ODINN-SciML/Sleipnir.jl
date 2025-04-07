@@ -100,7 +100,13 @@ function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM
 end
 
 """
+    get_result_id_from_rgi(glacier_id::I, simulation::SIM) where {I <: Integer, SIM <: Simulation}
 
+Extract results of specific simulation from the `Simulation` object.
+
+# Arguments
+- `glacier_id::I`: Numerical ID of glacier used to generate simulation.
+- `simulation::SIM``: The simulation object containing the parameters and results.
 """
 function get_result_id_from_rgi(glacier_id::I, simulation::SIM) where {I <: Integer, SIM <: Simulation}
 
