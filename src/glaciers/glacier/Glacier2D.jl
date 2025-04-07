@@ -175,20 +175,67 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
 
 # Display setup
-# function Base.show(io::IO, glacier::Glacier2D)
-#     println(io) 
-#     println("Glacier:  $(glacier.rgi_id)")
-#     println("Available fields:")
-#     for key in fieldnames(Glacier2D)
-#         value = getproperty(glacier, key)
-#         if !isnothing(value)
-#             println("  * ", string(key))
-#         end
-#     end
-# end
-# # Vectorial form 
-# Base.show(io::IO, glaciers::Vector{Glacier2D}) = Base.show.(Ref(io), glaciers)
+function Base.show(io::IO, glacier::Glacier2D)
+    if !isnothing(glacier.H₀)
+        H=round.(255*glacier.H₀/maximum(glacier.H₀))
+        display(Gray.(Int.(H'[end:-1:1,1:end])/255))
+    end
 
-                                        
+    print("Glacier2D ")
+    printstyled(glacier.rgi_id;color=:yellow)
+    print(" with a ")
+    printstyled("$(glacier.nx)x$(glacier.ny)";color=:red)
+    print(" grid ")
+    printstyled("(Δx=$(glacier.Δx), Δy=$(glacier.Δy))";color=:red)
+    println("")
+    if !isnothing(glacier.cenlat) & !isnothing(glacier.cenlon)
+        print("at position ")
+        printstyled("($(round(glacier.cenlat;digits=6))°, $(round(glacier.cenlon;digits=6))°)";color=:green)
+    else
+        print("at undefined location")
+    end
+    if isnothing(glacier.H_glathida)
+        printstyled("   w/o";color=:red)
+    else
+        printstyled("   w/";color=:blue)
+    end
+    println(" glathida elevation")
+
+    if !isnothing(glacier.S) & !isnothing(glacier.H₀)
+        print("Min,mean,max bedrock elevation S : ")
+        printstyled("$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
+        print("Mean,max ice thickness H₀ : ")
+        printstyled("$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
+    end
+
+    print("A= ")
+    printstyled(@sprintf("%.3e", glacier.A); color=:blue)
+    print("  C= ")
+    printstyled(glacier.C; color=:blue)
+    print("  n= ")
+    printstyled(glacier.n; color=:blue)
+end
+
+# Vectorial form
+function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
+    len = length(glaciers)
+    print("$(len)-element $(typeof(glaciers))")
+    try
+        regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1] for glacier in glaciers])
+        regionsFormatted = ["$(k[1]) (x$(k[2]))" for k in regions]
+        println(" distributed over regions $(join(regionsFormatted, ", "))")
+    catch
+        println(" distributed over undefined regions")
+    end
+    if len>5
+        print(join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
+        print(" ... ")
+        println(join([glacier.rgi_id for glacier in glaciers[len-1:len]], " "))
+    else
+        println(join([glacier.rgi_id for glacier in glaciers], " "))
+    end
+end
+
+
 include("glacier2D_utils.jl")
 include("../climate/climate2D_utils.jl")

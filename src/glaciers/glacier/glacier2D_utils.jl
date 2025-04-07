@@ -398,8 +398,7 @@ This function filters out glaciers from the provided `rgi_ids` list based on two
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
     # Check which glaciers we can actually process
-    # pathCsv = "/home/.ODINN/rgi62_stats.csv"
-    pathCsv = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
+    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
     rgi_stats = CSV.File(pathCsv)
 
     # Remove level 2 glaciers
