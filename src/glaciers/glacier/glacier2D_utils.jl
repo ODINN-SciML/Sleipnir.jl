@@ -6,7 +6,7 @@ export initialize_glaciers
 ###############################################
 
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
+    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
 Initialize glaciers based on provided RGI IDs and parameters.
 
@@ -40,7 +40,7 @@ rgi_ids = ["RGI60-11.03638", "RGI60-11.01450", "RGI60-11.02346", "RGI60-08.00203
 glaciers = initialize_glaciers(rgi_ids, params)
 ```
 """
-function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=false)
+function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
     # Generate missing glaciers file
     missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
@@ -57,13 +57,13 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters; test=f
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
-        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
-        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     end
-        
-    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false, test=test), rgi_ids)
+
+    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
 
     if params.simulation.use_glathida_data == true
         
@@ -106,9 +106,9 @@ Initialize a glacier with the given RGI ID and parameters.
 # Returns
 - `glacier`: An initialized glacier object containing the initial topography and climate data.
 """
-function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false, test=false)
+function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
     # Initialize glacier initial topography
-    glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing, test=test)
+    glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
@@ -146,7 +146,7 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
+function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])

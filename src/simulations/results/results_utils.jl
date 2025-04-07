@@ -26,7 +26,9 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
 
     nSteps = (t₁-t₀) / Δt
     timeSteps = t₀ .+ collect(0:nSteps) .* Δt
-    solStepIndices = [findlast(==(val), solution.t) for val in timeSteps]
+    ϵ = 1e-6 # Need this because of numerical rounding
+    compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
+    solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
 
     t = light ? nothing : solution.t[solStepIndices]
     H = light ? [solution.u[begin],solution.u[end]] : solution.u[solStepIndices]
