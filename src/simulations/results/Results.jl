@@ -49,6 +49,15 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
     loss::Union{Nothing, Vector{F}}
 end
 
+Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
+                                    a.H_glathida == b.H_glathida && a.S == b.S &&
+                                    a.B == b.B && a.V == b.V && a.Vx == b.Vx &&
+                                    a.Vy == b.Vy && a.V_ref == b.V_ref &&
+                                    a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
+                                    a.Δx == b.Δx && a.Δy == b.Δy &&
+                                    a.lon == b.lon && a.lat == b.lat &&
+                                    a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
+                                    a.tspan == b.tspan && a.θ == b.θ && a.loss == b.loss
 
 """
     Results(glacier::G, ifm::IF;
