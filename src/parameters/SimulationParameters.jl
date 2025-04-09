@@ -36,7 +36,6 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     multiprocessing::Bool
     workers::I
     working_dir::String
-    light::Bool
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::String
@@ -106,7 +105,6 @@ function SimulationParameters(;
             multiprocessing::Bool = true,
             workers::I = 4,
             working_dir::String = "",
-            light::Bool = true, 
             test_mode::Bool = false,
             rgi_paths::Dict{String, String} = Dict{String, String}(),
             ice_thickness_source::String = "Farinotti19",
@@ -122,8 +120,8 @@ function SimulationParameters(;
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
-                                                Sleipnir.Float.(tspan), Sleipnir.Float(step), multiprocessing, Sleipnir.Int(workers), working_dir, 
-                                                light, test_mode, rgi_paths, ice_thickness_source)
+                                                Sleipnir.Float.(tspan), Sleipnir.Float(step), multiprocessing, Sleipnir.Int(workers), working_dir,
+                                                test_mode, rgi_paths, ice_thickness_source)
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
@@ -135,5 +133,5 @@ end
 Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots &&
                                       a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
-                                      a.workers == b.workers && a.working_dir == b.working_dir && a.light == b.light && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
+                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
                                       a.ice_thickness_source == b.ice_thickness_source
