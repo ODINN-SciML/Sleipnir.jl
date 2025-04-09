@@ -14,6 +14,7 @@ import NCDatasets
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
+include("results.jl")
 include("plot_utils.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
@@ -28,6 +29,8 @@ ENV["GKSwstype"]="nul"
 @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(use_glathida_data=false, save_refs=false)
 
 @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
+
+@testset "Results instantiation" results_default(save_refs=false)
 
 # @testset "Glaciers 2D plots" glaciers2D_plots()
 
