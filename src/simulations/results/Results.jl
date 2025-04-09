@@ -31,35 +31,49 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
     H_glathida::Union{Nothing, Vector{Matrix{F}}}
     S::Matrix{F}
     B::Matrix{F}
-    V::Matrix{F}
-    Vx::Matrix{F}
-    Vy::Matrix{F}
-    V_ref::Union{Nothing, Matrix{F}}
-    Vx_ref::Union{Nothing, Matrix{F}}
-    Vy_ref::Union{Nothing, Matrix{F}}
-    Δx::F             
-    Δy::F  
-    lon::Union{Nothing, F} 
-    lat::Union{Nothing, F} 
+    V::Union{Nothing, Vector{Matrix{F}}}
+    Vx::Union{Nothing, Vector{Matrix{F}}}
+    Vy::Union{Nothing, Vector{Matrix{F}}}
+    V_ref::Union{Nothing, Vector{Matrix{F}}}
+    Vx_ref::Union{Nothing, Vector{Matrix{F}}}
+    Vy_ref::Union{Nothing, Vector{Matrix{F}}}
+    Δx::F
+    Δy::F
+    lon::Union{Nothing, F}
+    lat::Union{Nothing, F}
     nx::I
     ny::I
     t::Union{Vector{F}, Nothing}
     tspan::Union{Tuple{F, F}, Nothing}
     θ::Union{Nothing, ComponentArray{F}}
-    loss::Union{Nothing, Vector{F}}          
+    loss::Union{Nothing, Vector{F}}
 end
 
 
 """
-    Results(glacier::G, ifm::IF; rgi_id::String = glacier.rgi_id, H::Vector{Matrix{F}} = Vector{Matrix{F}}([]), 
-            H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida, S::Matrix{F} = zeros(F, size(ifm.S)), 
-            B::Matrix{F} = zeros(F, size(ifm.B)), V::Matrix{F} = zeros(F, size(ifm.V)), 
-            Vx::Matrix{F} = zeros(F, size(ifm.Vx)), Vy::Matrix{F} = zeros(F, size(ifm.Vy)), 
-            V_ref::Union{Nothing, Matrix{F}} = glacier.V, Vx_ref::Union{Nothing, Matrix{F}} = glacier.Vx, 
-            Vy_ref::Union{Nothing, Matrix{F}} = glacier.Vy, Δx::F = glacier.Δx, Δy::F = glacier.Δy, 
-            lon::Union{Nothing, F} = glacier.cenlon, lat::Union{Nothing, F} = glacier.cenlat, 
-            nx::I = glacier.nx, ny::I = glacier.ny, θ::Union{Nothing, ComponentArray{F}} = nothing,
-            loss::Union{Nothing, Vector{F}} = Nothing) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel}
+    Results(glacier::G, ifm::IF;
+        rgi_id::String = glacier.rgi_id,
+        H::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
+        S::Union{Nothing, Matrix{F}} = nothing,
+        B::Union{Nothing, Matrix{F}} = nothing,
+        V::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vx::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vy::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        V_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vx_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vy_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Δx::F = glacier.Δx,
+        Δy::F = glacier.Δy,
+        lon::Union{Nothing, F} = glacier.cenlon,
+        lat::Union{Nothing, F} = glacier.cenlat,
+        nx::I = glacier.nx,
+        ny::I = glacier.ny,
+        t::Union{Vector{F}, Nothing} = nothing,
+        tspan::Union{Tuple{F, F}, Nothing} = nothing,
+        θ::Union{Nothing,ComponentArray{F}} = nothing,
+        loss::Union{Nothing,Vector{F}} = nothing
+    ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
 
 Construct a `Results` object for a glacier simulation.
 
@@ -67,16 +81,16 @@ Construct a `Results` object for a glacier simulation.
 - `glacier::G`: The glacier object, subtype of `AbstractGlacier`.
 - `ifm::IF`: The model object, subtype of `AbstractModel`.
 - `rgi_id::String`: The RGI identifier for the glacier. Defaults to `glacier.rgi_id`.
-- `H::Vector{Matrix{F}}`: Ice thickness matrices. Defaults to an empty vector.
+- `H::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness matrices. Defaults to nothing.
 - `H_glathida::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness from GlaThiDa. Defaults to `glacier.H_glathida`.
-- `S::Matrix{F}`: Surface elevation matrix. Defaults to a zero matrix of the same size as `ifm.S`.
-- `B::Matrix{F}`: Bed elevation matrix. Defaults to a zero matrix of the same size as `ifm.B`.
-- `V::Matrix{F}`: Velocity magnitude matrix. Defaults to a zero matrix of the same size as `ifm.V`.
-- `Vx::Matrix{F}`: Velocity in the x-direction matrix. Defaults to a zero matrix of the same size as `ifm.Vx`.
-- `Vy::Matrix{F}`: Velocity in the y-direction matrix. Defaults to a zero matrix of the same size as `ifm.Vy`.
-- `V_ref::Union{Nothing, Matrix{F}}`: Reference velocity magnitude matrix. Defaults to `glacier.V`.
-- `Vx_ref::Union{Nothing, Matrix{F}}`: Reference velocity in the x-direction matrix. Defaults to `glacier.Vx`.
-- `Vy_ref::Union{Nothing, Matrix{F}}`: Reference velocity in the y-direction matrix. Defaults to `glacier.Vy`.
+- `S::Union{Nothing, Matrix{F}}`: Surface elevation matrix. Defaults to a zero matrix of the same size as `ifm.S`.
+- `B::Union{Nothing, Matrix{F}}`: Bed elevation matrix. Defaults to a zero matrix of the same size as `glacier.B`.
+- `V::Union{Nothing, Vector{Matrix{F}}}`: Velocity magnitude matrix. Defaults to nothing.
+- `Vx::Union{Nothing, Vector{Matrix{F}}}`: Velocity in the x-direction matrix. Defaults to nothing.
+- `Vy::Union{Nothing, Vector{Matrix{F}}}`: Velocity in the y-direction matrix. Defaults to nothing.
+- `V_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference velocity magnitude matrix. Defaults to nothing.
+- `Vx_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference velocity in the x-direction matrix. Defaults to nothing.
+- `Vy_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference velocity in the y-direction matrix. Defaults to nothing.
 - `Δx::F`: Grid spacing in the x-direction. Defaults to `glacier.Δx`.
 - `Δy::F`: Grid spacing in the y-direction. Defaults to `glacier.Δy`.
 - `lon::Union{Nothing, F}`: Longitude of the glacier center. Defaults to `glacier.cenlon`.
@@ -92,36 +106,42 @@ Construct a `Results` object for a glacier simulation.
 """
 function Results(glacier::G, ifm::IF;
         rgi_id::String = glacier.rgi_id,
-        H::Vector{Matrix{F}} = Vector{Matrix{F}}([]),
+        H::Union{Nothing, Vector{Matrix{F}}} = nothing,
         H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
-        S::Matrix{F} = zeros(F, size(ifm.S)),
-        B::Matrix{F} = zeros(F, size(ifm.B)),
-        V::Matrix{F} = zeros(F, size(ifm.V)),
-        Vx::Matrix{F} = zeros(F, size(ifm.Vx)),
-        Vy::Matrix{F} = zeros(F, size(ifm.Vy)),
-        V_ref::Union{Nothing, Matrix{F}} = glacier.V,
-        Vx_ref::Union{Nothing, Matrix{F}} = glacier.Vx,
-        Vy_ref::Union{Nothing, Matrix{F}} = glacier.Vy,
+        S::Union{Nothing, Matrix{F}} = nothing,
+        B::Union{Nothing, Matrix{F}} = nothing,
+        V::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vx::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vy::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        V_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vx_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
+        Vy_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
         Δx::F = glacier.Δx,
         Δy::F = glacier.Δy,
-        lon::Union{Nothing, F}  = glacier.cenlon,
-        lat::Union{Nothing, F}  = glacier.cenlat,
+        lon::Union{Nothing, F} = glacier.cenlon,
+        lat::Union{Nothing, F} = glacier.cenlat,
         nx::I = glacier.nx,
         ny::I = glacier.ny,
-        t::Union{Vector{F}, Nothing} = nothing, 
+        t::Union{Vector{F}, Nothing} = nothing,
         tspan::Union{Tuple{F, F}, Nothing} = nothing,
         θ::Union{Nothing,ComponentArray{F}} = nothing,
-        loss::Union{Nothing,Vector{F}} = nothing                 
+        loss::Union{Nothing,Vector{F}} = nothing
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
 
+    if isnothing(H)
+        H = Vector{Matrix{F}}([])
+    end
+    if isnothing(S)
+        S = zeros(F, size(ifm.S))
+    end
+    if isnothing(B)
+        B = zeros(F, size(glacier.B))
+    end
     # Build the results struct based on input values
     results = Results{F, I}(rgi_id, H, H_glathida, S, B,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
-                      θ, loss)                
+                      θ, loss)
 
     return results
 end
-
-
-
