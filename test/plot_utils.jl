@@ -1,53 +1,50 @@
-function glaciers2D_plots()
+include("iceflow_def.jl")
 
-    # Load glacier data
-    @load (joinpath(@__DIR__,"data/glaciers/glaciers2D_test_temporal.jld2")) results
+function glaciers2D_plots()
+    rgi_paths = get_rgi_paths()
+    rgi_ids = ["RGI60-07.00042"]
+    rgi_paths = Dict(k => rgi_paths[k] for k in rgi_ids)
+
+    params = Parameters(
+        simulation=SimulationParameters(
+            velocities=false,
+            use_glathida_data=false,
+            working_dir=Sleipnir.root_dir,
+            test_mode=true,
+            rgi_paths=rgi_paths
+        )
+    )
+    glaciers = initialize_glaciers(rgi_ids, params)
+
+    S = glaciers[1].S
+    ifm = SimpleIceflowModel{Sleipnir.Float}(S)
+
+    results = Results(
+        glaciers[1],
+        ifm;
+        H = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))]
+    )
 
     # Test execution
     @testset "plot_glacier tests" begin
         @testset "Heatmaps" begin
-            try
-                plot_glacier(results[1], "heatmaps", [:H,:B])
-                @test true
-            catch
-                @test false
-            end
+            plot_glacier(results, "heatmaps", [:H,:B])
         end
 
         @testset "Statistics Evolution" begin
-            try
-                plot_glacier(results[1], "evolution statistics", [:H], tspan=(2010.0,2015.0), metrics=["average","std","max","median","min"])
-                @test true
-            catch
-                @test false
-            end
+            plot_glacier(results, "evolution statistics", [:H], tspan=(2010.0,2015.0), metrics=["average","std","max","median","min"])
         end
 
         @testset "Difference Evolution" begin
-            try
-                plot_glacier(results[1], "evolution difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"])
-                @test true
-            catch
-                @test false
-            end
+            plot_glacier(results, "evolution difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"])
         end
 
         @testset "Integrated Volume" begin
-            try
-                plot_glacier(results[1], "integrated volume", [:H], tspan=(2010.0,2015.0))
-                @test true
-            catch
-                @test false
-            end
+            plot_glacier(results, "integrated volume", [:H], tspan=(2010.0,2015.0))
         end
 
         @testset "Bias" begin
-            try
-                plot_glacier(results[1], "bias", [:B,:S])
-                @test true
-            catch
-                @test false
-            end
+            plot_glacier(results, "bias", [:B,:S])
         end
     end
 end
