@@ -15,6 +15,7 @@ import NCDatasets
 include("params_construction.jl")
 include("glaciers_construction.jl")
 include("plot_utils.jl")
+include("results.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
@@ -29,8 +30,10 @@ ENV["GKSwstype"]="nul"
 
 @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
 
-# @testset "Glaciers 2D plots" glaciers2D_plots()
+@testset "Glaciers 2D plots" glaciers2D_plots()
 
 @testset "Video plot test" make_thickness_video_test()
+
+@testset "Results instantiation" results_default(save_refs=false)
 
 end
