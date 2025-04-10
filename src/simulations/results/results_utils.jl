@@ -6,7 +6,7 @@
         loss=nothing;
         light=false,
         batch_id::Union{Nothing, I}=nothing,
-        processVelocity::Function=nothing
+        processVelocity::Union{Nothing, Function}=nothing
     ) where {SIM <: Simulation, I <: Integer}
 
 Create a `Results` object from a given simulation and solution.
@@ -18,7 +18,7 @@ Create a `Results` object from a given simulation and solution.
 - `loss=nothing`: The loss value, default is `nothing`.
 - `light=false`: A boolean flag to indicate if only the first and last steps of the solution should be used.
 - `batch_id::Union{Nothing, I}=nothing`: The batch ID, default is `nothing`.
-- `processVelocity::Function=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the batch ID and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+- `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the batch ID and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
 - `results`: A `Results` object containing the processed simulation data.
@@ -33,7 +33,7 @@ function create_results(
     loss=nothing;
     light=false,
     batch_id::Union{Nothing, I}=nothing,
-    processVelocity::Function=nothing
+    processVelocity::Union{Nothing, Function}=nothing
 ) where {SIM <: Simulation, I <: Integer}
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
