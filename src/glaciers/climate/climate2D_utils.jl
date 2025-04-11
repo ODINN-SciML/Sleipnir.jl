@@ -8,7 +8,7 @@ export initialize_glacier_climate!, downscale_2D_climate!, downscale_2D_climate,
     apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
 # Required in order to provide correct Julian time slices
-using Dates
+# using Dates
 
 """
     initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
@@ -29,7 +29,6 @@ This function initializes the climate data for a glacier by:
 6. Storing the climate data in the glacier object, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
 """
 function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
-
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
     raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
     if Sleipnir.doublePrec
