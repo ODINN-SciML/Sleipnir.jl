@@ -174,18 +174,23 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
         # H₀[H_mask] .= 0.0
+        nx = glacier_grid["nxny"][1]
+        ny = glacier_grid["nxny"][2]
 
         # Mercator Projection
         params_projection = parse_proj(glacier_grid["proj"])
-        transform(X,Y) = UTMercator(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
-                        x0=params_projection["x_0"], y0=params_projection["y_0"])
+        transform(X,Y) = UTMercator(
+            X, Y;
+            k=params_projection["k"],
+            cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"],
+            x0=params_projection["x_0"], y0=params_projection["y_0"]
+        )
         easting = dims(glacier_gd, 1).val
         northing = dims(glacier_gd, 2).val
         latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
-        x0y0 = transform(glacier_grid["x0y0"][1], glacier_grid["x0y0"][2])
-        cenlon::Sleipnir.Float = x0y0.lon.val
-        cenlat::Sleipnir.Float = x0y0.lat.val
+        cenlon::Sleipnir.Float = longitudes[Int(round(nx/2))]
+        cenlat::Sleipnir.Float = latitudes[Int(round(ny/2))]
         if maximum(abs.(latitudes)) > 80
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
@@ -209,15 +214,15 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             Vx = zeros(F, size(H₀))
             Vy = zeros(F, size(H₀))
         end
-        nx = glacier_grid["nxny"][1]
-        ny = glacier_grid["nxny"][2]
-        Δx = abs.(glacier_grid["dxdy"][1])
-        Δy = abs.(glacier_grid["dxdy"][2])
-        slope = glacier_gd.slope.data
+        Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
+        Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
+        slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
+        name = get(get_rgi_names(), rgi_id, "")
 
         # We initialize the Glacier with all the initial topographical
         glacier = Glacier2D(
             rgi_id = rgi_id,
+            name = name,
             climate = nothing,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
@@ -497,7 +502,7 @@ function parse_proj(proj::String)
     ℓ = split(proj, (' ', '+', '='))
     ℓ = ℓ[ℓ .!= ""]
     for (i, key) in enumerate(ℓ)
-        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0"]
+        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0", "zone"]
             res[key] = parse(Float64, ℓ[i+1])
         end
     end
@@ -505,7 +510,7 @@ function parse_proj(proj::String)
 end
 
 """
-    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0)
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
 
 Transverse Mercator Projection.
 This function reprojects northing/easting coordinates into latitude/longitude.

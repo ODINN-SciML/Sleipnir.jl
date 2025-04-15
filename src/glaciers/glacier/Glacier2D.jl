@@ -21,6 +21,7 @@ manually, but rather through the `initialize_glaciers` function.
 
 # Fields
 - `rgi_id::Union{String, Nothing}`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
+- `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
 - `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from the GLATHIDA dataset.
@@ -44,6 +45,7 @@ manually, but rather through the `initialize_glaciers` function.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
+    name::String
     climate::Union{Climate2D, Nothing}
     H₀::Union{Matrix{F}, Nothing}
     H_glathida::Union{Matrix{F}, Nothing}
@@ -72,6 +74,7 @@ end
 Constructs a `Glacier2D` object with the given parameters, including default ones.
 
     Glacier2D(; rgi_id::Union{String, Nothing} = nothing,
+              name::String = "",
               climate::Union{Climate2D, Nothing} = nothing,
               H₀::Union{Matrix{F}, Nothing} = nothing,
               H_glathida::Union{Matrix{F}, Nothing} = nothing,
@@ -95,6 +98,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 
 # Arguments
 - `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
+- `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
 - `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from GLATHIDA.
@@ -121,6 +125,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 """
 function Glacier2D(;
     rgi_id::Union{String, Nothing} = nothing,
+    name::String = "",
     climate::Union{Climate2D, Nothing} = nothing,
     H₀::Union{Matrix{F}, Nothing} = nothing,
     H_glathida::Union{Matrix{F}, Nothing} = nothing,
@@ -149,7 +154,7 @@ function Glacier2D(;
     ft = Sleipnir.Float
     it = Sleipnir.Int
 
-    return Glacier2D{ft,it}(rgi_id, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, data)
+    return Glacier2D{ft,it}(rgi_id, name, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, data)
 end
 
 ###############################################
@@ -157,7 +162,8 @@ end
 ###############################################
 
 
-Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b.climate &&
+Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
+                                      a.climate == b.climate &&
                                       a.H₀ == b.H₀ && a.H_glathida == b.H_glathida && a.S == b.S && a.B == b.B && a.V == b.V &&
                                       a.A == b.A && a.C == b.C && a.n == b.n &&
                                       a.slope == b.slope && a.dist_border == b.dist_border &&
@@ -165,7 +171,8 @@ Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b.
                                       a.cenlon == b.cenlon && a.cenlat == b.cenlat
 
 
-Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b.climate &&
+Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
+                                        a.climate == b.climate &&
                                         safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) &&
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
                                         safe_approx(a.A, b.A) && safe_approx(a.C, b.C) && safe_approx(a.n, b.n) &&
@@ -182,7 +189,8 @@ function Base.show(io::IO, glacier::Glacier2D)
     end
 
     print("Glacier2D ")
-    printstyled(glacier.rgi_id;color=:yellow)
+    strName = glacier.name=="" ? "" : " ($(glacier.name))"
+    printstyled("$(glacier.rgi_id)$(strName)";color=:yellow)
     print(" with a ")
     printstyled("$(glacier.nx)x$(glacier.ny)";color=:red)
     print(" grid ")

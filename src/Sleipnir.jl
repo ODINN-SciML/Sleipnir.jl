@@ -24,7 +24,6 @@ import NCDatasets
 using Unitful: m, rad, °
 using CoordRefSystems
 using Dates, DateFormats
-using NetCDF
 using GR
 using DataStructures
 using ImageInTerminal
@@ -52,10 +51,10 @@ end
 include("setup/config.jl")
 # All parameters needed for the models
 include("parameters/Parameters.jl")
-# Anything related to managing glacier data used for data assimilation
-include("glaciers/data/Data.jl")
 # Anything related to managing glacier topographical and climate variables
 include("glaciers/glacier/Glacier.jl")
+# Anything related to managing glacier data used for data assimilation
+include("glaciers/data/Data.jl")
 # All structures and functions related to ODINN models
 include("models/Model.jl")
 # Everything related to running simulations in ODINN

@@ -1,5 +1,7 @@
 export SurfaceVelocityData
 
+include("surfacevelocitydata_utils.jl")
+
 """
 A mutable struct representing a surface velocity data. Notice that all fields can be empty
 by providing `nothing` as the default value.
@@ -11,9 +13,9 @@ by providing `nothing` as the default value.
  - `y::Union{Vector{F}, Nothing}`: Northing of observation.
  - `lat::Union{Vector{F}, Nothing}`: Latitude of observation.
  - `lon::Union{Vector{F}, Nothing}`: Longitude of observation.
- - `vx::Union{Array{F, 3}, Nothing}`: x component of surface velocity.
- - `vy::Union{Array{F, 3}, Nothing}`: y component of surface velocity.
- - `vabs::Union{Array{F, 3}, Nothing}`: Absolute ice surface velocity.
+ - `vx::Union{Array{Union{Missing, F}, 3}, Nothing}`: x component of surface velocity.
+ - `vy::Union{Array{Union{Missing, F}, 3}, Nothing}`: y component of surface velocity.
+ - `vabs::Union{Array{Union{Missing, F}, 3}, Nothing}`: Absolute ice surface velocity.
  - `vx_error::Union{Array{F, 1}, Nothing}`: Error in `vx`
  - `vy_error::Union{Array{F, 1}, Nothing}`: Error in `vy`
  - `vabs_error::Union{Array{F, 1}, Nothing}`: Error in `vabs`.
@@ -27,9 +29,9 @@ mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
     y::Union{Vector{F}, Nothing}
     lat::Union{Vector{F}, Nothing}
     lon::Union{Vector{F}, Nothing}
-    vx::Union{Array{F, 3}, Nothing}
-    vy::Union{Array{F, 3}, Nothing}
-    vabs::Union{Array{F, 3}, Nothing}
+    vx::Union{Array{Union{Missing, F}, 3}, Nothing}
+    vy::Union{Array{Union{Missing, F}, 3}, Nothing}
+    vabs::Union{Array{Union{Missing, F}, 3}, Nothing}
     vx_error::Union{Array{F, 1}, Nothing}
     vy_error::Union{Array{F, 1}, Nothing}
     vabs_error::Union{Array{F, 1}, Nothing}
@@ -48,9 +50,9 @@ function SurfaceVelocityData(;
     y::Union{Vector{F}, Nothing} = nothing,
     lat::Union{Vector{F}, Nothing} = nothing,
     lon::Union{Vector{F}, Nothing} = nothing,
-    vx::Union{Array{F, 3}, Nothing} = nothing,
-    vy::Union{Array{F, 3}, Nothing} = nothing,
-    vabs::Union{Array{F, 3}, Nothing} = nothing,
+    vx::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
+    vy::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
+    vabs::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
     vx_error::Union{Array{F, 1}, Nothing} = nothing,
     vy_error::Union{Array{F, 1}, Nothing} = nothing,
     vabs_error::Union{Array{F, 1}, Nothing} = nothing,
@@ -80,9 +82,9 @@ function SurfaceVelocityData(;
     y::Union{Vector{F}, Nothing} = nothing,
     lat::Union{Vector{F}, Nothing} = nothing,
     lon::Union{Vector{F}, Nothing} = nothing,
-    vx::Union{Array{F, 3}, Nothing} = nothing,
-    vy::Union{Array{F, 3}, Nothing} = nothing,
-    vabs::Union{Array{F, 3}, Nothing} = nothing,
+    vx::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
+    vy::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
+    vabs::Union{Array{Union{Missing, F}, 3}, Nothing} = nothing,
     vx_error::Union{Array{F, 1}, Nothing} = nothing,
     vy_error::Union{Array{F, 1}, Nothing} = nothing,
     vabs_error::Union{Array{F, 1}, Nothing} = nothing,
@@ -100,6 +102,3 @@ function SurfaceVelocityData(;
         date, date1, date2, date_error
     )
 end
-
-
-include("surfacevelocitydata_utils.jl")
