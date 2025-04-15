@@ -217,7 +217,11 @@ function Base.show(io::IO, glacier::Glacier2D)
 end
 
 # Vectorial form
+# If you don't understand what's going on below, refer to https://discourse.julialang.org/t/improving-doc-for-display-print-show-repr/69124/3
 function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
+    return Base.show(io, glaciers)
+end
+function Base.show(io::IO, glaciers::Vector{G}) where {G <: AbstractGlacier}
     len = length(glaciers)
     print("$(len)-element $(typeof(glaciers))")
     try
