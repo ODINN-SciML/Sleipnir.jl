@@ -42,6 +42,7 @@ manually, but rather through the `initialize_glaciers` function.
 - `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
 - `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
+- `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
@@ -66,6 +67,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     ny::Union{I, Nothing}
     cenlon::Union{F, Nothing}
     cenlat::Union{F, Nothing}
+    params_projection::Dict{String, Float64}
     # data::Union{Vector{DAT}, Nothing} # We ideally want this, but not clear how to specify concrete DAT type.
     data::Union{Vector, Nothing}
 end
@@ -73,28 +75,32 @@ end
 """
 Constructs a `Glacier2D` object with the given parameters, including default ones.
 
-    Glacier2D(; rgi_id::Union{String, Nothing} = nothing,
-              name::String = "",
-              climate::Union{Climate2D, Nothing} = nothing,
-              H₀::Union{Matrix{F}, Nothing} = nothing,
-              H_glathida::Union{Matrix{F}, Nothing} = nothing,
-              S::Union{Matrix{F}, Nothing} = nothing,
-              B::Union{Matrix{F}, Nothing} = nothing,
-              V::Union{Matrix{F}, Nothing} = nothing,
-              Vx::Union{Matrix{F}, Nothing} = nothing,
-              Vy::Union{Matrix{F}, Nothing} = nothing,
-              A::Union{F, Nothing} = nothing,
-              C::Union{F, Nothing} = nothing,
-              n::Union{F, Nothing} = nothing,
-              slope::Union{Matrix{F}, Nothing} = nothing,
-              dist_border::Union{Matrix{F}, Nothing} = nothing,
-              Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-              Δx::Union{F, Nothing} = nothing,
-              Δy::Union{F, Nothing} = nothing,
-              nx::Union{I, Nothing} = nothing,
-              ny::Union{I, Nothing} = nothing,
-              cenlon::Union{F, Nothing} = nothing,
-              cenlat::Union{F, Nothing} = nothing) where {F <: AbstractFloat, I <: Integer}
+    Glacier2D(;
+        rgi_id::Union{String, Nothing} = nothing,
+        name::String = "",
+        climate::Union{Climate2D, Nothing} = nothing,
+        H₀::Union{Matrix{F}, Nothing} = nothing,
+        H_glathida::Union{Matrix{F}, Nothing} = nothing,
+        S::Union{Matrix{F}, Nothing} = nothing,
+        B::Union{Matrix{F}, Nothing} = nothing,
+        V::Union{Matrix{F}, Nothing} = nothing,
+        Vx::Union{Matrix{F}, Nothing} = nothing,
+        Vy::Union{Matrix{F}, Nothing} = nothing,
+        A::Union{F, Nothing} = nothing,
+        C::Union{F, Nothing} = nothing,
+        n::Union{F, Nothing} = nothing,
+        slope::Union{Matrix{F}, Nothing} = nothing,
+        dist_border::Union{Matrix{F}, Nothing} = nothing,
+        Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+        Δx::Union{F, Nothing} = nothing,
+        Δy::Union{F, Nothing} = nothing,
+        nx::Union{I, Nothing} = nothing,
+        ny::Union{I, Nothing} = nothing,
+        cenlon::Union{F, Nothing} = nothing,
+        cenlat::Union{F, Nothing} = nothing,
+        params_projection::Dict{String, Float64} = Dict{String, Float64}(),
+        data::Union{Vector, Nothing} = nothing,
+    ) where {F <: AbstractFloat, I <: Integer}
 
 # Arguments
 - `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
@@ -119,6 +125,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
 - `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
+- `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
 
 # Returns
 - A `Glacier2D` object with the specified parameters.
@@ -131,9 +138,9 @@ function Glacier2D(;
     H_glathida::Union{Matrix{F}, Nothing} = nothing,
     S::Union{Matrix{F}, Nothing} = nothing,
     B::Union{Matrix{F}, Nothing} = nothing,
-    V::Union{Matrix{F}, Nothing}= nothing,
-    Vx::Union{Matrix{F}, Nothing}= nothing,
-    Vy::Union{Matrix{F}, Nothing}= nothing,
+    V::Union{Matrix{F}, Nothing} = nothing,
+    Vx::Union{Matrix{F}, Nothing} = nothing,
+    Vy::Union{Matrix{F}, Nothing} = nothing,
     A::Union{F, Nothing} = nothing,
     C::Union{F, Nothing} = nothing,
     n::Union{F, Nothing} = nothing,
@@ -146,15 +153,16 @@ function Glacier2D(;
     ny::Union{I, Nothing} = nothing,
     cenlon::Union{F, Nothing} = nothing,
     cenlat::Union{F, Nothing} = nothing,
-    # data::Union{Vector{DAT}, Nothing} = nothing
-    data::Union{Vector, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer}
+    params_projection::Dict{String, Float64} = Dict{String, Float64}(),
+    # data::Union{Vector{DAT}, Nothing} = nothing,
+    data::Union{Vector, Nothing} = nothing,
+) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
     ft = Sleipnir.Float
     it = Sleipnir.Int
 
-    return Glacier2D{ft,it}(rgi_id, name, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, data)
+    return Glacier2D{ft,it}(rgi_id, name, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, params_projection, data)
 end
 
 ###############################################
@@ -168,7 +176,8 @@ Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.nam
                                       a.A == b.A && a.C == b.C && a.n == b.n &&
                                       a.slope == b.slope && a.dist_border == b.dist_border &&
                                       a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx && a.ny == b.ny &&
-                                      a.cenlon == b.cenlon && a.cenlat == b.cenlat
+                                      a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
+                                      a.params_projection == b.params_projection
 
 
 Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
@@ -179,7 +188,8 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
                                         safe_approx(a.Coords, b.Coords) && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
                                         safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny) &&
-                                        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
+                                        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
+                                        safe_approx(a.params_projection, b.params_projection)
 
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)

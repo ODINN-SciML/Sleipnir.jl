@@ -10,10 +10,15 @@ using JLD2
 using Infiltrator
 using CairoMakie
 using JSON
+using Rasters
 import NCDatasets
+using DimensionalData
+using Dates
+using DateFormats
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
+include("surface_velocity.jl")
 include("plot_utils.jl")
 include("results.jl")
 
@@ -29,6 +34,8 @@ ENV["GKSwstype"]="nul"
 @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(use_glathida_data=false, save_refs=false)
 
 @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
+
+@testset "Surface velocity datacube" surface_velocity_data()
 
 @testset "Glaciers 2D plots" glaciers2D_plots()
 
