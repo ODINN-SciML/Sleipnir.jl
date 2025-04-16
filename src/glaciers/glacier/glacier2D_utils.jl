@@ -5,7 +5,6 @@ export is_in_glacier
 ###############################################
 ############  FUNCTIONS   #####################
 ###############################################
-
 """
     initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
@@ -58,13 +57,12 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
     # Generate raw climate data if necessary
     if params.simulation.test_mode
         map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
-        # glaciers::Vector{Glacier2D} = map((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
-        # glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
     end
+   
+    glaciers = pmap((rgi_id) -> initialize_glacier(rgi_id, params), rgi_ids)
 
-    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params; smoothing=false), rgi_ids)
 
     if params.simulation.use_glathida_data == true
 
@@ -113,6 +111,9 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
+
+    @show @__MODULE__
+    @show DateTime
 
     return glacier
 end
@@ -200,9 +201,9 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         if params.simulation.velocities
             # All matrices need to be reversed
-            V::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
-            Vx::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
-            Vy::Matrix{Sleipnir.Float} = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
+            V = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
+            Vx = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
+            Vy = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
@@ -213,9 +214,9 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         end
         nx = glacier_grid["nxny"][1]
         ny = glacier_grid["nxny"][2]
-        Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
-        Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
-        slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
+        Δx = abs.(glacier_grid["dxdy"][1])
+        Δy = abs.(glacier_grid["dxdy"][2])
+        slope = glacier_gd.slope.data
 
         # We initialize the Glacier with all the initial topographical
         glacier = Glacier2D(
