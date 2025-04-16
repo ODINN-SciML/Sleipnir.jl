@@ -178,7 +178,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         ny = glacier_grid["nxny"][2]
 
         # Mercator Projection
-        params_projection = parse_proj(glacier_grid["proj"])
+        params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
         transform(X,Y) = UTMercator(
             X, Y;
             k=params_projection["k"],
@@ -228,7 +228,8 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
             slope = slope, dist_border = dist_border,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
-            cenlon = cenlon, cenlat = cenlat
+            cenlon = cenlon, cenlat = cenlat,
+            params_projection = params_projection
         )
         return glacier
 
@@ -542,6 +543,42 @@ function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0
     end
 
     return convert(LatLon, projection)
+end
+
+"""
+    ReverseUTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+
+Transverse Mercator Projection.
+This function reprojects latitude/longitude into northing/easting coordinates.
+
+Keyword arguments
+=================
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
+"""
+function ReverseUTMercator(lat::F, lon::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+
+    if !isnothing(zone)
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}
+    end
+
+    latlon = LatLon(lat, lon)
+    return convert(projection, latlon)
 end
 
 """
