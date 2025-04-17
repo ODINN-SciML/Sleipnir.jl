@@ -6,7 +6,11 @@ export is_in_glacier
 ############  FUNCTIONS   #####################
 ###############################################
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
+    initialize_glaciers(
+        rgi_ids::Vector{String},
+        params::Parameters;
+        velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict(),
+    )
 
 Initialize glaciers based on provided RGI IDs and parameters.
 
@@ -14,6 +18,7 @@ Initialize glaciers based on provided RGI IDs and parameters.
 - `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
 - `test::Bool`: An optional boolean flag indicating whether to run in test mode. Default is `false`.
+- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
 - `glaciers::Vector{Glacier2D}`: A vector of initialized `Glacier2D` objects.
@@ -40,7 +45,11 @@ rgi_ids = ["RGI60-11.03638", "RGI60-11.01450", "RGI60-11.02346", "RGI60-08.00203
 glaciers = initialize_glaciers(rgi_ids, params)
 ```
 """
-function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
+function initialize_glaciers(
+    rgi_ids::Vector{String},
+    params::Parameters;
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+)
 
     # Generate missing glaciers file
     missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
@@ -56,13 +65,18 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
     # Generate raw climate data if necessary
     if params.simulation.test_mode
-        map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
+        # Avoid GitHub CI issue
+        map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
 
-    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params), rgi_ids)
+    glaciers::Vector{Glacier2D} = pmap(
+        (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
+        rgi_ids
+    )
 
+    # TODO: check that the velocityData are properly initialized after the pmap
 
     if params.simulation.use_glathida_data == true
 
@@ -101,16 +115,28 @@ Initialize a glacier with the given RGI ID and parameters.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
 - `parameters::Parameters`: A struct containing various parameters required for initialization.
 - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
 - `glacier`: An initialized glacier object containing the initial topography and climate data.
 """
-function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
+function initialize_glacier(
+    rgi_id::String,
+    parameters::Parameters;
+    smoothing=false,
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+)
     # Initialize glacier initial topography
     glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
+
+    if get(velocityDatacubes, glacier.rgi_id, "") != ""
+        mapping = parameters.simulation.mapping
+        refVelocity = initialize_surfacevelocitydata(velocityDatacubes[glacier.rgi_id]; glacier=glacier, mapping=mapping)
+        glacier.velocityData = refVelocity
+    end
 
     return glacier
 end
@@ -199,7 +225,6 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
         S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
-        #smooth!(S)
 
         if params.simulation.velocities
             # All matrices need to be reversed

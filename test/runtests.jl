@@ -41,6 +41,8 @@ ENV["GKSwstype"]="nul"
 
 @testset "Video plot test" make_thickness_video_test()
 
-@testset "Results instantiation" results_default(save_refs=false)
+@testset "Results instantiation w/o velocity datacube" results_default(save_refs=false)
+
+@testset "Results instantiation w/ velocity datacube" results_default(save_refs=false, useDatacube=true)
 
 end

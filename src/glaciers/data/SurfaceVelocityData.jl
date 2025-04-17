@@ -1,7 +1,5 @@
 export SurfaceVelocityData
 
-include("surfacevelocitydata_utils.jl")
-
 """
 A mutable struct representing a surface velocity data. Notice that all fields can be empty
 by providing `nothing` as the default value.
@@ -103,3 +101,19 @@ function SurfaceVelocityData(;
         date, date1, date2, date_error, glacierGridded
     )
 end
+
+
+Base.:(==)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
+    a.x == b.x && a.y == b.y && a.lat == b.lat && a.lon == b.lon &&
+    a.vx == b.vx && a.vy == b.vy && a.vabs == b.vabs &&
+    a.vx_error == b.vx_error && a.vy_error == b.vy_error && a.vabs_error == b.vabs_error &&
+    a.date == b.date && a.date1 == b.date1 && a.date2 == b.date2 && a.date_error == b.date_error &&
+    a.glacierGridded == b.glacierGridded
+
+
+Base.:(≈)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
+    safe_approx(a.x, b.x) && safe_approx(a.y, b.y) && safe_approx(a.lat, b.lat) && safe_approx(a.lon, b.lon) &&
+    safe_approx(a.vx, b.vx) && safe_approx(a.vy, b.vy) && safe_approx(a.vabs, b.vabs) &&
+    safe_approx(a.vx_error, b.vx_error) && safe_approx(a.vy_error, b.vy_error) && safe_approx(a.vabs_error, b.vabs_error) &&
+    safe_approx(a.date, b.date) && safe_approx(a.date1, b.date1) && safe_approx(a.date2, b.date2) && safe_approx(a.date_error, b.date_error) &&
+    a.glacierGridded == b.glacierGridded
