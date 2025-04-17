@@ -76,8 +76,6 @@ function initialize_glaciers(
         rgi_ids
     )
 
-    # TODO: check that the velocityData are properly initialized after the pmap
-
     if params.simulation.use_glathida_data == true
 
         # Obtain H_glathida values for the valid RGI IDs
