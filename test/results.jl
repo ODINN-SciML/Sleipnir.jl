@@ -1,8 +1,8 @@
 include("iceflow_def.jl")
 
-function results_default(; save_refs::Bool = false)
+function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     rgi_paths = get_rgi_paths()
-    rgi_ids = ["RGI60-07.00042"]
+    rgi_ids = ["RGI60-11.03646"]
     rgi_paths = Dict(k => rgi_paths[k] for k in rgi_ids)
 
     params = Parameters(
@@ -14,7 +14,14 @@ function results_default(; save_refs::Bool = false)
             rgi_paths=rgi_paths
         )
     )
-    glaciers = initialize_glaciers(rgi_ids, params)
+    if useDatacube
+        fakeRasterStack = fake_interpolated_datacube()
+        glaciers = initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack))
+        prefix = "_vel"
+    else
+        glaciers = initialize_glaciers(rgi_ids, params)
+        prefix = ""
+    end
 
     S = glaciers[1].S
     ifm = SimpleIceflowModel{Sleipnir.Float}(S)
@@ -22,10 +29,10 @@ function results_default(; save_refs::Bool = false)
     results = Results(glaciers[1], ifm)
 
     if save_refs
-        jldsave(joinpath(Sleipnir.root_dir, string("test/data/results/results.jld2")); results)
+        jldsave(joinpath(Sleipnir.root_dir, string("test/data/results/results$(prefix).jld2")); results)
     end
 
-    results_ref = load(joinpath(Sleipnir.root_dir, string("test/data/results/results.jld2")))["results"]
+    results_ref = load(joinpath(Sleipnir.root_dir, string("test/data/results/results$(prefix).jld2")))["results"]
 
     @test all(results == results_ref)
 end

@@ -40,6 +40,7 @@ function create_results(
     t₀ = simulation.parameters.simulation.tspan[1]
     t₁ = simulation.parameters.simulation.tspan[2]
     Δt = simulation.parameters.simulation.step
+    glacier = simulation.glaciers[glacier_idx]
 
     nSteps = (t₁-t₀) / Δt
     timeSteps = t₀ .+ collect(0:nSteps) .* Δt
@@ -55,8 +56,20 @@ function create_results(
         Vx = [velocities[i][1] for i in range(1,length(velocities))]
         Vy = [velocities[i][2] for i in range(1,length(velocities))]
         V  = [velocities[i][3] for i in range(1,length(velocities))]
+
+        # Get reference surface velocities
+        if !isnothing(glacier.velocityData)
+            Vx_ref = glacier.velocityData.vx
+            Vy_ref = glacier.velocityData.vy
+            V_ref = glacier.velocityData.vabs
+        else
+            Vx_ref = nothing
+            Vy_ref = nothing
+            V_ref = nothing
+        end
     else
         Vx = Vy = V = nothing
+        Vx_ref = Vy_ref = V_ref = nothing
     end
 
     # Simulations using Reverse Diff require an iceflow model per glacier
@@ -71,19 +84,22 @@ function create_results(
         θ = nothing
     end
 
-    results = Results(simulation.glaciers[glacier_idx], iceflow_model;
+    results = Results(glacier, iceflow_model;
                       H = H,
                       S = iceflow_model.S,
-                      B = simulation.glaciers[glacier_idx].B,
+                      B = glacier.B,
                       V = V,
                       Vx = Vx,
                       Vy = Vy,
-                      Δx = simulation.glaciers[glacier_idx].Δx,
-                      Δy = simulation.glaciers[glacier_idx].Δy,
-                      lon = simulation.glaciers[glacier_idx].cenlon,
-                      lat = simulation.glaciers[glacier_idx].cenlat,
-                      nx = simulation.glaciers[glacier_idx].nx,
-                      ny = simulation.glaciers[glacier_idx].ny,
+                      V_ref = V_ref,
+                      Vx_ref = Vx_ref,
+                      Vy_ref = Vy_ref,
+                      Δx = glacier.Δx,
+                      Δy = glacier.Δy,
+                      lon = glacier.cenlon,
+                      lat = glacier.cenlat,
+                      nx = glacier.nx,
+                      ny = glacier.ny,
                       t = t,
                       tspan = simulation.parameters.simulation.tspan,
                       θ = θ,

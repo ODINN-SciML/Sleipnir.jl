@@ -17,3 +17,7 @@ function ThicknessData(;
 
     return ThicknessData{ft}(t, H)
 end
+
+Base.:(==)(a::ThicknessData, b::ThicknessData) = a.t == b.t && a.H == b.H
+
+Base.:(≈)(a::ThicknessData, b::ThicknessData) = safe_approx(a.t, b.t) && safe_approx(a.H, b.H)

@@ -172,7 +172,6 @@ function surface_velocity_data()
     end
     @testset "Fake multi datacube w/ glacier gridding" begin
         fakeRasterStack = fake_multi_datacube()
-        initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1], compute_vabs_error=true)
+        initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
     end
-
 end
