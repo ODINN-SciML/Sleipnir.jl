@@ -63,6 +63,7 @@ function initialize_surfacevelocitydata(
     # Run some basic tests
     nx, ny, ntimes = size(vx)
     @assert length(date1) == length(date2) == ntimes
+    @assert nx == ny == 250
 
     # Spatial preprocessing
     params_projection = parse_proj(metadata(velRast)["proj4"])
@@ -95,6 +96,13 @@ function initialize_surfacevelocitydata(
     vx = [eltype(x).(replace(vx[:,:,i], missing => NaN)) for i in 1:size(vx, 3)]
     vy = [eltype(x).(replace(vy[:,:,i], missing => NaN)) for i in 1:size(vy, 3)]
     vabs = [eltype(x).(replace(vabs[:,:,i], missing => NaN)) for i in 1:size(vabs, 3)]
+
+    # Set ice velocity to NaN outside of the glacier outlines
+    for i in range(1, size(vx,1))
+        vx[i][glacier.H₀ .== 0] .= NaN
+        vy[i][glacier.H₀ .== 0] .= NaN
+        vabs[i][glacier.H₀ .== 0] .= NaN
+    end
 
     # Error is reported once per timespan, so upper bounds are given by absolute error
     if !interp
