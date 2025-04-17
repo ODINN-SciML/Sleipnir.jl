@@ -1,4 +1,10 @@
 
+"""
+    fake_interpolated_datacube()
+
+Create a fake datacube of ice surface velocity time series.
+It corresponds to the interpolated data.
+"""
 function fake_interpolated_datacube()
     dates = collect(DateTime(2011):Month(1):DateTime(2012))
     date1 = Vector{Union{Missing, DateTime}}(dates[begin:end-1])
@@ -9,7 +15,7 @@ function fake_interpolated_datacube()
     xstart = 325550.0
     ystart = 5088450.0
     step = 50.0
-    nSteps = 10
+    nSteps = 250
     x = X(Float32.(xstart:step:xstart+(nSteps-1)*step))
     y = Y(Float32.(ystart:-step:ystart-(nSteps-1)*step))
 
@@ -54,11 +60,17 @@ function fake_interpolated_datacube()
 end
 
 
+"""
+    fake_multi_datacube()
+
+Create a fake datacube of ice surface velocity time series.
+It corresponds to the filtered multi source data.
+"""
 function fake_multi_datacube()
     xstart = 325550.0
     ystart = 5088450.0
     step = 50.0
-    nSteps = 10
+    nSteps = 250
     x = X(Float32.(xstart:step:xstart+(nSteps-1)*step))
     y = Y(Float32.(ystart:-step:ystart-(nSteps-1)*step))
     z = Z(Base.OneTo(365))
@@ -124,13 +136,43 @@ function fake_multi_datacube()
 end
 
 
+"""
+    surface_velocity_data()
+
+Test the initialization of ice surface velocity structure w/ and w/o glacier gridding.
+It creates fake `RasterStack` objects that mimic the structure of the true netCDF files.
+"""
 function surface_velocity_data()
-    @testset "Fake interpolated datacube" begin
+    @testset "Fake interpolated datacube w/o glacier gridding" begin
         fakeRasterStack = fake_interpolated_datacube()
         initialize_surfacevelocitydata(fakeRasterStack)
     end
-    @testset "Fake multi datacube" begin
+    @testset "Fake multi datacube w/o glacier gridding" begin
         fakeRasterStack = fake_multi_datacube()
         initialize_surfacevelocitydata(fakeRasterStack)
     end
+
+    rgi_paths = get_rgi_paths()
+    rgi_ids = ["RGI60-11.03646"]
+    rgi_paths = Dict(k => rgi_paths[k] for k in rgi_ids)
+    params = Parameters(
+        simulation=SimulationParameters(
+            velocities=true,
+            use_glathida_data=false,
+            working_dir=Sleipnir.root_dir,
+            test_mode=true,
+            rgi_paths=rgi_paths
+        )
+    )
+    glaciers = initialize_glaciers(rgi_ids, params)
+
+    @testset "Fake interpolated datacube w glacier gridding" begin
+        fakeRasterStack = fake_interpolated_datacube()
+        initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
+    end
+    @testset "Fake multi datacube w/ glacier gridding" begin
+        fakeRasterStack = fake_multi_datacube()
+        initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1], compute_vabs_error=true)
+    end
+
 end

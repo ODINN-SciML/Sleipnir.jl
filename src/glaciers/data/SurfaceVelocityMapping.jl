@@ -1,16 +1,108 @@
-export MeanDateVelocityMapping, IntegratedVelocityMapping
+export MeanDateVelocityMapping, IntegratedTrajectoryMapping
 
+"""
+    VelocityMapping
+
+Abstract type representing the mapping to use in order to map the ice velocity
+products onto the glacier grid.
+It contains all needed information to build both the spatial projection, and how to
+interpolate the data in time.
+"""
 abstract type VelocityMapping end
 
+"""
+    MeanDateVelocityMapping <: VelocityMapping
+
+Mean date velocity mapping. It is the most simple mapping one can build and it
+consists in taking the 2D vector field of ice velocity associated to a given mean
+date and compare it to the instantaneous ice surface velocity obtained from the ice
+flow model. It is valid only for ice surface velocities estimated from short time
+windows since the velocity can vary within this time window.
+
+# Fields
+- `spatialInterp::String`: The spatial interpolation to use to map the ice surface
+    velocity grid to the glacier grid. For the moment only "nearest" is supported.
+"""
 @kwdef struct MeanDateVelocityMapping <: VelocityMapping
     spatialInterp::String = "nearest"
 end
 
-@kwdef struct IntegratedVelocityMapping <: VelocityMapping
+"""
+    IntegratedTrajectoryMapping <: VelocityMapping
+
+Integrated trajectory mapping. This mapping is closer to reality as it consists in
+integrating over time the instantaneous ice surface velocities along ice flow
+trajectories in a Lagrangian way. This integrated velocity is then compared to the
+velocity of the datacube. It has not been implemented yet but its computational cost
+will likely be expensive.
+
+# Fields
+- `spatialInterp::String`: The spatial interpolation to use to map the ice surface
+    velocity grid to the glacier grid. For the moment only "nearest" is supported.
+"""
+@kwdef struct IntegratedTrajectoryMapping <: VelocityMapping
     spatialInterp::String = "nearest"
 end
 
-function grid(glacier::G, latitudes::Vector{F}, longitudes::Vector{F}, vx, vy, mapping::VM) where {G <: AbstractGlacier, F <: AbstractFloat, VM <: VelocityMapping}
+"""
+    grid(
+        glacier::G,
+        latitudes::Vector{F},
+        longitudes::Vector{F},
+        vx::Union{FileArray, Array{Union{Missing, F}, 3}},
+        vy::Union{FileArray, Array{Union{Missing, F}, 3}},
+        mapping::VM
+    ) where {
+        G <: AbstractGlacier,
+        F <: AbstractFloat,
+        VM <: VelocityMapping,
+        FileArray <: Rasters.FileArray
+    }
+
+Grid velocity data onto the glacier grid following the prescribed mapping.
+This function maps the 3 dimensional surface velocities to the glacier grid.
+The provided surface velocities can be a `Rasters.FileArray` which happens when the
+`RasterStack` is instantiated in lazy mode. In this situation, only the smallest
+cube that contains all the needed data to construct the mapping is read from disk.
+The returned velocity variables have shape `(nTimes, nx, ny)` where `nTimes` is the
+number of time steps and `(nx, ny)` is the size of the glacier grid.
+
+Arguments:
+- `glacier::G`: Glacier instance which determines the glacier on which the
+    velocities are projected onto.
+- `latitudes::Vector{F}`: Vector of latitude values of the original surface
+    velocity grid.
+- `longitudes::Vector{F}`: Vector of longitude values of the original surface
+    velocity grid.
+- `vx::Union{FileArray, Array{Union{Missing, F}, 3}}`: X component of the original
+    surface velocities. It can be either a `Rasters.FileArray` if the datacube is
+    read in lazy mode, or a plain 3 dimensional array.
+- `vy::Union{FileArray, Array{Union{Missing, F}, 3}}`: Y component of the original
+    surface velocities. It can be either a `Rasters.FileArray` if the datacube is
+    read in lazy mode, or a plain 3 dimensional array.
+- `mapping::VM`: Mapping to use.
+
+Returns:
+- `xG`: A vector that gives the x coordinates of the glacier grid.
+- `yG`: A vector that gives the y coordinates of the glacier grid.
+- `vxG`: A 3 dimensional array of the x component of the velocity gridded onto the
+    glacier grid.
+- `vyG`: A 3 dimensional array of the y component of the velocity gridded onto the
+    glacier grid.
+"""
+function grid(
+    glacier::G,
+    latitudes::Vector{F},
+    longitudes::Vector{F},
+    vx::Union{FileArray, Array{Union{Missing, F}, 3}},
+    vy::Union{FileArray, Array{Union{Missing, F}, 3}},
+    mapping::VM
+) where {
+    G <: AbstractGlacier,
+    F <: AbstractFloat,
+    VM <: VelocityMapping,
+    FileArray <: Rasters.FileArray
+}
     params_projection = glacier.params_projection
     transformReverse(lat,lon) = ReverseUTMercator(
         lat, lon;
@@ -42,6 +134,8 @@ function grid(glacier::G, latitudes::Vector{F}, longitudes::Vector{F}, vx, vy, m
         indy = Int.(round.((yG .- by)./ΔyV))
 
         # Lazy arrays need to be read by block, hence we read the smallest block of data that contains all the points we need
+        @assert size(vx,1)>=maximum(indx) "It looks like the datacube doesn't cover the whole glacier grid on the x-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+        @assert size(vx,2)>=maximum(indy) "It looks like the datacube doesn't cover the whole glacier grid on the y-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
         block_vx = vx[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
         block_vy = vy[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
 
