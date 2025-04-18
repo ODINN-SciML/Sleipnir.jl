@@ -12,6 +12,7 @@ using JLD2
 using Distributed
 using Statistics
 using CairoMakie
+using Observables
 using Downloads
 using HDF5
 using ComponentArrays
