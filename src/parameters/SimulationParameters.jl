@@ -115,7 +115,7 @@ function SimulationParameters(;
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
 
     # Literate.jl fails at generating the documentation when multiprocessing is enabled
-    if parse(Bool, get(ENV, "ODINN_OVERWRITE_MULTI", false))
+    if parse(Bool, get(ENV, "ODINN_OVERWRITE_MULTI", "false"))
         workers = 1
         multiprocessing = false
     end
