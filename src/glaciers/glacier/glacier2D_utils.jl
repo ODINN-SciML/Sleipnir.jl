@@ -60,8 +60,8 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
-   
-    glaciers = pmap((rgi_id) -> initialize_glacier(rgi_id, params), rgi_ids)
+
+    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params), rgi_ids)
 
 
     if params.simulation.use_glathida_data == true
