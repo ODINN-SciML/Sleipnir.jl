@@ -1,7 +1,7 @@
 name = "Sleipnir"
 uuid = "f5e6c550-199f-11ee-3608-394420200519"
 authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>"]
-version = "0.9.1"
+version = "0.9.2"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
