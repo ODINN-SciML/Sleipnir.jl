@@ -1,8 +1,6 @@
 __precompile__() # this module is safe to precompile
 module Sleipnir
 
-export root_dir, prepro_dir, doublePrec, Float, Int
-
 # ##############################################
 # ###########       PACKAGES     ##############
 # ##############################################
