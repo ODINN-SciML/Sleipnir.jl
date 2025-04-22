@@ -118,8 +118,6 @@ function SimulationParameters(;
     if parse(Bool, get(ENV, "ODINN_OVERWRITE_MULTI", false))
         workers = 1
         multiprocessing = false
-    else
-        @assert false
     end
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,

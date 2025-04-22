@@ -112,9 +112,6 @@ function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=fa
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
 
-    @show @__MODULE__
-    @show DateTime
-
     return glacier
 end
 
