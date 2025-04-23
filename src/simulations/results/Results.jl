@@ -7,6 +7,7 @@ A mutable struct to store the results of simulations.
 - `rgi_id::String`: Identifier for the RGI (Randolph Glacier Inventory).
 - `H::Vector{Matrix{F}}`: Vector of matrices representing glacier ice thickness `H` over time.
 - `H_glathida::Union{Nothing, Vector{Matrix{F}}}`: Optional vector of matrices for Glathida ice thicknesses.
+- `H_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference data for ice thickness.
 - `S::Matrix{F}`: Glacier surface altimetry.
 - `B::Matrix{F}`: Glacier bedrock.
 - `V::Matrix{F}`: Glacier ice surface velocities.
@@ -29,6 +30,7 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
     rgi_id::String
     H::Vector{Matrix{F}}
     H_glathida::Union{Nothing, Vector{Matrix{F}}}
+    H_ref::Union{Nothing, Vector{Matrix{F}}}
     S::Matrix{F}
     B::Matrix{F}
     V::Union{Nothing, Vector{Matrix{F}}}
@@ -50,10 +52,10 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
 end
 
 Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
-                                    a.H_glathida == b.H_glathida && a.S == b.S &&
-                                    a.B == b.B && a.V == b.V && a.Vx == b.Vx &&
-                                    a.Vy == b.Vy && a.V_ref == b.V_ref &&
-                                    a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
+                                    a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
+                                    a.S == b.S && a.B == b.B &&
+                                    a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
+                                    a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
                                     a.Δx == b.Δx && a.Δy == b.Δy &&
                                     a.lon == b.lon && a.lat == b.lat &&
                                     a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
@@ -64,6 +66,7 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
         rgi_id::String = glacier.rgi_id,
         H::Union{Nothing, Vector{Matrix{F}}} = nothing,
         H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
+        H_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
         S::Union{Nothing, Matrix{F}} = nothing,
         B::Union{Nothing, Matrix{F}} = nothing,
         V::Union{Nothing, Vector{Matrix{F}}} = nothing,
@@ -92,6 +95,7 @@ Construct a `Results` object for a glacier simulation.
 - `rgi_id::String`: The RGI identifier for the glacier. Defaults to `glacier.rgi_id`.
 - `H::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness matrices. Defaults to nothing.
 - `H_glathida::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness from GlaThiDa. Defaults to `glacier.H_glathida`.
+- `H_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference ice thickness. Defaults to nothing.
 - `S::Union{Nothing, Matrix{F}}`: Surface elevation matrix. Defaults to a zero matrix of the same size as `ifm.S`.
 - `B::Union{Nothing, Matrix{F}}`: Bed elevation matrix. Defaults to a zero matrix of the same size as `glacier.B`.
 - `V::Union{Nothing, Vector{Matrix{F}}}`: Velocity magnitude matrix. Defaults to nothing.
@@ -117,6 +121,7 @@ function Results(glacier::G, ifm::IF;
         rgi_id::String = glacier.rgi_id,
         H::Union{Nothing, Vector{Matrix{F}}} = nothing,
         H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
+        H_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
         S::Union{Nothing, Matrix{F}} = nothing,
         B::Union{Nothing, Matrix{F}} = nothing,
         V::Union{Nothing, Vector{Matrix{F}}} = nothing,
@@ -147,7 +152,7 @@ function Results(glacier::G, ifm::IF;
         B = zeros(F, size(glacier.B))
     end
     # Build the results struct based on input values
-    results = Results{F, I}(rgi_id, H, H_glathida, S, B,
+    results = Results{F, I}(rgi_id, H, H_glathida, H_ref, S, B,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)

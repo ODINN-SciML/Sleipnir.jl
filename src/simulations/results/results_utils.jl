@@ -72,6 +72,12 @@ function create_results(
         Vx_ref = Vy_ref = V_ref = nothing
     end
 
+    if !isnothing(glacier.thicknessData)
+        H_ref = glacier.thicknessData.H
+    else
+        H_ref = nothing
+    end
+
     # Simulations using Reverse Diff require an iceflow model per glacier
     if isnothing(batch_id)
         iceflow_model = simulation.model.iceflow
@@ -86,6 +92,7 @@ function create_results(
 
     results = Results(glacier, iceflow_model;
                       H = H,
+                      H_ref = H_ref,
                       S = iceflow_model.S,
                       B = glacier.B,
                       V = V,

@@ -36,7 +36,7 @@ function glaciers2D_plots()
         end
 
         @testset "Difference Evolution" begin
-            plot_glacier(results, "evolution difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"])
+            plot_glacier(results, "evolution difference", [:H], tspan=(2010.0,2015.0), metrics=["difference","hist"], figsize=(800,600))
         end
 
         @testset "Integrated Volume" begin
