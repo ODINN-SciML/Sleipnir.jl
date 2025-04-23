@@ -10,7 +10,10 @@ function __init__()
     existsAndRedownload = false
     if isdir(prepro_dir)
         daysSinceLastDownload = (Dates.now() - Dates.unix2datetime(mtime(prepro_dir)))/Day(1)
-        if daysSinceLastDownload>1 # Re-download data if older than one day
+        if daysSinceLastDownload > 1
+            # Re-download data if older than one day
+            # This is useful especially when the data on the server have been
+            # updated and the code needs the new version in order to run
             existsAndRedownload = true
         end
     end
