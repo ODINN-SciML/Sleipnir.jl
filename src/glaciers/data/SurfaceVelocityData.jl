@@ -21,7 +21,7 @@ by providing `nothing` as the default value.
 - `date1::Union{Vector{DateTime}, Nothing}`: First date of adquisition.
 - `date2::Union{Vector{DateTime}, Nothing}`: Second date of adquisition.
 - `date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}`: Error in `date`.
-- `glacierGridded::Bool`: Whether the data have been gridded to the glacier grid or not.
+- `isGridGlacierAligned::Bool`: Whether the data have been gridded to the glacier grid or not.
 """
 mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
     x::Union{Vector{F}, Nothing}
@@ -38,7 +38,7 @@ mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
     date1::Union{Vector{DateTime}, Nothing}
     date2::Union{Vector{DateTime}, Nothing}
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}
-    glacierGridded::Bool
+    isGridGlacierAligned::Bool
 end
 
 """
@@ -60,7 +60,7 @@ function SurfaceVelocityData(;
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
-    glacierGridded::Bool = false,
+    isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
 
 Constructor for ice surface velocity data based on Rabatel et. al (2023).
@@ -91,14 +91,14 @@ function SurfaceVelocityData(;
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
-    glacierGridded::Bool = false,
+    isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
 
     ft = Sleipnir.Float
     return SurfaceVelocityData{ft}(
         x, y, lat, lon,
         vx, vy, vabs, vx_error, vy_error, vabs_error,
-        date, date1, date2, date_error, glacierGridded
+        date, date1, date2, date_error, isGridGlacierAligned
     )
 end
 
@@ -108,7 +108,7 @@ Base.:(==)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
     a.vx == b.vx && a.vy == b.vy && a.vabs == b.vabs &&
     a.vx_error == b.vx_error && a.vy_error == b.vy_error && a.vabs_error == b.vabs_error &&
     a.date == b.date && a.date1 == b.date1 && a.date2 == b.date2 && a.date_error == b.date_error &&
-    a.glacierGridded == b.glacierGridded
+    a.isGridGlacierAligned == b.isGridGlacierAligned
 
 
 Base.:(≈)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
@@ -116,4 +116,4 @@ Base.:(≈)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
     safe_approx(a.vx, b.vx) && safe_approx(a.vy, b.vy) && safe_approx(a.vabs, b.vabs) &&
     safe_approx(a.vx_error, b.vx_error) && safe_approx(a.vy_error, b.vy_error) && safe_approx(a.vabs_error, b.vabs_error) &&
     safe_approx(a.date, b.date) && safe_approx(a.date1, b.date1) && safe_approx(a.date2, b.date2) && safe_approx(a.date_error, b.date_error) &&
-    a.glacierGridded == b.glacierGridded
+    a.isGridGlacierAligned == b.isGridGlacierAligned

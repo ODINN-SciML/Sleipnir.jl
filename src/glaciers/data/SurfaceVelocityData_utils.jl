@@ -28,7 +28,7 @@ function initialize_surfacevelocitydata(
 
     velRast = isa(raster, String) ? RasterStack(raster, lazy=true) : raster
 
-    # Boolean variable indicating if the file represents inporpolated data or not.
+    # Boolean variable indicating if the file represents interpolated data or not.
     interp = :xcount_x in keys(velRast)
 
     mapToGlacierGrid = !isnothing(glacier)
@@ -79,6 +79,13 @@ function initialize_surfacevelocitydata(
         latitudes = glacier.Coords["lat"]
         longitudes = glacier.Coords["lon"]
         # Here vx and vy have been read from disk and they are arrays
+
+        # Set ice velocity to NaN outside of the glacier outlines
+        mask = glacier.H₀ .== 0
+        for i in range(1, size(vx,3))
+            vx[mask,i] .= missing
+            vy[mask,i] .= missing
+        end
     else
         # Access elements by converting a DiskArrays.BroadcastDiskArray to a real array
         vx = vx[:,:,:]
@@ -96,15 +103,6 @@ function initialize_surfacevelocitydata(
     vx = [eltype(x).(replace(vx[:,:,i], missing => NaN)) for i in 1:size(vx, 3)]
     vy = [eltype(x).(replace(vy[:,:,i], missing => NaN)) for i in 1:size(vy, 3)]
     vabs = [eltype(x).(replace(vabs[:,:,i], missing => NaN)) for i in 1:size(vabs, 3)]
-
-    if mapToGlacierGrid
-        # Set ice velocity to NaN outside of the glacier outlines
-        for i in range(1, size(vx,1))
-            vx[i][glacier.H₀ .== 0] .= NaN
-            vy[i][glacier.H₀ .== 0] .= NaN
-            vabs[i][glacier.H₀ .== 0] .= NaN
-        end
-    end
 
     # Error is reported once per timespan, so upper bounds are given by absolute error
     if !interp
@@ -131,7 +129,7 @@ function initialize_surfacevelocitydata(
         vx=vx, vy=vy, vabs=vabs,
         vx_error=vx_error, vy_error=vy_error, vabs_error=vabs_error,
         date=date_mean, date1=date1, date2=date2, date_error=date_error,
-        glacierGridded=mapToGlacierGrid
+        isGridGlacierAligned=mapToGlacierGrid
     )
 end
 
@@ -172,7 +170,7 @@ end
     }
 
 Grid velocity data onto the glacier grid following the prescribed mapping.
-This function maps the 3 dimensional surface velocities to the glacier grid.
+This function maps the 3 dimensional surface velocities (x, y and t) to the glacier grid.
 The provided surface velocities can be a `Rasters.FileArray` which happens when the
 `RasterStack` is instantiated in lazy mode. In this situation, only the smallest
 cube that contains all the needed data to construct the mapping is read from disk.
@@ -233,7 +231,7 @@ function grid(
     vxG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
     vyG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
 
-    if mapping.spatialInterp=="nearest"
+    if mapping.spatialInterp == :nearest
         # We express each of the coordinates of the velocity grid as (ΔxV*ix+bx, ΔyV*iy+by)
         # While this is an approximation since the coordinates do not truly live on a grid because of the projection, this error does not exceed one meter for most glaciers. This allows us to avoid having to compute an argmin.
         ΔxV = mean(diff(xV))

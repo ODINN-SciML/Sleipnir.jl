@@ -534,7 +534,7 @@ function parse_proj(proj::String)
 end
 
 """
-    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
 Transverse Mercator Projection.
 This function reprojects northing/easting coordinates into latitude/longitude.
@@ -549,9 +549,10 @@ Keyword arguments
     - `zone` : Zone of the projection
     - `hemisphere`: Either :north or :south
 """
-function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
     if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
     else
         # Convert to right units
@@ -569,7 +570,7 @@ function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0
 end
 
 """
-    ReverseUTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+    ReverseUTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
 Transverse Mercator Projection.
 This function reprojects latitude/longitude into northing/easting coordinates.
@@ -584,9 +585,10 @@ Keyword arguments
     - `zone` : Zone of the projection
     - `hemisphere`: Either :north or :south
 """
-function ReverseUTMercator(lat::F, lon::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+function ReverseUTMercator(lat::F, lon::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
     if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
     else
         # Convert to right units
