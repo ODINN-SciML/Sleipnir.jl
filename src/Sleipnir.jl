@@ -12,6 +12,7 @@ using JLD2
 using Distributed
 using Statistics
 using CairoMakie
+using Observables
 using Downloads
 using HDF5
 using ComponentArrays
@@ -24,7 +25,6 @@ import NCDatasets
 using Unitful: m, rad, °
 using CoordRefSystems
 using Dates, DateFormats
-using NetCDF
 using GR
 using DataStructures
 using ImageInTerminal
@@ -50,14 +50,25 @@ end
 # ##############################################
 
 include("setup/config.jl")
-# All parameters needed for the models
-include("parameters/Parameters.jl")
+
 # Anything related to managing glacier data used for data assimilation
 include("glaciers/data/Data.jl")
+
 # Anything related to managing glacier topographical and climate variables
 include("glaciers/glacier/Glacier.jl")
+
+# All parameters needed for the models
+include("parameters/Parameters.jl")
+
+# The utils of surface velocity data, glaciers and climate need the struct to be already
+# defined since they depend on each other. This is why we import them afterwards
+include("glaciers/data/SurfaceVelocityData_utils.jl")
+include("glaciers/glacier/glacier2D_utils.jl")
+include("glaciers/climate/climate2D_utils.jl")
+
 # All structures and functions related to ODINN models
 include("models/Model.jl")
+
 # Everything related to running simulations in ODINN
 include("simulations/Simulation.jl")
 

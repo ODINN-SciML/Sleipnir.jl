@@ -12,15 +12,16 @@ include("../climate/Climate2D.jl")
 
 """
 A mutable struct representing a 2D glacier. Notice that all fields can be empty by
-providing `nothing` as the default value. 
+providing `nothing` as the default value.
 
-/!\\ WARNING /!\\ `Glacier` objects should not be constructed 
+/!\\ WARNING /!\\ `Glacier` objects should not be constructed
 manually, but rather through the `initialize_glaciers` function.
 
 `Glacier2D{F <: AbstractFloat, I <: Integer}`
 
 # Fields
 - `rgi_id::Union{String, Nothing}`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
+- `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
 - `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from the GLATHIDA dataset.
@@ -41,9 +42,13 @@ manually, but rather through the `initialize_glaciers` function.
 - `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
 - `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
+- `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
+- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
+- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::Union{String, Nothing}
+    name::String
     climate::Union{Climate2D, Nothing}
     H₀::Union{Matrix{F}, Nothing}
     H_glathida::Union{Matrix{F}, Nothing}
@@ -64,37 +69,45 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     ny::Union{I, Nothing}
     cenlon::Union{F, Nothing}
     cenlat::Union{F, Nothing}
-    # data::Union{Vector{DAT}, Nothing} # We ideally want this, but not clear how to specify concrete DAT type.
-    data::Union{Vector, Nothing}
+    params_projection::Dict{String, Float64}
+    thicknessData::Union{ThicknessData, Nothing}
+    velocityData::Union{SurfaceVelocityData, Nothing}
 end
 
 """
 Constructs a `Glacier2D` object with the given parameters, including default ones.
 
-    Glacier2D(; rgi_id::Union{String, Nothing} = nothing,
-              climate::Union{Climate2D, Nothing} = nothing,
-              H₀::Union{Matrix{F}, Nothing} = nothing,
-              H_glathida::Union{Matrix{F}, Nothing} = nothing,
-              S::Union{Matrix{F}, Nothing} = nothing,
-              B::Union{Matrix{F}, Nothing} = nothing,
-              V::Union{Matrix{F}, Nothing} = nothing,
-              Vx::Union{Matrix{F}, Nothing} = nothing,
-              Vy::Union{Matrix{F}, Nothing} = nothing,
-              A::Union{F, Nothing} = nothing,
-              C::Union{F, Nothing} = nothing,
-              n::Union{F, Nothing} = nothing,
-              slope::Union{Matrix{F}, Nothing} = nothing,
-              dist_border::Union{Matrix{F}, Nothing} = nothing,
-              Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-              Δx::Union{F, Nothing} = nothing,
-              Δy::Union{F, Nothing} = nothing,
-              nx::Union{I, Nothing} = nothing,
-              ny::Union{I, Nothing} = nothing,
-              cenlon::Union{F, Nothing} = nothing,
-              cenlat::Union{F, Nothing} = nothing) where {F <: AbstractFloat, I <: Integer}
+    Glacier2D(;
+        rgi_id::Union{String, Nothing} = nothing,
+        name::String = "",
+        climate::Union{Climate2D, Nothing} = nothing,
+        H₀::Union{Matrix{F}, Nothing} = nothing,
+        H_glathida::Union{Matrix{F}, Nothing} = nothing,
+        S::Union{Matrix{F}, Nothing} = nothing,
+        B::Union{Matrix{F}, Nothing} = nothing,
+        V::Union{Matrix{F}, Nothing} = nothing,
+        Vx::Union{Matrix{F}, Nothing} = nothing,
+        Vy::Union{Matrix{F}, Nothing} = nothing,
+        A::Union{F, Nothing} = nothing,
+        C::Union{F, Nothing} = nothing,
+        n::Union{F, Nothing} = nothing,
+        slope::Union{Matrix{F}, Nothing} = nothing,
+        dist_border::Union{Matrix{F}, Nothing} = nothing,
+        Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+        Δx::Union{F, Nothing} = nothing,
+        Δy::Union{F, Nothing} = nothing,
+        nx::Union{I, Nothing} = nothing,
+        ny::Union{I, Nothing} = nothing,
+        cenlon::Union{F, Nothing} = nothing,
+        cenlat::Union{F, Nothing} = nothing,
+        params_projection::Dict{String, Float64} = Dict{String, Float64}(),
+        thicknessData::Union{ThicknessData, Nothing} = nothing,
+        velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+    ) where {F <: AbstractFloat, I <: Integer}
 
 # Arguments
 - `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
+- `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
 - `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from GLATHIDA.
@@ -115,20 +128,24 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
 - `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
+- `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
+- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
+- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
 
 # Returns
 - A `Glacier2D` object with the specified parameters.
 """
 function Glacier2D(;
     rgi_id::Union{String, Nothing} = nothing,
+    name::String = "",
     climate::Union{Climate2D, Nothing} = nothing,
     H₀::Union{Matrix{F}, Nothing} = nothing,
     H_glathida::Union{Matrix{F}, Nothing} = nothing,
     S::Union{Matrix{F}, Nothing} = nothing,
     B::Union{Matrix{F}, Nothing} = nothing,
-    V::Union{Matrix{F}, Nothing}= nothing,
-    Vx::Union{Matrix{F}, Nothing}= nothing,
-    Vy::Union{Matrix{F}, Nothing}= nothing,
+    V::Union{Matrix{F}, Nothing} = nothing,
+    Vx::Union{Matrix{F}, Nothing} = nothing,
+    Vy::Union{Matrix{F}, Nothing} = nothing,
     A::Union{F, Nothing} = nothing,
     C::Union{F, Nothing} = nothing,
     n::Union{F, Nothing} = nothing,
@@ -141,15 +158,22 @@ function Glacier2D(;
     ny::Union{I, Nothing} = nothing,
     cenlon::Union{F, Nothing} = nothing,
     cenlat::Union{F, Nothing} = nothing,
-    # data::Union{Vector{DAT}, Nothing} = nothing
-    data::Union{Vector, Nothing} = nothing
-    ) where {F <: AbstractFloat, I <: Integer}
+    params_projection::Dict{String, Float64} = Dict{String, Float64}(),
+    thicknessData::Union{ThicknessData, Nothing} = nothing,
+    velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
     ft = Sleipnir.Float
     it = Sleipnir.Int
 
-    return Glacier2D{ft,it}(rgi_id, climate, H₀, H_glathida, S, B, V, Vx, Vy, A, C, n, slope, dist_border, Coords, Δx, Δy, nx, ny, cenlon, cenlat, data)
+    return Glacier2D{ft,it}(
+        rgi_id, name, climate, H₀, H_glathida,
+        S, B, V, Vx, Vy, A, C, n,
+        slope, dist_border, Coords,
+        Δx, Δy, nx, ny,
+        cenlon, cenlat, params_projection,
+        thicknessData, velocityData)
 end
 
 ###############################################
@@ -157,22 +181,28 @@ end
 ###############################################
 
 
-Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b.climate &&
+Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
+                                      a.climate == b.climate &&
                                       a.H₀ == b.H₀ && a.H_glathida == b.H_glathida && a.S == b.S && a.B == b.B && a.V == b.V &&
                                       a.A == b.A && a.C == b.C && a.n == b.n &&
                                       a.slope == b.slope && a.dist_border == b.dist_border &&
                                       a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx && a.ny == b.ny &&
-                                      a.cenlon == b.cenlon && a.cenlat == b.cenlat
+                                      a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
+                                      a.params_projection == b.params_projection &&
+                                      a.thicknessData == b.thicknessData && a.velocityData == b.velocityData
 
 
-Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.climate == b.climate &&
+Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
+                                        a.climate == b.climate &&
                                         safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) &&
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
                                         safe_approx(a.A, b.A) && safe_approx(a.C, b.C) && safe_approx(a.n, b.n) &&
                                         isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
                                         safe_approx(a.Coords, b.Coords) && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
                                         safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny) &&
-                                        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat)
+                                        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
+                                        safe_approx(a.params_projection, b.params_projection) &&
+                                        safe_approx(a.thicknessData, b.thicknessData) && safe_approx(a.velocityData, b.velocityData)
 
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)
@@ -182,7 +212,8 @@ function Base.show(io::IO, glacier::Glacier2D)
     end
 
     print("Glacier2D ")
-    printstyled(glacier.rgi_id;color=:yellow)
+    strName = glacier.name=="" ? "" : " ($(glacier.name))"
+    printstyled("$(glacier.rgi_id)$(strName)";color=:yellow)
     print(" with a ")
     printstyled("$(glacier.nx)x$(glacier.ny)";color=:red)
     print(" grid ")
@@ -214,6 +245,19 @@ function Base.show(io::IO, glacier::Glacier2D)
     printstyled(glacier.C; color=:blue)
     print("  n= ")
     printstyled(glacier.n; color=:blue)
+
+    if isnothing(glacier.thicknessData)
+        printstyled("\nw/o";color=:red)
+    else
+        printstyled("\nw/";color=:blue)
+    end
+    print(" thickness data  ")
+    if isnothing(glacier.velocityData)
+        printstyled("   w/o";color=:red)
+    else
+        printstyled("   w/";color=:blue)
+    end
+    print(" velocity data")
 end
 
 # Vectorial form
@@ -239,7 +283,3 @@ function Base.show(io::IO, glaciers::Vector{G}) where {G <: AbstractGlacier}
         println(join([glacier.rgi_id for glacier in glaciers], " "))
     end
 end
-
-
-include("glacier2D_utils.jl")
-include("../climate/climate2D_utils.jl")

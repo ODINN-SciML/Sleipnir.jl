@@ -3,7 +3,13 @@ export plot_glacier, plot_glacier_heatmaps, plot_glacier_difference_evolution, p
 using CairoMakie: Axis
 
 """
-    plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, title_mapping::Dict; scale_text_size::Union{Nothing,Float64}=nothing) -> Figure
+    plot_glacier_heatmaps(
+        results::Results,
+        variables::Vector{Symbol},
+        title_mapping::Dict;
+        scale_text_size::Union{Nothing,Float64}=nothing,
+        timeIdx::Union{Nothing,Int64}=nothing
+    ) -> Figure
 
 Plot heatmaps for glacier variables.
 
@@ -12,25 +18,32 @@ Plot heatmaps for glacier variables.
 - `variables::Vector{Symbol}`: A list of variables to be plotted.
 - `title_mapping::Dict`: A dictionary mapping variable names to their titles and colormaps.
 - `scale_text_size::Union{Nothing,Float64}`: Optional argument to scale the text size.
+- `timeIdx::Union{Nothing,Int64}`:: Optional argument to select the index at which
+    data should be plotted when dealing with vector of matrix. Default is nothing
+    which selects the last element available.
 
 # Returns
 - A plot of the glacier heatmaps.
 """
-function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, title_mapping::Dict; scale_text_size::Union{Nothing,Float64}=nothing)
+function plot_glacier_heatmaps(
+    results::Results,
+    variables::Vector{Symbol},
+    title_mapping::Dict;
+    scale_text_size::Union{Nothing,Float64}=nothing,
+    timeIdx::Union{Nothing,Int64}=nothing
+)
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
-    # Extract the rgi_id 
-    rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
-
-    # Extract longitude and latitude
+    # Extract metadata about the glacier
     lon = results.lon
     lat = results.lat
+    rgi_id = results.rgi_id
     Δx = results.Δx
 
-    ice_thickness_vars = [:H, :H₀, :H_glathida, :H_pred, :H_obs] # Ice thickness variables
-    velocity_vars = [:V, :Vx, :Vy, :V_pred, :V_obs] # Velocity variables, excluding V_diff
-    
+    ice_thickness_vars = [:H, :H₀, :H_glathida, :H_ref] # Ice thickness variables
+    velocity_vars = [:V, :Vx, :Vy, :V_ref] # Velocity variables, excluding V_diff
+
     # Initialize max_values for ice thickness and velocity separately, considering only given variables
     max_values_ice = []
     max_values_velocity = []
@@ -40,12 +53,17 @@ function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, titl
             current_matrix = getfield(results, var)
             if !isnothing(current_matrix) && !isempty(current_matrix)
                 if typeof(current_matrix) <: Vector
-                    current_matrix = current_matrix[end]
+                    @assert length(current_matrix)>0 "Variable $(var) is an empty vector"
+                    @assert (isnothing(timeIdx)) || (size(current_matrix,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(current_matrix,1))"
+                    maxval = maximum(replace(isnothing(timeIdx) ? current_matrix[end] : current_matrix[timeIdx], NaN => 0.))
+                    # maxval = maximum([maximum(replace(M, NaN => 0.)) for M in current_matrix])
+                else
+                    maxval = maximum(replace(current_matrix, NaN => 0.))
                 end
                 if var in ice_thickness_vars
-                    push!(max_values_ice, maximum(current_matrix))
+                    push!(max_values_ice, maxval)
                 elseif var in velocity_vars
-                    push!(max_values_velocity, maximum(current_matrix))
+                    push!(max_values_velocity, maxval)
                 end
             end
         end
@@ -72,61 +90,70 @@ function plot_glacier_heatmaps(results::Results, variables::Vector{Symbol}, titl
         ax_col = 2 * (rem(i - 1, 2)) + 1
         ax = Axis(fig[ax_row, ax_col], aspect=DataAspect())
         data = getfield(results, var)
-        
+        title, unit = get(title_mapping, string(var), (string(var), ""))
+
         if typeof(data) <: Vector
-            data = data[end]
+            @assert length(data)>0 "Variable $(var) is an empty vector"
+            @assert (isnothing(timeIdx)) || (size(data,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(data,1))"
+            data = isnothing(timeIdx) ? data[end] : data[timeIdx]
         end
 
-        ny, nx = size(data)
+        nx, ny = size(data)
         colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
 
         # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
         if var in ice_thickness_vars
             hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_ice))
-            Colorbar(fig[ax_row, ax_col + 1], hm)
         elseif var in velocity_vars
             hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_velocity))
-            Colorbar(fig[ax_row, ax_col + 1], hm)
         else
             hm = heatmap!(ax, data, colormap=colormap)
-            Colorbar(fig[ax_row, ax_col + 1], hm)
         end
+        cb = Colorbar(fig[ax_row, ax_col + 1], hm)
+        Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
+        Label(fig[ax_row, ax_col + 1], "$var ($unit)", fontsize=14, valign=:top, padding=(0, -25))
 
-        title, unit = get(title_mapping, string(var), (string(var), ""))
-        ax.title = "$title ($unit)"
+        ax.title = "$title"
         ax.xlabel = "Longitude"
         ax.ylabel = "Latitude"
-        ax.xticks=([round(nx/2)], ["$lon °"])
-        ax.yticks=([round(ny/2)], ["$lat °"])
+        ax.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
+        ax.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
         ax.yticklabelrotation = π/2
-        ax.ylabelpadding = 15
+        ax.ylabelpadding = 5
         ax.yticklabelalign = (:center, :bottom)
 
         scale_width = 0.10*nx
         scale_number = round(Δx * scale_width / 1000; digits=1) # Convert to km
         if scale_text_size === nothing
             textsize = if num_vars == 1
-                1.2*scale_width 
+                1.2*scale_width
             elseif num_vars == 2
-                0.9*scale_width 
+                0.9*scale_width
             else
                 0.5*scale_width
             end
         else
             textsize = scale_text_size
         end
-        
+
         poly!(ax, Rect(nx - round(0.15*nx), round(0.075*ny), scale_width, scale_width/10), color=:black)
         text!(ax, "$scale_number km", position=(nx - round(0.15*nx) + scale_width/16, round(0.075*ny) + scale_width/10), fontsize=textsize)
     end
-    
+
     fig[0, :] = Label(fig, "$rgi_id")
     resize_to_layout!(fig)
     return fig
 end
 
 """
-    plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
+    plot_glacier_difference_evolution(
+        results::Results,
+        variables::Vector{Symbol},
+        title_mapping;
+        tspan::Tuple{F,F}=results.tspan,
+        metrics::Vector{String}="difference",
+        figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+    ) where {F<:AbstractFloat}
 
 Plot the evolution of the difference in a glacier variable over time.
 
@@ -136,121 +163,132 @@ Plot the evolution of the difference in a glacier variable over time.
 - `title_mapping`: A dictionary mapping variable names to their titles.
 - `tspan::Tuple{F,F}`: A tuple representing the start and end time for the simulation.
 - `metrics::Vector{String}`: Metrics to visualize, e.g., `["difference"]`.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 
 # Returns
 - A plot of the glacier difference evolution.
 """
-function plot_glacier_difference_evolution(results::Results, variables::Vector{Symbol}, title_mapping; tspan::Tuple{F,F}=results.tspan, metrics::Vector{String}="difference") where {F<:AbstractFloat}
-        # Check if more than one variable is passed
-        if length(variables) > 1
-            error("Only one variable can be passed to this function.")
+function plot_glacier_difference_evolution(
+    results::Results,
+    variables::Vector{Symbol},
+    title_mapping;
+    tspan::Tuple{F,F}=results.tspan,
+    metrics::Vector{String}="difference",
+    figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+) where {F<:AbstractFloat}
+    # Check if more than one variable is passed
+    @assert length(variables) == 1 "Only one variable can be passed to this function."
+
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
+    # Check for valid metrics
+    valid_metrics = ["hist", "difference"]
+    for metric in metrics
+        if !(metric in valid_metrics)
+            error("Invalid metric: $metric. Valid metrics are: $valid_metrics")
+            return
         end
-    
-        # Check for valid metrics
-        valid_metrics = ["hist", "difference"]
-        for metric in metrics
-            if !(metric in valid_metrics)
-                error("Invalid metric: $metric. Valid metrics are: $valid_metrics")
-                return
-            end
-        end
-    
-        # Extract data for the variable
-        data = getfield(results, variables[1])
+    end
 
-        #Extract longitude and latitude
-        lon = results.lon
-        lat = results.lat
+    # Extract data for the variable
+    data = getfield(results, variables[1])
 
-        #pixel width
-        Δx = results.Δx
+    # Extract metadata about the glacier
+    lon = results.lon
+    lat = results.lat
+    rgi_id = results.rgi_id
+    Δx = results.Δx
 
-        # Check the shape of the extracted data
-        if typeof(data) ≠ Vector{Matrix{Float64}}
-            error("Only temporal quantities can be used in this function.")
-        end
-        
-        # Extract the rgi_id 
-        rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
-        
-        # Print plot information
-        variable_title = get(title_mapping, variables[1], variables[1])
-              
-        # Create a time vector
-        t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
-    
-        matrix_size = size(data[1])
-        diff_width = 1.0 * matrix_size[2]
-        diff_height = 1.0 * matrix_size[1]
-        data_diff=data[end] - data[1]
-     
-         # Determine whether to create a single plot or a subplot
-         if metrics == ["hist"]
-             fig = Figure()
-             ax = Axis(fig[1, 1], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution")
-         elseif metrics == ["difference"]
-             fig = Figure()
-             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",aspect=DataAspect())
-         else
-             fig = Figure(layout=GridLayout(1, 4)) 
-             ax = Axis(fig[1, 3:4], xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))", ylabel="Frequency", title="Histogram of $(title_mapping[string(variables[1])][1]) Evolution",width=diff_width,height=diff_height)
-             ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) Evolution",aspect=DataAspect())
-         end
-    
-        # Plot based on the metric
-        for metric in metrics
-            if metric == "hist"
-                hist!(ax, vec(data[end]-data[1]), bins=50)
-                ax.limits[] = (minimum(data_diff), maximum(data_diff), nothing, nothing)
-            elseif metric == "difference"
-                
-                ny, nx = size(data_diff)
-                
-                # Calculate the symmetric color range
-                max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
+    # Check the shape of the extracted data
+    @assert typeof(data) == Vector{Matrix{Float64}} "Only temporal quantities can be used in this function."
 
-                    
-                hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
+    # Print plot information
+    variable_title = get(title_mapping, variables[1], variables[1])
+    data_diff = data[end] - data[1]
 
-                ax_diff.xlabel = "Longitude"
-                ax_diff.ylabel = "Latitude"
-                ax_diff.xticks=([round(nx/2)], ["$lon °"])
-                ax_diff.yticks=([round(ny/2)], ["$lat °"])
-                ax_diff.yticklabelrotation = π/2
-                ax_diff.ylabelpadding = 15.0
-                ax_diff.yticklabelalign = (:center, :bottom)
-
-                
-                # Width of the scale division in heatmap data units
-                scale_width = 0.10*nx
-                scale_number = round(Δx * scale_width / 1000; digits=1)#to km
-                
-                if metrics == ["difference"]
-                    textsize=1.2*scale_width
-                else 
-                    textsize=0.5*scale_width
-                end
-                
-                # Position and draw the scale division rectangle
-                poly!(ax_diff, Rect(nx -round(0.15*nx) , round(0.075*ny), scale_width, scale_width/10), color=:black)
-                text!(ax_diff, "$scale_number km", 
-                    position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
-                    fontsize=textsize)
-                Colorbar(fig[1, 2], hm_diff)
-                
-              
-                
-            end
-        end
-        
+    # Determine whether to create a single plot or a subplot
+    if metrics == ["hist"]
+        fig = Figure(; figKwargs...)
+        ax = Axis(
+            fig[1, 1],
+            xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))",
+            ylabel="Frequency",
+            title="Histogram of $(title_mapping[string(variables[1])][1]) evolution ($rgi_id)"
+        )
+    elseif metrics == ["difference"]
+        fig = Figure(; figKwargs...)
+        ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) evolution ($rgi_id)",aspect=DataAspect())
+    else
+        figKwargs[:layout] = GridLayout(1, 3)
+        fig = Figure(; figKwargs...)
+        ax = Axis(
+            fig[1, 3],
+            xlabel="Δ$variable_title ($(title_mapping[string(variables[1])][2]))",
+            ylabel="Frequency",
+            title="Histogram of $(title_mapping[string(variables[1])][1])\n evolution"
+        )
+        ax_diff = Axis(fig[1, 1], title="$(title_mapping[string(variables[1])][1]) evolution",aspect=DataAspect())
         fig[0, :] = Label(fig, "$rgi_id")
-        resize_to_layout!(fig)
-        fig  # Return the main figure
-    
+    end
+
+    # Plot based on the metric
+    for metric in metrics
+        if metric == "hist"
+            hist!(ax, vec(data_diff), bins=50)
+            ax.limits[] = (minimum(data_diff), maximum(data_diff), nothing, nothing)
+        elseif metric == "difference"
+
+            nx, ny = size(data_diff)
+
+            # Calculate the symmetric color range
+            max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
+
+            hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
+
+            ax_diff.xlabel = "Longitude"
+            ax_diff.ylabel = "Latitude"
+            ax_diff.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
+            ax_diff.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
+            ax_diff.yticklabelrotation = π/2
+            ax_diff.ylabelpadding = 5
+            ax_diff.yticklabelalign = (:center, :bottom)
+
+            # Width of the scale division in heatmap data units
+            scale_width = 0.10*nx
+            scale_number = round(Δx * scale_width / 1000; digits=1)#to km
+
+            if metrics == ["difference"]
+                textsize=1.2*scale_width
+            else
+                textsize=0.9*scale_width
+            end
+
+            # Position and draw the scale division rectangle
+            poly!(ax_diff, Rect(nx -round(0.15*nx) , round(0.075*ny), scale_width, scale_width/10), color=:black)
+            text!(ax_diff, "$scale_number km",
+                position = (nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
+                fontsize=textsize)
+            cb = Colorbar(fig[1, 2], hm_diff)
+            Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax_diff.scene)).widths[2]))
+            Label(fig[1, 2], "Δ$variable_title ($(title_mapping[string(variables[1])][2]))", fontsize=14, valign=:top, padding=(0, -25))
+
+        end
+    end
+
+    resize_to_layout!(fig)
+    return fig  # Return the main figure
 end
 
 """
-    plot_glacier_statistics_evolution(results::Results, variables::Vector{Symbol}, title_mapping; metrics="median", tspan, threshold=0.5)
+    plot_glacier_statistics_evolution(
+        results::Results,
+        variables::Vector{Symbol},
+        title_mapping;
+        metrics="median",
+        tspan,
+        threshold=0.5,
+        figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+    )
 
 Plot the evolution of statistics for multiple glacier variables over time.
 
@@ -261,16 +299,24 @@ Plot the evolution of statistics for multiple glacier variables over time.
 - `metrics`: Metrics to visualize, e.g., "average", "median", "min", "max", and "std". Default is "median".
 - `tspan`: A tuple representing the start and end time for the simulation.
 - `threshold`: A threshold value to filter the data. Default is 0.5.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 
 # Returns
 - A plot of the glacier statistics evolution.
 """
-function plot_glacier_statistics_evolution(results::Results, variables::Vector{Symbol}, title_mapping; metrics="median", tspan, threshold=0.5)
-
+function plot_glacier_statistics_evolution(
+    results::Results,
+    variables::Vector{Symbol},
+    title_mapping;
+    metrics="median",
+    tspan,
+    threshold=0.5,
+    figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+)
     # Check if more than one variable is passed
-    if length(variables) > 1
-        error("Only one variable can be passed to this function.")
-    end
+    @assert length(variables) == 1 "Only one variable can be passed to this function."
+
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
 
     # Extract data for the variable
     data = getfield(results, variables[1])
@@ -289,15 +335,15 @@ function plot_glacier_statistics_evolution(results::Results, variables::Vector{S
         end
     end
 
-    # Extract the rgi_id 
-    rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
-    
+    # Extract the rgi_id
+    rgi_id = results.rgi_id
+
     # Create a time vector
     t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
 
     # Create a single plot for all other metrics
-    fig = Figure()
-    ax = Axis(fig[1, 1], xlabel="Time (years)", ylabel="$(title_mapping[string(variables[1])][1]) ($(title_mapping[string(variables[1])][2]))", title="Metrics for $(title_mapping[string(variables[1])][1]) through Time ($rgi_id)")
+    fig = Figure(; figKwargs...)
+    ax = Axis(fig[1, 1], xlabel="Time (years)", ylabel="$(title_mapping[string(variables[1])][1]) ($(title_mapping[string(variables[1])][2]))", title="Metrics for $(title_mapping[string(variables[1])][1]) through time ($rgi_id)")
 
     # If "average" or "std" is in metrics, calculate them
     if "average" in metrics || "std" in metrics
@@ -322,19 +368,24 @@ function plot_glacier_statistics_evolution(results::Results, variables::Vector{S
             max_vals = [maximum(filter(x -> !isnan(x) && x >= threshold, matrix[:])) for matrix in data]
             lines!(ax, t, max_vals, linestyle=:dot, label="Max")
         end
-        
+
     end
 
-    leg = Legend(fig, ax)  
-    fig[1, 2] = leg 
+    leg = Legend(fig, ax)
+    fig[1, 2] = leg
     resize_to_layout!(fig)
-    
 
-    fig  # Return the main figure
+    return fig  # Return the main figure
 end
 
 """
-    plot_glacier_integrated_volume(results::Results, variables::Vector{Symbol}, title_mapping; tspan)
+    plot_glacier_integrated_volume(
+        results,
+        variables,
+        title_mapping;
+        tspan,
+        figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+    )
 
 Plot the integrated volume of a glacier variable over time.
 
@@ -343,27 +394,30 @@ Plot the integrated volume of a glacier variable over time.
 - `variables::Vector{Symbol}`: The variable to be plotted.
 - `title_mapping`: A dictionary mapping variable names to their titles.
 - `tspan`: A tuple representing the start and end time for the simulation.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 
 # Returns
 - A plot of the glacier integrated volume.
 """
-function plot_glacier_integrated_volume(results, variables, title_mapping; tspan)
-    
+function plot_glacier_integrated_volume(
+    results,
+    variables,
+    title_mapping;
+    tspan,
+    figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+)
+
     # Determine pixel area
     area=results.Δx*results.Δy
-    
-    # Check if more than one variable is passed
-    if length(variables) > 1
-        error("Only one variable can be passed to this function.")
-    end
-    
-    # Extract the rgi_id 
-    rgi_id = :rgi_id in fieldnames(typeof(results)) ? results.rgi_id : "none"
 
-   
-    # Print plot information
-    variable_title = get(title_mapping, variables[1], variables[1])
-        
+    # Check if more than one variable is passed
+    @assert length(variables) == 1 "Only one variable can be passed to this function."
+
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
+    # Extract the rgi_id
+    rgi_id = results.rgi_id
+
     # Create a time vector
     t = range(tspan[1], stop=tspan[2], length=length(getfield(results, variables[1])))
 
@@ -376,22 +430,29 @@ function plot_glacier_integrated_volume(results, variables, title_mapping; tspan
     end
 
     # Calculate integrated ice volume for each time step
-    integrated_ice_volume = [sum(matrix) * area for matrix in data]  # Multiply by area
+    integrated_ice_volume = [sum(matrix) * area for matrix in data]/(10^9)  # Multiply by area and convert to km^3
+
+    nDigitsYticks = max(2, Int(round(-log10(maximum(integrated_ice_volume) - minimum(integrated_ice_volume)))))
 
     # Plot the integrated ice volume as a function of time
-    fig = Figure()
-    ax = Axis(fig[1, 1])
+    fig = Figure(; figKwargs...)
+    ax = Axis(fig[1, 1]; ytickformat = x -> string.(round.(x; digits=nDigitsYticks)))
     lines!(ax, t, integrated_ice_volume, color=:blue)
     ax.xlabel = "Time (years)"
-    ax.ylabel = "Integrated Ice Volume (m³)   "
-    ax.title = "Evolution of Integrated Ice Volume ($rgi_id)"
+    ax.ylabel = "Integrated ice volume (km³)   "
+    ax.title = "Evolution of integrated ice volume ($rgi_id)"
 
     resize_to_layout!(fig)
     return fig  # Return the main figure with the plot
 end
 
 """
-    plot_bias(data::Results, variables::Vector{Symbol}; treshold::Vector{Float64}=[0, 0])
+    plot_bias(
+        results,
+        variables;
+        treshold = [0, 0],
+        figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+    )
 
 Plot the bias of the glacier integrated volume over the specified time span.
 
@@ -400,35 +461,41 @@ Plot the bias of the glacier integrated volume over the specified time span.
 - `variables::Vector{Symbol}`: The variables to be plotted.
 - `title_mapping::Dict{Symbol, String}`: A dictionary mapping variable names to their titles.
 - `tspan::Tuple{Float64, Float64}`: A tuple representing the start and end time for the simulation.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 
 # Returns
 - A plot of the glacier integrated volume bias.
 """
-function plot_bias(data, variables; treshold = [0, 0])
+function plot_bias(
+    results,
+    variables;
+    treshold = [0, 0],
+    figsize::Union{Nothing, Tuple{Int64, Int64}}=nothing,
+)
     # Check for exactly two variables
-    if length(variables) != 2
-        error("Exactly two variables are required for the scatter plot.")
-    end
+    @assert length(variables) == 2 "Exactly two variables are required for the scatter plot."
 
-     # Ensure treshold is an array of length 2
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
+    # Ensure treshold is an array of length 2
     if length(treshold) == 1
         treshold = [treshold[1], treshold[1]]
     end
-    
-    # Extract data
-    rgi_id = data.rgi_id
-    x_values = getfield(data, variables[1])
-    y_values = getfield(data, variables[2])
-    
+
+    # Extract data from results
+    rgi_id = results.rgi_id
+    x_values = getfield(results, variables[1])
+    y_values = getfield(results, variables[2])
+
     # Filter non-zero observations if necessary
     if :H_obs in variables || :V_obs in variables
         obs_key = :H_obs in variables ? :H_obs : :V_obs
-        mask_H = getfield(data, obs_key) .> treshold[1] * maximum(getfield(data, obs_key))
-        mask_H_2 = getfield(data, obs_key) .< (1 - treshold[2]) * maximum(getfield(data, obs_key))
+        mask_H = getfield(results, obs_key) .> treshold[1] * maximum(getfield(results, obs_key))
+        mask_H_2 = getfield(results, obs_key) .< (1 - treshold[2]) * maximum(getfield(results, obs_key))
         x_values = x_values[mask_H .& mask_H_2]
         y_values = y_values[mask_H .& mask_H_2]
     end
-    
+
     # Calculate metrics
     differences = x_values .- y_values
     rmse = sqrt(mean(differences .^ 2)) # Root Mean Square Error
@@ -438,8 +505,8 @@ function plot_bias(data, variables; treshold = [0, 0])
     r_squared = 1 - (ss_res / ss_tot) # R-squared
 
     # Plotting
-    fig = Figure(size = (600, 400))
-    ax = Axis(fig[1, 1], xlabel = string(variables[1]), ylabel = string(variables[2]), title = "Scatter Plot for RGI ID: " * rgi_id)
+    fig = Figure(; figKwargs...)
+    ax = Axis(fig[1, 1], xlabel = string(variables[1]), ylabel = string(variables[2]), title = "Scatter plot for RGI ID: " * rgi_id)
 
     scatter!(ax, vec(x_values), vec(y_values), markersize = 5, color = :blue, label = "Data")
     xmin, xmax = minimum(x_values), maximum(x_values)
@@ -450,7 +517,7 @@ function plot_bias(data, variables; treshold = [0, 0])
     metrics_text = "RMSE: $(round(rmse, digits=2))\nR²: $(round(r_squared, digits=2))\nBias: $(round(bias, digits=2))"
     text!(ax, metrics_text, position = (xmax, ymax), align = (:right, :top), color = :black)
 
-    fig
+    return fig
 end
 
 
@@ -462,7 +529,7 @@ Generate various types of plots for glacier data.
 # Arguments
 - `results::Results`: The results object containing the data to be plotted.
 - `plot_type::String`: Type of plot to generate. Options are:
-  * "heatmaps": Heatmaps for glacier variables like `:H`, `:S`, `:B`, `:V`, `:Vx`, and `:Vy`.
+  * "heatmaps": Heatmaps for glacier variables like `:H`, `:H₀`, `:S`, `:B`, `:V`, `:Vx`, `:Vy`, `:V_ref`.
   * "evolution difference": Temporal difference metrics (between start and end) for a variable, with optional metrics like "hist" (histogram) and "difference".
   * "evolution statistics": Temporal statistical metrics for a variable, with optional metrics like "average", "median", "min", "max", and "std".
   * "integrated volume": Temporal evolution of the integrated ice volume for a variable.
@@ -474,6 +541,7 @@ Generate various types of plots for glacier data.
 - `metrics`: Metrics to visualize, e.g., `["average"]` for statistics, `["difference"]` for difference.
 - `scale_text_size::Union{Nothing,Float64}`: Optional argument to scale the text size for heatmaps.
 - `threshold::Vector{F}`: Threshold values for filtering data in bias plots.
+- `figsize::Tuple{Int64, Int64}`: Size of the figure.
 
 # Returns
 - A `Figure` object containing the desired visualization.
@@ -482,23 +550,21 @@ Generate various types of plots for glacier data.
 - Ensure the `variables` and `kwargs` match the requirements of the specified `plot_type`.
 - The function routes requests to specific plotting functions based on `plot_type`.
 """
-function plot_glacier(results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...) 
-    
+function plot_glacier(results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...)
+
     title_mapping = Dict(
-        "H" => ("Ice Thickness", "m", :YlGnBu),
-        "H₀" => ("Ice Thickness", "m", :YlGnBu),
-        "H_glathida" => ("Ice Thickness (GlaThiDa)", "m", :YlGnBu),
-        "S" => ("Surface Topography", "m", :terrain),
-        "B" => ("Bed Topography", "m", :terrain),
-        "V" => ("Ice Surface Velocity", "m/y", :viridis),
-        "Vx" => ("Ice Surface Velocity (X-direction)", "m/y", :viridis),
-        "Vy" => ("Ice Surface Velocity (Y-direction)", "m/y", :viridis),
-        "H_pred" => ("Predicted Ice Thickness", "m", :YlGnBu),
-        "H_obs" => ("Observed Ice Thickness", "m", :YlGnBu),
-        "H_diff" => ("Ice Thickness Difference", "m", :RdBu),
-        "V_pred" => ("Predicted Ice Surface Velocity", "m/y", :viridis),
-        "V_obs" => ("Observed Ice Surface Velocity", "m/y", :viridis),
-        "V_diff" => ("Ice Surface Velocity Difference", "m/y", :RdBu)
+        "H" => ("Predicted ice thickness", "m", :YlGnBu),
+        "H₀" => ("Ice thickness", "m", :YlGnBu),
+        "H_glathida" => ("Ice thickness (GlaThiDa)", "m", :YlGnBu),
+        "S" => ("Surface topography", "m", :terrain),
+        "B" => ("Bed topography", "m", :terrain),
+        "Vx" => ("Ice surface velocity\n(X-direction)", "m/y", :viridis),
+        "Vy" => ("Ice surface velocity\n(Y-direction)", "m/y", :viridis),
+        "H_ref" => ("Observed ice thickness", "m", :YlGnBu),
+        "H_diff" => ("Ice thickness difference", "m", :RdBu),
+        "V" => ("Predicted ice surface velocity", "m/y", :viridis),
+        "V_ref" => ("Observed ice surface velocity", "m/y", :viridis),
+        "V_diff" => ("Ice surface velocity difference", "m/y", :RdBu)
     )
 
     if plot_type == "heatmaps"
@@ -509,7 +575,7 @@ function plot_glacier(results::Results, plot_type::String, variables::Vector{Sym
         return plot_glacier_statistics_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "integrated volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "bias"  
+    elseif plot_type == "bias"
         return plot_bias(results, variables; kwargs...)
     else
         error("Invalid plot_type: $plot_type")

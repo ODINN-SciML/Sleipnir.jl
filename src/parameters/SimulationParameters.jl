@@ -4,7 +4,7 @@
 
 A structure to hold simulation parameters for a simulation in ODINN.
 
-    struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParameters
+    struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <: AbstractParameters
 
 # Fields
 - `use_MB::Bool`: Flag to indicate whether mass balance should be used.
@@ -13,8 +13,6 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `velocities::Bool`: Flag to indicate whether velocities should be calculated.
 - `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
 - `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
-- `float_type::DataType`: Data type for floating-point numbers.
-- `int_type::DataType`: Data type for integer numbers.
 - `tspan::Tuple{F, F}`: Time span for the simulation.
 - `step::F`: Time step for the simulation.
 - `multiprocessing::Bool`: Flag to indicate whether multiprocessing should be used.
@@ -23,8 +21,10 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `test_mode::Bool`: Flag to indicate whether to run in test mode.
 - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
 - `ice_thickness_source::String`: Source of ice thickness data.
+- `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
+    the velocity product datacube to the glacier grid.
 """
-struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParameters
+struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <: AbstractParameters
     use_MB::Bool
     use_iceflow::Bool
     plots::Bool
@@ -36,10 +36,10 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat} <: AbstractParamet
     multiprocessing::Bool
     workers::I
     working_dir::String
-    light::Bool
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::String
+    mapping::VM
 end
 
 
@@ -47,22 +47,23 @@ end
 """
 Constructor for `SimulationParameters` type, including default values.
 
-    SimulationParameters(; use_MB::Bool = true,
-                          use_iceflow::Bool = true,
-                          plots::Bool = true,
-                          velocities::Bool = true,
-                          overwrite_climate::Bool = false,
-                          use_glathida_data::Bool = false,
-                          float_type::DataType = Float64,
-                          int_type::DataType = Int64,
-                          tspan::Tuple{F, F} = (2010.0, 2015.0),
-                          step::F = 1/12,
-                          multiprocessing::Bool = true,
-                          workers::I = 4,
-                          working_dir::String = "",
-                          test_mode::Bool = false,
-                          rgi_paths::Dict{String, String} = Dict{String, String}(),
-                          ice_thickness_source::String = "Farinotti19") where {I <: Integer, F <: AbstractFloat}
+    SimulationParameters(;
+        use_MB::Bool = true,
+        use_iceflow::Bool = true,
+        plots::Bool = true,
+        velocities::Bool = true,
+        overwrite_climate::Bool = false,
+        use_glathida_data::Bool = false,
+        tspan::Tuple{F, F} = (2010.0,2015.0),
+        step::F = 1/12,
+        multiprocessing::Bool = true,
+        workers::I = 4,
+        working_dir::String = "",
+        test_mode::Bool = false,
+        rgi_paths::Dict{String, String} = Dict{String, String}(),
+        ice_thickness_source::String = "Farinotti19",
+        mapping::VM = MeanDateVelocityMapping(),
+    ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
 
 # Keyword arguments
@@ -82,6 +83,8 @@ Constructor for `SimulationParameters` type, including default values.
 - `test_mode::Bool`: Whether to run in test mode (default: `false`).
 - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths (default: `Dict{String, String}()`).
 - `ice_thickness_source::String`: Source of ice thickness data, either `"Millan22"` or `"Farinotti19"` (default: `"Farinotti19"`).
+- `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
+    the velocity product datacube to the glacier grid.
 
 # Returns
 - `simulation_parameters`: A new `SimulationParameters` object.
@@ -95,22 +98,22 @@ Constructor for `SimulationParameters` type, including default values.
     moment Literate.jl freezes when multiprocessing is enabled.
 """
 function SimulationParameters(;
-            use_MB::Bool = true,
-            use_iceflow::Bool = true,
-            plots::Bool = true,
-            velocities::Bool = true,
-            overwrite_climate::Bool = false,
-            use_glathida_data::Bool = false,
-            tspan::Tuple{F, F} = (2010.0,2015.0),
-            step::F = 1/12,
-            multiprocessing::Bool = true,
-            workers::I = 4,
-            working_dir::String = "",
-            light::Bool = true, 
-            test_mode::Bool = false,
-            rgi_paths::Dict{String, String} = Dict{String, String}(),
-            ice_thickness_source::String = "Farinotti19",
-            ) where {I <: Integer, F <: AbstractFloat}
+    use_MB::Bool = true,
+    use_iceflow::Bool = true,
+    plots::Bool = true,
+    velocities::Bool = true,
+    overwrite_climate::Bool = false,
+    use_glathida_data::Bool = false,
+    tspan::Tuple{F, F} = (2010.0,2015.0),
+    step::F = 1/12,
+    multiprocessing::Bool = true,
+    workers::I = 4,
+    working_dir::String = "",
+    test_mode::Bool = false,
+    rgi_paths::Dict{String, String} = Dict{String, String}(),
+    ice_thickness_source::String = "Farinotti19",
+    mapping::VM = MeanDateVelocityMapping(),
+) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
 
@@ -122,8 +125,9 @@ function SimulationParameters(;
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
-                                                Sleipnir.Float.(tspan), Sleipnir.Float(step), multiprocessing, Sleipnir.Int(workers), working_dir, 
-                                                light, test_mode, rgi_paths, ice_thickness_source)
+                                                Sleipnir.Float.(tspan), Sleipnir.Float(step),
+                                                multiprocessing, Sleipnir.Int(workers), working_dir,
+                                                test_mode, rgi_paths, ice_thickness_source, mapping)
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
@@ -135,5 +139,5 @@ end
 Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots &&
                                       a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
-                                      a.workers == b.workers && a.working_dir == b.working_dir && a.light == b.light && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
-                                      a.ice_thickness_source == b.ice_thickness_source
+                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
+                                      a.ice_thickness_source == b.ice_thickness_source && a.mapping == b.mapping

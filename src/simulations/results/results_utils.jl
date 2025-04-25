@@ -1,5 +1,13 @@
 """
-    create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
+    create_results(
+        simulation::SIM,
+        glacier_idx::I,
+        solution,
+        loss=nothing;
+        light=false,
+        batch_id::Union{Nothing, I}=nothing,
+        processVelocity::Union{Nothing, Function}=nothing
+    ) where {SIM <: Simulation, I <: Integer}
 
 Create a `Results` object from a given simulation and solution.
 
@@ -10,6 +18,7 @@ Create a `Results` object from a given simulation and solution.
 - `loss=nothing`: The loss value, default is `nothing`.
 - `light=false`: A boolean flag to indicate if only the first and last steps of the solution should be used.
 - `batch_id::Union{Nothing, I}=nothing`: The batch ID, default is `nothing`.
+- `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the batch ID and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
 - `results`: A `Results` object containing the processed simulation data.
@@ -17,12 +26,21 @@ Create a `Results` object from a given simulation and solution.
 # Details
 The function processes the solution to select the last value for each time step. It then constructs a `Results` object containing various attributes from the simulation and the iceflow model.
 """
-function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing; light=false, batch_id::Union{Nothing, I}=nothing) where {SIM <: Simulation, I <: Integer}
+function create_results(
+    simulation::SIM,
+    glacier_idx::I,
+    solution,
+    loss=nothing;
+    light=false,
+    batch_id::Union{Nothing, I}=nothing,
+    processVelocity::Union{Nothing, Function}=nothing
+) where {SIM <: Simulation, I <: Integer}
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
     t₀ = simulation.parameters.simulation.tspan[1]
     t₁ = simulation.parameters.simulation.tspan[2]
     Δt = simulation.parameters.simulation.step
+    glacier = simulation.glaciers[glacier_idx]
 
     nSteps = (t₁-t₀) / Δt
     timeSteps = t₀ .+ collect(0:nSteps) .* Δt
@@ -32,6 +50,33 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
 
     t = light ? nothing : solution.t[solStepIndices]
     H = light ? [solution.u[begin],solution.u[end]] : solution.u[solStepIndices]
+
+    if !isnothing(processVelocity)
+        velocities = map(Hi -> processVelocity(simulation, Hi; batch_id=batch_id), H)
+        Vx = [velocities[i][1] for i in range(1,length(velocities))]
+        Vy = [velocities[i][2] for i in range(1,length(velocities))]
+        V  = [velocities[i][3] for i in range(1,length(velocities))]
+
+        # Get reference surface velocities
+        if !isnothing(glacier.velocityData)
+            Vx_ref = glacier.velocityData.vx
+            Vy_ref = glacier.velocityData.vy
+            V_ref = glacier.velocityData.vabs
+        else
+            Vx_ref = nothing
+            Vy_ref = nothing
+            V_ref = nothing
+        end
+    else
+        Vx = Vy = V = nothing
+        Vx_ref = Vy_ref = V_ref = nothing
+    end
+
+    if !isnothing(glacier.thicknessData)
+        H_ref = glacier.thicknessData.H
+    else
+        H_ref = nothing
+    end
 
     # Simulations using Reverse Diff require an iceflow model per glacier
     if isnothing(batch_id)
@@ -45,19 +90,23 @@ function create_results(simulation::SIM, glacier_idx::I, solution, loss=nothing;
         θ = nothing
     end
 
-    results = Results(simulation.glaciers[glacier_idx], iceflow_model;
+    results = Results(glacier, iceflow_model;
                       H = H,
+                      H_ref = H_ref,
                       S = iceflow_model.S,
-                      B = simulation.glaciers[glacier_idx].B,
-                      V = iceflow_model.V,
-                      Vx = iceflow_model.Vx,
-                      Vy = iceflow_model.Vy,
-                      Δx = simulation.glaciers[glacier_idx].Δx,
-                      Δy = simulation.glaciers[glacier_idx].Δy,
-                      lon = simulation.glaciers[glacier_idx].cenlon,
-                      lat = simulation.glaciers[glacier_idx].cenlat,
-                      nx = simulation.glaciers[glacier_idx].nx,
-                      ny = simulation.glaciers[glacier_idx].ny,
+                      B = glacier.B,
+                      V = V,
+                      Vx = Vx,
+                      Vy = Vy,
+                      V_ref = V_ref,
+                      Vx_ref = Vx_ref,
+                      Vy_ref = Vy_ref,
+                      Δx = glacier.Δx,
+                      Δy = glacier.Δy,
+                      lon = glacier.cenlon,
+                      lat = glacier.cenlat,
+                      nx = glacier.nx,
+                      ny = glacier.ny,
                       t = t,
                       tspan = simulation.parameters.simulation.tspan,
                       θ = θ,
