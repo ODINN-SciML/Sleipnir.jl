@@ -6,7 +6,11 @@ export is_in_glacier
 ############  FUNCTIONS   #####################
 ###############################################
 """
-    initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
+    initialize_glaciers(
+        rgi_ids::Vector{String},
+        params::Parameters;
+        velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict(),
+    )
 
 Initialize glaciers based on provided RGI IDs and parameters.
 
@@ -14,6 +18,7 @@ Initialize glaciers based on provided RGI IDs and parameters.
 - `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
 - `test::Bool`: An optional boolean flag indicating whether to run in test mode. Default is `false`.
+- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
 - `glaciers::Vector{Glacier2D}`: A vector of initialized `Glacier2D` objects.
@@ -40,7 +45,11 @@ rgi_ids = ["RGI60-11.03638", "RGI60-11.01450", "RGI60-11.02346", "RGI60-08.00203
 glaciers = initialize_glaciers(rgi_ids, params)
 ```
 """
-function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
+function initialize_glaciers(
+    rgi_ids::Vector{String},
+    params::Parameters;
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+)
 
     # Generate missing glaciers file
     missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
@@ -56,13 +65,16 @@ function initialize_glaciers(rgi_ids::Vector{String}, params::Parameters)
 
     # Generate raw climate data if necessary
     if params.simulation.test_mode
-        map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids) # avoid GitHub CI issue
+        # Avoid GitHub CI issue
+        map((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     else
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
 
-    glaciers::Vector{Glacier2D} = pmap((rgi_id) -> initialize_glacier(rgi_id, params), rgi_ids)
-
+    glaciers::Vector{Glacier2D} = pmap(
+        (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
+        rgi_ids
+    )
 
     if params.simulation.use_glathida_data == true
 
@@ -101,16 +113,28 @@ Initialize a glacier with the given RGI ID and parameters.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
 - `parameters::Parameters`: A struct containing various parameters required for initialization.
 - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
 - `glacier`: An initialized glacier object containing the initial topography and climate data.
 """
-function initialize_glacier(rgi_id::String, parameters::Parameters; smoothing=false)
+function initialize_glacier(
+    rgi_id::String,
+    parameters::Parameters;
+    smoothing=false,
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+)
     # Initialize glacier initial topography
     glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing)
 
     # Initialize glacier climate
     initialize_glacier_climate!(glacier, parameters)
+
+    if get(velocityDatacubes, glacier.rgi_id, "") != ""
+        mapping = parameters.simulation.mapping
+        refVelocity = initialize_surfacevelocitydata(velocityDatacubes[glacier.rgi_id]; glacier=glacier, mapping=mapping)
+        glacier.velocityData = refVelocity
+    end
 
     return glacier
 end
@@ -174,18 +198,23 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
         # H₀[H_mask] .= 0.0
+        nx = glacier_grid["nxny"][1]
+        ny = glacier_grid["nxny"][2]
 
         # Mercator Projection
-        params_projection = parse_proj(glacier_grid["proj"])
-        transform(X,Y) = UTMercator(X, Y; k=params_projection["k"], cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"], 
-                        x0=params_projection["x_0"], y0=params_projection["y_0"])
+        params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
+        transform(X,Y) = UTMercator(
+            X, Y;
+            k=params_projection["k"],
+            cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"],
+            x0=params_projection["x_0"], y0=params_projection["y_0"]
+        )
         easting = dims(glacier_gd, 1).val
         northing = dims(glacier_gd, 2).val
         latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
         longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
-        x0y0 = transform(glacier_grid["x0y0"][1], glacier_grid["x0y0"][2])
-        cenlon::Sleipnir.Float = x0y0.lon.val
-        cenlat::Sleipnir.Float = x0y0.lat.val
+        cenlon::Sleipnir.Float = longitudes[Int(round(nx/2))]
+        cenlat::Sleipnir.Float = latitudes[Int(round(ny/2))]
         if maximum(abs.(latitudes)) > 80
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
@@ -194,7 +223,6 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
         S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
-        #smooth!(S)
 
         if params.simulation.velocities
             # All matrices need to be reversed
@@ -209,21 +237,22 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             Vx = zeros(F, size(H₀))
             Vy = zeros(F, size(H₀))
         end
-        nx = glacier_grid["nxny"][1]
-        ny = glacier_grid["nxny"][2]
-        Δx = abs.(glacier_grid["dxdy"][1])
-        Δy = abs.(glacier_grid["dxdy"][2])
-        slope = glacier_gd.slope.data
+        Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
+        Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
+        slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
+        name = get(get_rgi_names(), rgi_id, "")
 
         # We initialize the Glacier with all the initial topographical
         glacier = Glacier2D(
             rgi_id = rgi_id,
+            name = name,
             climate = nothing,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
             slope = slope, dist_border = dist_border,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
-            cenlon = cenlon, cenlat = cenlat
+            cenlon = cenlon, cenlat = cenlat,
+            params_projection = params_projection
         )
         return glacier
 
@@ -497,7 +526,7 @@ function parse_proj(proj::String)
     ℓ = split(proj, (' ', '+', '='))
     ℓ = ℓ[ℓ .!= ""]
     for (i, key) in enumerate(ℓ)
-        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0"]
+        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0", "zone"]
             res[key] = parse(Float64, ℓ[i+1])
         end
     end
@@ -505,7 +534,7 @@ function parse_proj(proj::String)
 end
 
 """
-    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0)
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
 Transverse Mercator Projection.
 This function reprojects northing/easting coordinates into latitude/longitude.
@@ -520,9 +549,10 @@ Keyword arguments
     - `zone` : Zone of the projection
     - `hemisphere`: Either :north or :south
 """
-function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=:north) where {F <: AbstractFloat}
+function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
 
     if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
     else
         # Convert to right units
@@ -537,6 +567,43 @@ function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0
     end
 
     return convert(LatLon, projection)
+end
+
+"""
+    ReverseUTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
+
+Transverse Mercator Projection.
+This function reprojects latitude/longitude into northing/easting coordinates.
+
+Keyword arguments
+=================
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
+"""
+function ReverseUTMercator(lat::F, lon::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
+
+    if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}
+    end
+
+    latlon = LatLon(lat, lon)
+    return convert(projection, latlon)
 end
 
 """
