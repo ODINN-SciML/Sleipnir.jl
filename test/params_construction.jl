@@ -6,30 +6,64 @@ function params_constructor_specified(; save_refs::Bool = false)
     # Filter out glaciers that are not used to avoid having references that depend on all the glaciers processed in Gungnir
     rgi_paths = Dict(rgi_id => rgi_paths[rgi_id])
 
-    physical_params = PhysicalParameters(ρ = 900.0,
-                                        g = 9.81,
-                                        ϵ = 1e-3,
-                                        η₀ = 1.0,
-                                        maxA = 8e-17,
-                                        minA = 8.5e-20,
-                                        maxTlaw = 1.0,
-                                        minTlaw = -25.0,
-                                        noise_A_magnitude = 5e-18)
+    physical_params = PhysicalParameters(
+        ρ = 900.0,
+        g = 9.81,
+        ϵ = 1e-3,
+        η₀ = 1.0,
+        maxA = 8e-17,
+        minA = 8.5e-20,
+        maxTlaw = 1.0,
+        minTlaw = -25.0,
+        noise_A_magnitude = 5e-18
+    )
+    @inferred PhysicalParameters(
+        ρ = 900.0,
+        g = 9.81,
+        ϵ = 1e-3,
+        η₀ = 1.0,
+        maxA = 8e-17,
+        minA = 8.5e-20,
+        maxTlaw = 1.0,
+        minTlaw = -25.0,
+        noise_A_magnitude = 5e-18
+    )
 
-    simulation_params = SimulationParameters(use_MB = true,
-                                            use_iceflow = true,
-                                            plots = false,
-                                            velocities = false,
-                                            overwrite_climate = false,
-                                            use_glathida_data = false,
-                                            tspan = (2010.0,2015.0),
-                                            multiprocessing = false,
-                                            workers = 10,
-                                            working_dir = "",
-                                            rgi_paths = rgi_paths)
+    simulation_params = SimulationParameters(
+        use_MB = true,
+        use_iceflow = true,
+        plots = false,
+        velocities = false,
+        overwrite_climate = false,
+        use_glathida_data = false,
+        tspan = (2010.0,2015.0),
+        multiprocessing = false,
+        workers = 10,
+        working_dir = "",
+        rgi_paths = rgi_paths
+    )
+    @inferred SimulationParameters(
+        use_MB = true,
+        use_iceflow = true,
+        plots = false,
+        velocities = false,
+        overwrite_climate = false,
+        use_glathida_data = false,
+        tspan = (2010.0,2015.0),
+        multiprocessing = false,
+        workers = 10,
+        working_dir = "",
+        rgi_paths = rgi_paths
+    )
 
-    params = Parameters(physical=physical_params,
-                        simulation=simulation_params)
+    params = Parameters(
+        physical=physical_params,
+        simulation=simulation_params
+    )
+    @inferred Parameters(
+        physical=physical_params,
+        simulation=simulation_params
+    )
 
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"); simulation_params)
@@ -50,12 +84,19 @@ end
 function params_constructor_default(; save_refs::Bool = false)
 
     physical_params = PhysicalParameters()
+    @inferred PhysicalParameters()
 
     simulation_params = SimulationParameters()
+    @inferred SimulationParameters()
 
-    params = Parameters(simulation=simulation_params,
-                        physical=physical_params
-                        )
+    params = Parameters(
+        simulation=simulation_params,
+        physical=physical_params
+    )
+    @inferred Parameters(
+        simulation=simulation_params,
+        physical=physical_params
+    )
 
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2"); simulation_params)

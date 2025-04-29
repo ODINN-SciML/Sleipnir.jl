@@ -146,10 +146,12 @@ function surface_velocity_data()
     @testset "Fake interpolated datacube w/o glacier gridding" begin
         fakeRasterStack = fake_interpolated_datacube()
         initialize_surfacevelocitydata(fakeRasterStack)
+        @inferred initialize_surfacevelocitydata(fakeRasterStack)
     end
     @testset "Fake multi datacube w/o glacier gridding" begin
         fakeRasterStack = fake_multi_datacube()
         initialize_surfacevelocitydata(fakeRasterStack)
+        @inferred initialize_surfacevelocitydata(fakeRasterStack)
     end
 
     rgi_paths = get_rgi_paths()
@@ -164,14 +166,26 @@ function surface_velocity_data()
             rgi_paths=rgi_paths
         )
     )
+    @inferred Parameters(
+        simulation=SimulationParameters(
+            velocities=true,
+            use_glathida_data=false,
+            working_dir=Sleipnir.root_dir,
+            test_mode=true,
+            rgi_paths=rgi_paths
+        )
+    )
     glaciers = initialize_glaciers(rgi_ids, params)
+    @inferred initialize_glaciers(rgi_ids, params)
 
     @testset "Fake interpolated datacube w glacier gridding" begin
         fakeRasterStack = fake_interpolated_datacube()
         initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
+        @inferred initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
     end
     @testset "Fake multi datacube w/ glacier gridding" begin
         fakeRasterStack = fake_multi_datacube()
         initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
+        @inferred initialize_surfacevelocitydata(fakeRasterStack; glacier=glaciers[1])
     end
 end

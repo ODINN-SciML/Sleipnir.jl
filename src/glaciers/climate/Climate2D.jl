@@ -63,6 +63,16 @@ Base.:(==)(a::Climate2D, b::Climate2D) = a.raw_climate == b.raw_climate && a.cli
                                       a.longterm_temps == b.longterm_temps && a.avg_temps == b.avg_temps &&
                                       a.avg_gradients == b.avg_gradients
 
+diffToDict(a::Climate2D, b::Climate2D) = Dict{Symbol, Bool}(
+    :raw_climate => a.raw_climate == b.raw_climate,
+    :climate_raw_step => a.climate_raw_step == b.climate_raw_step,
+    :climate_step => a.climate_step == b.climate_step,
+    :climate_2D_step => a.climate_2D_step == b.climate_2D_step,
+    :longterm_temps => a.longterm_temps == b.longterm_temps,
+    :avg_temps => a.avg_temps == b.avg_temps,
+    :avg_gradients => a.avg_gradients == b.avg_gradients,
+)
+
 """
     DummyClimate2D(;
         longterm_temps::Vector{F} = []

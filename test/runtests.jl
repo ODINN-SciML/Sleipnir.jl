@@ -27,22 +27,19 @@ ENV["GKSwstype"]="nul"
 
 @testset "Run all tests" begin
 
-@testset "Parameters constructors with specified values" params_constructor_specified(save_refs=false)
+@testset "Constructors" begin
+    @testset "Parameters constructors with specified values" params_constructor_specified(save_refs=false)
+    @testset "Parameters constructors by default" params_constructor_default(save_refs=false)
+    @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(use_glathida_data=false, save_refs=false)
+    @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
+    @testset "Surface velocity datacube" surface_velocity_data()
+    @testset "Results instantiation w/o velocity datacube" results_default(save_refs=false)
+    @testset "Results instantiation w/ velocity datacube" results_default(save_refs=false, useDatacube=true)
+end
 
-@testset "Parameters constructors by default" params_constructor_default(save_refs=false)
-
-@testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(use_glathida_data=false, save_refs=false)
-
-@testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
-
-@testset "Surface velocity datacube" surface_velocity_data()
-
-@testset "Glaciers 2D plots" glaciers2D_plots()
-
-@testset "Video plot test" make_thickness_video_test()
-
-@testset "Results instantiation w/o velocity datacube" results_default(save_refs=false)
-
-@testset "Results instantiation w/ velocity datacube" results_default(save_refs=false, useDatacube=true)
+@testset "Plotting functions" begin
+    @testset "Glaciers 2D plots" glaciers2D_plots()
+    @testset "Video plot test" make_thickness_video_test()
+end
 
 end

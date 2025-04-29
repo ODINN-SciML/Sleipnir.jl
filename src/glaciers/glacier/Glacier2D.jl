@@ -204,6 +204,31 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         safe_approx(a.params_projection, b.params_projection) &&
                                         safe_approx(a.thicknessData, b.thicknessData) && safe_approx(a.velocityData, b.velocityData)
 
+diffToDict(a::Glacier2D, b::Glacier2D) = Dict{Symbol, Bool}(
+    :rgi_id => a.rgi_id == b.rgi_id,
+    :name => a.name == b.name,
+    :climate => a.climate == b.climate,
+    :H₀ => a.H₀ == b.H₀,
+    :H_glathida => a.H_glathida == b.H_glathida,
+    :S => a.S == b.S,
+    :B => a.B == b.B,
+    :V => a.V == b.V,
+    :A => a.A == b.A,
+    :C => a.C == b.C,
+    :n => a.n == b.n,
+    :slope => a.slope == b.slope,
+    :dist_border => a.dist_border == b.dist_border,
+    :Coords => a.Coords == b.Coords,
+    :Δx => a.Δx == b.Δx,
+    :nx => a.nx == b.nx,
+    :ny => a.ny == b.ny,
+    :cenlon => a.cenlon == b.cenlon,
+    :cenlat => a.cenlat == b.cenlat,
+    :params_projection => a.params_projection == b.params_projection,
+    :thicknessData => a.thicknessData == b.thicknessData,
+    :velocityData => a.velocityData == b.velocityData,
+)
+
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)
     if !isnothing(glacier.H₀)
