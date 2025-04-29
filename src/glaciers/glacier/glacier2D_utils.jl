@@ -71,7 +71,7 @@ function initialize_glaciers(
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
 
-    glaciers::Vector{Glacier2D} = pmap(
+    glaciers::Vector{Glacier2D{Sleipnir.Float, Sleipnir.Int}} = pmap( # Ensure type stability
         (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
         rgi_ids
     )
@@ -267,7 +267,7 @@ end
 
 # [Begin] Glathida Utilities
 """
-    get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=false)
+    get_glathida!(glaciers::Vector{G}, params::Parameters; force=false) where {G <: Glacier2D}
 
 Retrieve and process glacier thickness data for a vector of `Glacier2D` objects.
 
@@ -288,7 +288,7 @@ This function retrieves glacier thickness data for each glacier in the input vec
 - The list of missing glaciers is stored in a JLD2 file located at `params.simulation.working_dir/data/missing_glaciers.jld2`.
 - Glaciers with no data are identified and removed based on the condition that all data points in their thickness grid are zero.
 """
-function get_glathida!(glaciers::Vector{Glacier2D}, params::Parameters; force=false)
+function get_glathida!(glaciers::Vector{G}, params::Parameters; force=false) where {G <: Glacier2D}
     gtd_grids = pmap(glacier -> get_glathida_glacier(glacier, params, force), glaciers)
 
      # Update missing_glaciers list before removing them
