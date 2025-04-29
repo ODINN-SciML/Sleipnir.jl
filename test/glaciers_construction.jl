@@ -51,9 +51,9 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
         println("Variables glaciers and glaciers_ref are different")
         for i in 1:size(glaciers, 1)
             println("Glacier n°$i")
-            println("diff = ", Sleipnir.diffToDict(glaciers[i], glaciers_ref[i]))
+            println("Glacier fields identical: ", Sleipnir.diffToDict(glaciers[i], glaciers_ref[i]))
             if !(glaciers[i].climate == glaciers_ref[i].climate)
-                println("diff climate = ", Sleipnir.diffToDict(glaciers[i].climate, glaciers_ref[i].climate))
+                println("Climate fields identical: = ", Sleipnir.diffToDict(glaciers[i].climate, glaciers_ref[i].climate))
             end
         end
     end

@@ -39,7 +39,7 @@ function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameter
                             climate_step = climate_step,
                             climate_2D_step = climate_2D_step,
                             longterm_temps = longterm_temps,
-                            avg_temps = round(mean(raw_climate[At(dummy_period)].temp); digits=10), # This mean is not reproducible across platforms, this is to ensure reproducibility in the tests
+                            avg_temps = round(mean(raw_climate[At(dummy_period)].temp); digits=10), # This mean is not reproducible across platforms, the rounding is to ensure reproducibility in the tests
                             avg_gradients = mean(raw_climate[At(dummy_period)].gradient))
 end
 
