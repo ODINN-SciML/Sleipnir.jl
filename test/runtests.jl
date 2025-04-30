@@ -21,6 +21,7 @@ include("glaciers_construction.jl")
 include("surface_velocity.jl")
 include("plot_utils.jl")
 include("results.jl")
+include("laws.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
@@ -44,5 +45,10 @@ ENV["GKSwstype"]="nul"
 @testset "Results instantiation w/o velocity datacube" results_default(save_refs=false)
 
 @testset "Results instantiation w/ velocity datacube" results_default(save_refs=false, useDatacube=true)
+
+@testset "Law" begin
+    generate_inputs_testset()
+    apply_law_testset()
+end
 
 end
