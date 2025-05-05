@@ -87,7 +87,7 @@ Arguments:
 - `longterm_temps::Vector{F}`: Long term temperatures.
 """
 function DummyClimate2D(;
-    longterm_temps::Vector{F} = []
+    longterm_temps::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {F <: AbstractFloat}
     ras = Raster(rand(X(1:0), Y(1:0), Ti(DateTime(2001):Month(1):DateTime(2002))))
     emptyRasterStack = RasterStack(ras)
@@ -106,7 +106,14 @@ function DummyClimate2D(;
     return Climate2D(
         raw_climate = emptyRasterStack,
         climate_raw_step = emptyRasterStack,
-        climate_step = Dict(),
+        climate_step = Dict(
+            "gradient" => 0.0,
+            "temp" => 0.0,
+            "avg_temp" => 0.0,
+            "avg_gradient" => 0.0,
+            "ref_hgt" => 0.0,
+            "prcp" => 0.0
+        ),
         climate_2D_step = emptyClimate2Dstep,
         longterm_temps = longterm_temps,
         avg_temps = 0.,
