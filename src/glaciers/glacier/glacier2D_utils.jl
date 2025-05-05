@@ -427,9 +427,13 @@ This function filters out glaciers from the provided `rgi_ids` list based on two
 """
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
-    # Check which glaciers we can actually process and remove level 2 glaciers
+    # Check which glaciers we can actually process
+    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
+    rgi_stats = CSV.File(pathCsv)
+
+    # Remove level 2 glaciers
     for rgi_id in rgi_ids
-        if rgi_id in nonConformGlaciersRgiStats
+        if rgi_stats.Connect[rgi_stats.RGIId .== rgi_id] == 2
             @warn "Filtering glacier $rgi_id..."
             deleteat!(rgi_ids, rgi_ids .== rgi_id)
         end

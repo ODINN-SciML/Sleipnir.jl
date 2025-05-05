@@ -39,13 +39,6 @@ function __init__()
 
 end
 
-function getNonConformGlaciersRgiStats()
-    # Return list of level 2 glaciers
-    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
-    rgi_stats = CSV.File(pathCsv)
-    return rgi_stats.RGIId[rgi_stats.Connect .== 2]
-end
-
 function clean()
     atexit() do
         run(`$(Base.julia_cmd())`)

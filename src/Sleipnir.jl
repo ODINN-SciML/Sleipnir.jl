@@ -76,6 +76,4 @@ include("simulations/Simulation.jl")
 #######    PRE-LOADED VARIABLES     ##########
 ##############################################
 
-const nonConformGlaciersRgiStats = getNonConformGlaciersRgiStats()
-
 end # module
