@@ -17,7 +17,7 @@ function params_constructor_specified(; save_refs::Bool = false)
         minTlaw = -25.0,
         noise_A_magnitude = 5e-18
     )
-    @inferred PhysicalParameters(
+    JET.@test_opt PhysicalParameters(
         ρ = 900.0,
         g = 9.81,
         ϵ = 1e-3,
@@ -42,7 +42,7 @@ function params_constructor_specified(; save_refs::Bool = false)
         working_dir = "",
         rgi_paths = rgi_paths
     )
-    @inferred SimulationParameters(
+    JET.@test_opt SimulationParameters(
         use_MB = true,
         use_iceflow = true,
         plots = false,
@@ -60,7 +60,7 @@ function params_constructor_specified(; save_refs::Bool = false)
         physical=physical_params,
         simulation=simulation_params
     )
-    @inferred Parameters(
+    JET.@test_opt target_modules=(Sleipnir,) Parameters( # Report only issues in Sleipnir
         physical=physical_params,
         simulation=simulation_params
     )
@@ -84,16 +84,16 @@ end
 function params_constructor_default(; save_refs::Bool = false)
 
     physical_params = PhysicalParameters()
-    @inferred PhysicalParameters()
+    JET.@test_opt PhysicalParameters()
 
     simulation_params = SimulationParameters()
-    @inferred SimulationParameters()
+    JET.@test_opt SimulationParameters()
 
     params = Parameters(
         simulation=simulation_params,
         physical=physical_params
     )
-    @inferred Parameters(
+    JET.@test_opt target_modules=(Sleipnir,) Parameters( # Report only issues in Sleipnir
         simulation=simulation_params,
         physical=physical_params
     )

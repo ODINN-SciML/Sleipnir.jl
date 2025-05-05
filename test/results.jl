@@ -14,7 +14,7 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
             rgi_paths=rgi_paths
         )
     )
-    @inferred Parameters(
+    JET.@test_opt target_modules=(Sleipnir,) Parameters(
         simulation=SimulationParameters(
             velocities=false,
             use_glathida_data=false,
@@ -26,20 +26,20 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     if useDatacube
         fakeRasterStack = fake_interpolated_datacube()
         glaciers = initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack))
-        @inferred initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack))
+        # JET.@test_opt target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack)) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
         prefix = "_vel"
     else
         glaciers = initialize_glaciers(rgi_ids, params)
-        @inferred initialize_glaciers(rgi_ids, params)
+        # JET.@test_opt target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
         prefix = ""
     end
 
     S = glaciers[1].S
     ifm = SimpleIceflowModel{Sleipnir.Float}(S)
-    @inferred SimpleIceflowModel{Sleipnir.Float}(S)
+    JET.@test_opt target_modules=(Sleipnir,) SimpleIceflowModel{Sleipnir.Float}(S)
 
     results = Results(glaciers[1], ifm)
-    @inferred Results(glaciers[1], ifm)
+    JET.@test_opt target_modules=(Sleipnir,) Results(glaciers[1], ifm)
 
     if save_refs
         jldsave(joinpath(Sleipnir.root_dir, string("test/data/results/results$(prefix).jld2")); results)

@@ -6,7 +6,7 @@ A mutable struct to store the results of simulations.
 # Fields
 - `rgi_id::String`: Identifier for the RGI (Randolph Glacier Inventory).
 - `H::Vector{Matrix{F}}`: Vector of matrices representing glacier ice thickness `H` over time.
-- `H_glathida::Union{Nothing, Vector{Matrix{F}}}`: Optional vector of matrices for Glathida ice thicknesses.
+- `H_glathida::Matrix{F}`: Optional matrix for Glathida ice thicknesses.
 - `H_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference data for ice thickness.
 - `S::Matrix{F}`: Glacier surface altimetry.
 - `B::Matrix{F}`: Glacier bedrock.
@@ -29,7 +29,7 @@ A mutable struct to store the results of simulations.
 mutable struct Results{F <: AbstractFloat, I <: Int}
     rgi_id::String
     H::Vector{Matrix{F}}
-    H_glathida::Union{Nothing, Vector{Matrix{F}}}
+    H_glathida::Matrix{F}
     H_ref::Union{Nothing, Vector{Matrix{F}}}
     S::Matrix{F}
     B::Matrix{F}
@@ -65,7 +65,7 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
     Results(glacier::G, ifm::IF;
         rgi_id::String = glacier.rgi_id,
         H::Union{Nothing, Vector{Matrix{F}}} = nothing,
-        H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
+        H_glathida::Matrix{F} = glacier.H_glathida,
         H_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
         S::Union{Nothing, Matrix{F}} = nothing,
         B::Union{Nothing, Matrix{F}} = nothing,
@@ -94,7 +94,7 @@ Construct a `Results` object for a glacier simulation.
 - `ifm::IF`: The model object, subtype of `AbstractModel`.
 - `rgi_id::String`: The RGI identifier for the glacier. Defaults to `glacier.rgi_id`.
 - `H::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness matrices. Defaults to nothing.
-- `H_glathida::Union{Nothing, Vector{Matrix{F}}}`: Ice thickness from GlaThiDa. Defaults to `glacier.H_glathida`.
+- `H_glathida::Matrix{F}`: Ice thickness from GlaThiDa. Defaults to `glacier.H_glathida`.
 - `H_ref::Union{Nothing, Vector{Matrix{F}}}`: Reference ice thickness. Defaults to nothing.
 - `S::Union{Nothing, Matrix{F}}`: Surface elevation matrix. Defaults to a zero matrix of the same size as `ifm.S`.
 - `B::Union{Nothing, Matrix{F}}`: Bed elevation matrix. Defaults to a zero matrix of the same size as `glacier.B`.
@@ -120,7 +120,7 @@ Construct a `Results` object for a glacier simulation.
 function Results(glacier::G, ifm::IF;
         rgi_id::String = glacier.rgi_id,
         H::Union{Nothing, Vector{Matrix{F}}} = nothing,
-        H_glathida::Union{Nothing, Vector{Matrix{F}}} = glacier.H_glathida,
+        H_glathida::Matrix{F} = glacier.H_glathida,
         H_ref::Union{Nothing, Vector{Matrix{F}}} = nothing,
         S::Union{Nothing, Matrix{F}} = nothing,
         B::Union{Nothing, Matrix{F}} = nothing,
@@ -142,17 +142,12 @@ function Results(glacier::G, ifm::IF;
         loss::Union{Nothing,Vector{F}} = nothing
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
 
-    if isnothing(H)
-        H = Vector{Matrix{F}}([])
-    end
-    if isnothing(S)
-        S = zeros(F, size(ifm.S))
-    end
-    if isnothing(B)
-        B = zeros(F, size(glacier.B))
-    end
+    H = H === nothing ? Vector{Matrix{Sleipnir.Float}}() : H
+    S = S === nothing ? zeros(Sleipnir.Float, size(ifm.S)) : S
+    B = B === nothing ? zeros(Sleipnir.Float, size(glacier.B)) : B
+
     # Build the results struct based on input values
-    results = Results{F, I}(rgi_id, H, H_glathida, H_ref, S, B,
+    results = Results{Sleipnir.Float, Sleipnir.Int}(rgi_id, H, H_glathida, H_ref, S, B,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)

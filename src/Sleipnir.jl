@@ -31,9 +31,9 @@ using ImageInTerminal
 using ImageCore
 using Printf
 
-# ##############################################
-# ############    PARAMETERS     ###############
-# ##############################################
+##############################################
+############    PARAMETERS     ###############
+##############################################
 
 cd(@__DIR__)
 const global root_dir::String = dirname(Base.current_project())
@@ -45,9 +45,9 @@ if !doublePrec
     @warn "Double precision is disabled"
 end
 
-# ##############################################
-# ##########  SLEIPNIR LIBRARIES  ##############
-# ##############################################
+##############################################
+##########  SLEIPNIR LIBRARIES  ##############
+##############################################
 
 include("setup/config.jl")
 
@@ -71,5 +71,11 @@ include("models/Model.jl")
 
 # Everything related to running simulations in ODINN
 include("simulations/Simulation.jl")
+
+##############################################
+#######    PRE-LOADED VARIABLES     ##########
+##############################################
+
+const nonConformGlaciersRgiStats = getNonConformGlaciersRgiStats()
 
 end # module

@@ -15,6 +15,7 @@ import NCDatasets
 using DimensionalData
 using Dates
 using DateFormats
+using JET
 
 include("params_construction.jl")
 include("glaciers_construction.jl")
