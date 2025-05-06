@@ -13,6 +13,18 @@ default_name(::AbstractInput) = throw(error("Concrete subtypes of AbstractInput 
 get_input(::AbstractInput, simulation, glacier_idx, t) = throw(error("Concrete subtypes of AbstractInput must implement get_input"))
 
 """
+    AbstractLaw
+
+Abstract type representing a synthetic law.
+Currently it's only used for testing by making easier to create dumb laws, but in the future it may be cleaner to use different concrete type of laws
+(for example `CallbackLaw`, `ContinuousLaw`, or `LearnableLaw`)
+
+Concrete subtypes must implement:
+- `apply_law(::ConcreteLaw, simulation, glacier_idx, t, θ)`
+"""
+abstract type AbstractLaw end
+
+"""
     Law(; inputs::Tuple|NamedTuple, f::Function, callback_freq)
 
 A `Law` can represent either a synthetic function or a learnable model (e.g., neural network) that computes a parameter based on selected input variables.
@@ -34,7 +46,7 @@ law = Law(
 )
 ```
 """
-struct Law{IN, F, FREQ <: Union{Nothing, Float64}}
+struct Law{IN, F, FREQ <: Union{Nothing, Float64}} <: AbstractLaw
     inputs::IN
     f::F
     callback_freq::FREQ
