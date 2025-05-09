@@ -20,13 +20,13 @@ manually, but rather through the `initialize_glaciers` function.
 `Glacier2D{F <: AbstractFloat, I <: Integer}`
 
 # Fields
-- `rgi_id::Union{String, Nothing}`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
+- `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
 - `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
-- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from the GLATHIDA dataset.
-- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
-- `B::Union{Matrix{F}, Nothing}`: Bedrock elevation matrix.
+- `H_glathida::Matrix{F}`: Ice thickness matrix from the GLATHIDA dataset.
+- `S::Matrix{F}`: Surface elevation matrix.
+- `B::Matrix{F}`: Bedrock elevation matrix.
 - `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
 - `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
 - `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
@@ -36,10 +36,10 @@ manually, but rather through the `initialize_glaciers` function.
 - `slope::Union{Matrix{F}, Nothing}`: Surface slope matrix.
 - `dist_border::Union{Matrix{F}, Nothing}`: Distance to the glacier border matrix.
 - `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
-- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
-- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
-- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
-- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `Δx::F`: Grid spacing in the x-direction.
+- `Δy::F`: Grid spacing in the y-direction.
+- `nx::I`: Number of grid points in the x-direction.
+- `ny::I`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
 - `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
@@ -47,13 +47,13 @@ manually, but rather through the `initialize_glaciers` function.
 - `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
-    rgi_id::Union{String, Nothing}
+    rgi_id::String
     name::String
     climate::Union{Climate2D, Nothing}
     H₀::Union{Matrix{F}, Nothing}
-    H_glathida::Union{Matrix{F}, Nothing}
-    S::Union{Matrix{F}, Nothing}
-    B::Union{Matrix{F}, Nothing}
+    H_glathida::Matrix{F}
+    S::Matrix{F}
+    B::Matrix{F}
     V::Union{Matrix{F}, Nothing}
     Vx::Union{Matrix{F}, Nothing}
     Vy::Union{Matrix{F}, Nothing}
@@ -63,10 +63,10 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     slope::Union{Matrix{F}, Nothing}
     dist_border::Union{Matrix{F}, Nothing}
     Coords::Union{Dict{String, Vector{Float64}}, Nothing}
-    Δx::Union{F, Nothing}
-    Δy::Union{F, Nothing}
-    nx::Union{I, Nothing}
-    ny::Union{I, Nothing}
+    Δx::F
+    Δy::F
+    nx::I
+    ny::I
     cenlon::Union{F, Nothing}
     cenlat::Union{F, Nothing}
     params_projection::Dict{String, Float64}
@@ -106,13 +106,13 @@ Constructs a `Glacier2D` object with the given parameters, including default one
     ) where {F <: AbstractFloat, I <: Integer}
 
 # Arguments
-- `rgi_id::Union{String, Nothing}`: The RGI identifier for the glacier.
+- `rgi_id::String`: The RGI identifier for the glacier.
 - `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
 - `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
-- `H_glathida::Union{Matrix{F}, Nothing}`: Ice thickness matrix from GLATHIDA.
-- `S::Union{Matrix{F}, Nothing}`: Surface elevation matrix.
-- `B::Union{Matrix{F}, Nothing}`: Bed elevation matrix.
+- `H_glathida::Matrix{F}`: Ice thickness matrix from GLATHIDA.
+- `S::Matrix{F}`: Surface elevation matrix.
+- `B::Matrix{F}`: Bed elevation matrix.
 - `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
 - `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
 - `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
@@ -122,10 +122,10 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
 - `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
 - `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys "lon" and "lat".
-- `Δx::Union{F, Nothing}`: Grid spacing in the x-direction.
-- `Δy::Union{F, Nothing}`: Grid spacing in the y-direction.
-- `nx::Union{I, Nothing}`: Number of grid points in the x-direction.
-- `ny::Union{I, Nothing}`: Number of grid points in the y-direction.
+- `Δx::F`: Grid spacing in the x-direction.
+- `Δy::F`: Grid spacing in the y-direction.
+- `nx::I`: Number of grid points in the x-direction.
+- `ny::I`: Number of grid points in the y-direction.
 - `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
 - `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
@@ -136,13 +136,13 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - A `Glacier2D` object with the specified parameters.
 """
 function Glacier2D(;
-    rgi_id::Union{String, Nothing} = nothing,
+    rgi_id::String = "",
     name::String = "",
     climate::Union{Climate2D, Nothing} = nothing,
     H₀::Union{Matrix{F}, Nothing} = nothing,
-    H_glathida::Union{Matrix{F}, Nothing} = nothing,
-    S::Union{Matrix{F}, Nothing} = nothing,
-    B::Union{Matrix{F}, Nothing} = nothing,
+    H_glathida::Matrix{F} = Matrix{Float64}([;;]),
+    S::Matrix{F} = Matrix{Float64}([;;]),
+    B::Matrix{F} = Matrix{Float64}([;;]),
     V::Union{Matrix{F}, Nothing} = nothing,
     Vx::Union{Matrix{F}, Nothing} = nothing,
     Vy::Union{Matrix{F}, Nothing} = nothing,
@@ -152,10 +152,10 @@ function Glacier2D(;
     slope::Union{Matrix{F}, Nothing} = nothing,
     dist_border::Union{Matrix{F}, Nothing} = nothing,
     Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing,
+    Δx::F = 0,
+    Δy::F = 0,
+    nx::I = 0,
+    ny::I = 0,
     cenlon::Union{F, Nothing} = nothing,
     cenlat::Union{F, Nothing} = nothing,
     params_projection::Dict{String, Float64} = Dict{String, Float64}(),
@@ -204,6 +204,31 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         safe_approx(a.params_projection, b.params_projection) &&
                                         safe_approx(a.thicknessData, b.thicknessData) && safe_approx(a.velocityData, b.velocityData)
 
+diffToDict(a::Glacier2D, b::Glacier2D) = Dict{Symbol, Bool}(
+    :rgi_id => a.rgi_id == b.rgi_id,
+    :name => a.name == b.name,
+    :climate => a.climate == b.climate,
+    :H₀ => a.H₀ == b.H₀,
+    :H_glathida => a.H_glathida == b.H_glathida,
+    :S => a.S == b.S,
+    :B => a.B == b.B,
+    :V => a.V == b.V,
+    :A => a.A == b.A,
+    :C => a.C == b.C,
+    :n => a.n == b.n,
+    :slope => a.slope == b.slope,
+    :dist_border => a.dist_border == b.dist_border,
+    :Coords => a.Coords == b.Coords,
+    :Δx => a.Δx == b.Δx,
+    :nx => a.nx == b.nx,
+    :ny => a.ny == b.ny,
+    :cenlon => a.cenlon == b.cenlon,
+    :cenlat => a.cenlat == b.cenlat,
+    :params_projection => a.params_projection == b.params_projection,
+    :thicknessData => a.thicknessData == b.thicknessData,
+    :velocityData => a.velocityData == b.velocityData,
+)
+
 # Display setup
 function Base.show(io::IO, glacier::Glacier2D)
     if !isnothing(glacier.H₀)
@@ -225,7 +250,7 @@ function Base.show(io::IO, glacier::Glacier2D)
     else
         print("at undefined location")
     end
-    if isnothing(glacier.H_glathida)
+    if size(glacier.H_glathida) == (0, 0)
         printstyled("   w/o";color=:red)
     else
         printstyled("   w/";color=:blue)
