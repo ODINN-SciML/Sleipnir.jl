@@ -191,15 +191,21 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         println("Smoothing is being applied to initial condition.")
         smooth!(H₀)  # Smooth initial ice thickness to help the solver
     end
+    if params.simulation.gridScalingFactor > 0
+        H₀ = block_average_pad_edge(H₀, params.simulation.gridScalingFactor)
+    end
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{Sleipnir.Float} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
+        if params.simulation.gridScalingFactor > 0
+            # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
+            dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
+        end
 
         # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
         # H₀[H_mask] .= 0.0
-        nx = glacier_grid["nxny"][1]
-        ny = glacier_grid["nxny"][2]
+        nx, ny = params.simulation.gridScalingFactor > 0 ? size(H₀) : glacier_grid["nxny"]
 
         # Mercator Projection
         params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
@@ -219,10 +225,13 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
 
-        B = reverse(glacier_gd.topo.data, dims=2) .- H₀ # bedrock (matrix also needs to be reversed)
+        S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
+        if params.simulation.gridScalingFactor > 0
+            S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
+        end
+        B = S .- H₀ # bedrock (matrix also needs to be reversed)
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
-        S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
 
         if params.simulation.velocities
             # All matrices need to be reversed
@@ -239,6 +248,10 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         end
         Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
         Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
+        if params.simulation.gridScalingFactor > 0
+            Δx *= params.simulation.gridScalingFactor
+            Δy *= params.simulation.gridScalingFactor
+        end
         slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
         name = get(get_rgi_names(), rgi_id, "")
 
@@ -646,4 +659,76 @@ function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: Abst
         B .= min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
     end
     return B .> 0.001
+end
+
+"""
+    block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging `n x n` blocks, using edge-replication padding
+when the matrix dimensions are not divisible by `n`.
+Edge padding replicates the last row/column values to expand the matrix so that both
+dimensions are divisible by `n`.
+Returns a matrix of averaged values with size `(ceil(Int, X/n), ceil(Int, Y/n))`.
+
+Arguments
+- `mat::Matrix{F}`: Input 2D matrix.
+- `n::Int`: Block size for downsampling.
+"""
+function block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+    X, Y = size(mat)
+    new_X = ceil(Int, X / n) * n
+    new_Y = ceil(Int, Y / n) * n
+
+    # Create padded matrix filled with edge values
+    padded = similar(mat, new_X, new_Y)
+
+    # Fill original data
+    padded[1:X, 1:Y] .= mat
+
+    # Pad bottom rows with last row
+    if new_X > X
+        for i in X+1:new_X
+            padded[i, 1:Y] .= mat[end, :]
+        end
+    end
+
+    # Pad right columns with last column
+    if new_Y > Y
+        for j in Y+1:new_Y
+            padded[1:X, j] .= mat[:, end]
+        end
+    end
+
+    # Fill bottom-right corner (if both X and Y were padded)
+    if new_X > X && new_Y > Y
+        for i in X+1:new_X
+            for j in Y+1:new_Y
+                padded[i, j] = mat[end, end]
+            end
+        end
+    end
+
+    return block_average(padded, n)
+end
+
+"""
+    block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging non-overlapping `n x n` blocks.
+Returns a matrix of the block-averaged values with size `(div(X, n), div(Y, n))`
+where `(X, Y) = size(mat)`.
+
+Arguments
+- `mat::Matrix{F}`: Input 2D matrix.
+- `n::Int`: Block size for downsampling. Both matrix dimensions must be divisible by `n`.
+"""
+function block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+    X, Y = size(mat)
+    @assert X % n == 0 && Y % n == 0 "Matrix dimensions are $(size(mat)) but they are not divisible by n=$n"
+
+    A, B = div(X, n), div(Y, n)
+    reshaped = reshape(mat, n, A, n, B)
+    permuted = permutedims(reshaped, (2, 4, 1, 3))  # (A, B, n, n)
+    mean_blocks = mean(permuted, dims=(3, 4))
+    return dropdims(mean_blocks, dims=(3, 4))
 end
