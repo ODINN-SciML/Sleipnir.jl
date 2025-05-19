@@ -24,7 +24,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
 - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
-    Default value is 0 which means no downscaling is applied.
+    Default value is 1 which means no downscaling is applied.
 """
 struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <: AbstractParameters
     use_MB::Bool
@@ -66,7 +66,7 @@ Constructor for `SimulationParameters` type, including default values.
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::String = "Farinotti19",
         mapping::VM = MeanDateVelocityMapping(),
-        gridScalingFactor::I = 0,
+        gridScalingFactor::I = 1,
     ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
 
@@ -90,7 +90,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
 - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
-    Default value is 0 which means no downscaling is applied.
+    Default value is 1 which means no downscaling is applied.
 
 # Returns
 - `simulation_parameters`: A new `SimulationParameters` object.
@@ -119,7 +119,7 @@ function SimulationParameters(;
     rgi_paths::Dict{String, String} = Dict{String, String}(),
     ice_thickness_source::String = "Farinotti19",
     mapping::VM = MeanDateVelocityMapping(),
-    gridScalingFactor::I = 0,
+    gridScalingFactor::I = 1,
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."

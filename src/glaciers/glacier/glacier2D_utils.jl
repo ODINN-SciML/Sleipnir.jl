@@ -191,21 +191,21 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         println("Smoothing is being applied to initial condition.")
         smooth!(H₀)  # Smooth initial ice thickness to help the solver
     end
-    if params.simulation.gridScalingFactor > 0
+    if params.simulation.gridScalingFactor > 1
         H₀ = block_average_pad_edge(H₀, params.simulation.gridScalingFactor)
     end
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
         dist_border::Matrix{Sleipnir.Float} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
-        if params.simulation.gridScalingFactor > 0
+        if params.simulation.gridScalingFactor > 1
             # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
             dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
         end
 
         # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
         # H₀[H_mask] .= 0.0
-        nx, ny = params.simulation.gridScalingFactor > 0 ? size(H₀) : glacier_grid["nxny"]
+        nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
 
         # Mercator Projection
         params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
@@ -226,7 +226,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         end
 
         S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
-        if params.simulation.gridScalingFactor > 0
+        if params.simulation.gridScalingFactor > 1
             S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
         end
         B = S .- H₀ # bedrock (matrix also needs to be reversed)
@@ -248,7 +248,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         end
         Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
         Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
-        if params.simulation.gridScalingFactor > 0
+        if params.simulation.gridScalingFactor > 1
             Δx *= params.simulation.gridScalingFactor
             Δy *= params.simulation.gridScalingFactor
         end
