@@ -33,6 +33,8 @@ mutable struct Results{F <: AbstractFloat, I <: Int}
     H_ref::Union{Nothing, Vector{Matrix{F}}}
     S::Matrix{F}
     B::Matrix{F}
+    x::Vector{F}
+    y::Vector{F}
     V::Union{Nothing, Vector{Matrix{F}}}
     Vx::Union{Nothing, Vector{Matrix{F}}}
     Vy::Union{Nothing, Vector{Matrix{F}}}
@@ -53,7 +55,7 @@ end
 
 Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
                                     a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
-                                    a.S == b.S && a.B == b.B &&
+                                    a.S == b.S && a.B == b.B && a.x == b.x && a.y == b.y &&
                                     a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
                                     a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
                                     a.Δx == b.Δx && a.Δy == b.Δy &&
@@ -146,8 +148,12 @@ function Results(glacier::G, ifm::IF;
     S = S === nothing ? zeros(Sleipnir.Float, size(ifm.S)) : S
     B = B === nothing ? zeros(Sleipnir.Float, size(glacier.B)) : B
 
+    x = glacier.Coords["lon"]
+    y = glacier.Coords["lat"]
+
     # Build the results struct based on input values
     results = Results{Sleipnir.Float, Sleipnir.Int}(rgi_id, H, H_glathida, H_ref, S, B,
+                      x, y,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)

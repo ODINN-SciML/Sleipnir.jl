@@ -6,74 +6,75 @@ abstract type AbstractGlacier end
 include("../climate/Climate1D.jl")
 
 mutable struct Glacier1D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
-    rgi_id::Union{String, Nothing}
+    rgi_id::String
     climate::Union{Climate1D, Nothing}
-    H₀::Union{Vector{F}, Nothing}
-    S::Union{Vector{F}, Nothing}
-    B::Union{Vector{F}, Nothing}
-    V::Union{Vector{F}, Nothing}
+    H₀::Vector{F}
+    S::Vector{F}
+    B::Vector{F}
+    V::Vector{F}
     A::Union{F, Nothing}
     C::Union{F, Nothing}
     n::Union{F, Nothing}
     w₀::Union{Vector{F}, Nothing}
     λ::Union{Vector{F}, Nothing}
-    slope::Union{Vector{F}, Nothing}
-    dist_border::Union{Vector{F}, Nothing}
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing}
-    Δx::Union{F, Nothing}
-    Δy::Union{F, Nothing}
-    nx::Union{I, Nothing}
-    ny::Union{I, Nothing}
+    slope::Vector{F}
+    dist_border::Vector{F}
+    Coords::Dict{String, Vector{Float64}}
+    Δx::F
+    Δy::F
+    nx::I
+    ny::I
 end
 
 """
 function Glacier1D(;
-    rgi_id::Union{String, Nothing} = nothing,
+    rgi_id::String = "",
     climate::Union{Climate1D, Nothing} = nothing,
-    H₀::Union{Vector{F}, Nothing} = nothing,
-    S::Union{Vector{F}, Nothing} = nothing,
-    B::Union{Vector{F}, Nothing} = nothing,
-    V::Union{Vector{F}, Nothing}= nothing,
+    H₀::Vector{F} = Vector{Sleipnir.Float}([]),
+    S::Vector{F} = Vector{Sleipnir.Float}([]),
+    B::Vector{F} = Vector{Sleipnir.Float}([]),
+    V::Vector{F}= Vector{Sleipnir.Float}([]),
     A::Union{F, Nothing} = nothing,
     C::Union{F, Nothing} = nothing,
     n::Union{F, Nothing} = nothing,
     w₀::Union{Vector{F}, Nothing} = nothing,
     λ::Union{Vector{F}, Nothing} = nothing,
-    slope::Union{Vector{F}, Nothing} = nothing,
-    dist_border::Union{Vector{F}, Nothing} = nothing,
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing
+    slope::Vector{F} = Vector{Sleipnir.Float}([]),
+    dist_border::Vector{F} = Vector{Sleipnir.Float}([]),
+    Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
+    Δx::F = 0,
+    Δy::F = 0,
+    nx::I = 0,
+    ny::I = 0,
     ) where {F <: AbstractFloat, I <: Integer}
 
 Constructor for empty 2D Glacier object.
 """
 function Glacier1D(;
-    rgi_id::Union{String, Nothing} = nothing,
+    rgi_id::String = "",
     climate::Union{Climate1D, Nothing} = nothing,
-    H₀::Union{Vector{F}, Nothing} = nothing,
-    S::Union{Vector{F}, Nothing} = nothing,
-    B::Union{Vector{F}, Nothing} = nothing,
-    V::Union{Vector{F}, Nothing}= nothing,
+    H₀::Vector{F} = Vector{Sleipnir.Float}([]),
+    S::Vector{F} = Vector{Sleipnir.Float}([]),
+    B::Vector{F} = Vector{Sleipnir.Float}([]),
+    V::Vector{F} = Vector{Sleipnir.Float}([]),
     A::Union{F, Nothing} = nothing,
     C::Union{F, Nothing} = nothing,
     n::Union{F, Nothing} = nothing,
     w₀::Union{Vector{F}, Nothing} = nothing,
     λ::Union{Vector{F}, Nothing} = nothing,
-    slope::Union{Vector{F}, Nothing} = nothing,
-    dist_border::Union{Vector{F}, Nothing} = nothing,
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
-    Δx::Union{F, Nothing} = nothing,
-    Δy::Union{F, Nothing} = nothing,
-    nx::Union{I, Nothing} = nothing,
-    ny::Union{I, Nothing} = nothing
+    slope::Vector{F} = Vector{Sleipnir.Float}([]),
+    dist_border::Vector{F} = Vector{Sleipnir.Float}([]),
+    Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
+    Δx::F = 0,
+    Δy::F = 0,
+    nx::I = 0,
+    ny::I = 0,
     ) where {F <: AbstractFloat, I <: Integer}
 
     # Define default float and integer type for constructor
-    ft = Float64
-    it = Int64
+    ft = Sleipnir.Float
+    it = Sleipnir.Int
+
     return Glacier1D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀, λ, slope, dist_border, Coords, Δx, Δy, nx, ny)
 end
 

@@ -2,6 +2,42 @@ export plot_glacier, plot_glacier_heatmaps, plot_glacier_difference_evolution, p
 
 using CairoMakie: Axis
 
+
+"""
+    reverseForHeatmap(
+        inp::Matrix{F},
+        x::Vector{F},
+        y::Vector{F}
+    ) where {F <: AbstractFloat}
+
+Out-of-place reverse of a matrix based on the values of the x and y axes.
+This function corrects the orientation so that the heatmap is displayed correctly.
+
+# Arguments
+- `inp::Matrix{F}`: The matrix to reverse.
+- `x::Vector{F}`: Values of the x axis.
+- `y::Vector{F}`: Values of the y axis.
+
+# Returns
+- Out-of-place copy of inp that has been reversed if needed.
+"""
+function reverseForHeatmap(
+    inp::Matrix{F},
+    x::Vector{F},
+    y::Vector{F}
+) where {F <: AbstractFloat}
+    reverseX = x[end]<x[begin]
+    reverseY = y[end]<y[begin]
+    data = copy(inp)
+    if reverseX
+        data = reverse(data, dims=1)
+    end
+    if reverseY
+        data = reverse(data, dims=2)
+    end
+    return data
+end
+
 """
     plot_glacier_heatmaps(
         results::Results,
@@ -38,6 +74,8 @@ function plot_glacier_heatmaps(
     # Extract metadata about the glacier
     lon = results.lon
     lat = results.lat
+    x = results.x
+    y = results.y
     rgi_id = results.rgi_id
     Δx = results.Δx
 
@@ -103,11 +141,11 @@ function plot_glacier_heatmaps(
 
         # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
         if var in ice_thickness_vars
-            hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_ice))
+            hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap=colormap, colorrange=(0, global_max_ice))
         elseif var in velocity_vars
-            hm = heatmap!(ax, data, colormap=colormap, colorrange=(0, global_max_velocity))
+            hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap=colormap, colorrange=(0, global_max_velocity))
         else
-            hm = heatmap!(ax, data, colormap=colormap)
+            hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap=colormap)
         end
         cb = Colorbar(fig[ax_row, ax_col + 1], hm)
         Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
@@ -196,6 +234,8 @@ function plot_glacier_difference_evolution(
     # Extract metadata about the glacier
     lon = results.lon
     lat = results.lat
+    x = results.x
+    y = results.y
     rgi_id = results.rgi_id
     Δx = results.Δx
 
@@ -243,7 +283,7 @@ function plot_glacier_difference_evolution(
             # Calculate the symmetric color range
             max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
 
-            hm_diff = heatmap!(ax_diff, data_diff, colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
+            hm_diff = heatmap!(ax_diff, reverseForHeatmap(data_diff, x, y), colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
 
             ax_diff.xlabel = "Longitude"
             ax_diff.ylabel = "Latitude"
