@@ -1,4 +1,4 @@
-export plot_glacier, plot_glacier_heatmaps, plot_glacier_difference_evolution, plot_glacier_statistics_evolution, plot_glacier_integrated_volume
+export plot_glacier, plot_glacier_heatmaps, plot_glacier_quivers, plot_glacier_difference_evolution, plot_glacier_statistics_evolution, plot_glacier_integrated_volume
 
 using CairoMakie: Axis
 
@@ -179,6 +179,122 @@ function plot_glacier_heatmaps(
     end
 
     fig[0, :] = Label(fig, "$rgi_id")
+    resize_to_layout!(fig)
+    return fig
+end
+
+"""
+    plot_glacier_quivers(
+        results::Results,
+        variables::Vector{Symbol},
+        title_mapping::Dict;
+        timeIdx::Union{Nothing,Int64} = nothing,
+        figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
+        lengthscale::Float64 = 0.00001,
+        arrowsize::Float64 = 0.5,
+    ) -> Figure
+
+Plot quivers for glacier variables.
+
+# Arguments
+- `results::Results`: The results object containing the data to be plotted.
+- `variables::Vector{Symbol}`: A list of variables to be plotted.
+- `title_mapping::Dict`: A dictionary mapping variable names to their titles and colormaps.
+- `timeIdx::Union{Nothing,Int64}`:: Optional argument to select the index at which
+    data should be plotted when dealing with vector of matrix. Default is nothing
+    which selects the last element available.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
+- `lengthscale::Float64`: Lengthscale of the arrows in the quiver plot.
+- `arrowsize::Float64`: Arrow size in the quiver plot.
+
+# Returns
+- A plot of the glacier quivers.
+"""
+function plot_glacier_quivers(
+    results::Results,
+    variables::Vector{Symbol},
+    title_mapping::Dict;
+    timeIdx::Union{Nothing,Int64} = nothing,
+    figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
+    lengthscale::Float64 = 0.00001,
+    arrowsize::Float64 = 0.5,
+)
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
+    # Extract metadata about the glacier
+    lon = results.lon
+    lat = results.lat
+    x = results.x
+    y = results.y
+    rgi_id = results.rgi_id
+    Δx = results.Δx
+
+    velocity_vars = [:V, :V_ref] # Velocity variables
+
+    # Initialize max_values considering only given variables
+    max_values_velocity = []
+
+    for var in intersect(velocity_vars, variables)  # Check only given vars for maximum
+        if hasproperty(results, var)
+            current_matrix = getfield(results, var)
+            if !isnothing(current_matrix) && !isempty(current_matrix)
+                if typeof(current_matrix) <: Vector
+                    @assert length(current_matrix)>0 "Variable $(var) is an empty vector"
+                    @assert (isnothing(timeIdx)) || (size(current_matrix,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(current_matrix,1))"
+                    maxval = maximum(replace(isnothing(timeIdx) ? current_matrix[end] : current_matrix[timeIdx], NaN => 0.))
+                    # maxval = maximum([maximum(replace(M, NaN => 0.)) for M in current_matrix])
+                else
+                    maxval = maximum(replace(current_matrix, NaN => 0.))
+                end
+                push!(max_values_velocity, maxval)
+            end
+        end
+    end
+
+    # Determine global maximum for ice and velocity separately
+    global_max_velocity = isempty(max_values_velocity) ? nothing : maximum(max_values_velocity)
+
+    num_vars = length(variables)
+    @info "num_vars",num_vars
+    rows, cols = if num_vars == 1
+        1, 1
+    elseif num_vars == 2
+        1, 2
+    else
+        error("Unsupported number of variables.")
+    end
+
+    figKwargs[:layout] = GridLayout(rows, cols)
+    fig = Figure(; figKwargs...)
+    for (ax_col, var) in enumerate(variables)
+        ax = Axis(fig[1, ax_col], aspect=DataAspect())
+        data = getfield(results, var)
+        title, unit = get(title_mapping, string(var), (string(var), ""))
+
+        if typeof(data) <: Vector
+            @assert length(data)>0 "Variable $(var) is an empty vector"
+            @assert (isnothing(timeIdx)) || (size(data,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(data,1))"
+            data = isnothing(timeIdx) ? data[end] : data[timeIdx]
+            Vx = getfield(results, var == :V ? :Vx : :Vx_ref)
+            Vy = getfield(results, var == :V ? :Vy : :Vy_ref)
+            dataVx = isnothing(timeIdx) ? Vx[end] : Vx[timeIdx]
+            dataVy = isnothing(timeIdx) ? Vy[end] : Vy[timeIdx]
+        end
+
+        X,Y=Sleipnir.meshgrid(x,y)
+
+        positions = Point2f.(reshape(X,:), reshape(Y,:))
+        directions = Vec2f.(dataVx, -dataVy)
+        arrows!(ax, positions, directions; arrowsize=arrowsize, lengthscale=lengthscale)
+
+        ax.title = "$title"
+        ax.xlabel = "Longitude"
+        ax.ylabel = "Latitude"
+        ax.yticklabelrotation = π/2
+        ax.ylabelpadding = 5
+        ax.yticklabelalign = (:center, :bottom)
+    end
+
     resize_to_layout!(fig)
     return fig
 end
@@ -609,6 +725,8 @@ function plot_glacier(results::Results, plot_type::String, variables::Vector{Sym
 
     if plot_type == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
+    elseif plot_type == "quivers"
+        return plot_glacier_quivers(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution difference"
         return plot_glacier_difference_evolution(results, variables, title_mapping; kwargs...)
     elseif plot_type == "evolution statistics"
