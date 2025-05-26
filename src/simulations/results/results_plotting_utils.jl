@@ -231,9 +231,6 @@ function plot_glacier_quivers(
 
     velocity_vars = [:V, :V_ref] # Velocity variables
 
-    # Initialize max_values considering only given variables
-    max_values_velocity = []
-
     for var in intersect(velocity_vars, variables)  # Check only given vars for maximum
         if hasproperty(results, var)
             current_matrix = getfield(results, var)
@@ -241,18 +238,11 @@ function plot_glacier_quivers(
                 if typeof(current_matrix) <: Vector
                     @assert length(current_matrix)>0 "Variable $(var) is an empty vector"
                     @assert (isnothing(timeIdx)) || (size(current_matrix,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(current_matrix,1))"
-                    maxval = maximum(replace(isnothing(timeIdx) ? current_matrix[end] : current_matrix[timeIdx], NaN => 0.))
-                    # maxval = maximum([maximum(replace(M, NaN => 0.)) for M in current_matrix])
                 else
-                    maxval = maximum(replace(current_matrix, NaN => 0.))
                 end
-                push!(max_values_velocity, maxval)
             end
         end
     end
-
-    # Determine global maximum for ice and velocity separately
-    global_max_velocity = isempty(max_values_velocity) ? nothing : maximum(max_values_velocity)
 
     num_vars = length(variables)
     @info "num_vars",num_vars
