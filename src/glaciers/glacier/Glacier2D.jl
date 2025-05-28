@@ -23,25 +23,25 @@ manually, but rather through the `initialize_glaciers` function.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
 - `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
-- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H₀::Matrix{F}`: Initial ice thickness matrix.
 - `H_glathida::Matrix{F}`: Ice thickness matrix from the GLATHIDA dataset.
 - `S::Matrix{F}`: Surface elevation matrix.
 - `B::Matrix{F}`: Bedrock elevation matrix.
-- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
-- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
-- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `V::Matrix{F}`: Ice velocity magnitude matrix.
+- `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
+- `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
 - `A::Union{F, Nothing}`: Flow law parameter.
 - `C::Union{F, Nothing}`: Sliding law parameter.
 - `n::Union{F, Nothing}`: Flow law exponent.
-- `slope::Union{Matrix{F}, Nothing}`: Surface slope matrix.
-- `dist_border::Union{Matrix{F}, Nothing}`: Distance to the glacier border matrix.
-- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
+- `slope::Matrix{F}`: Surface slope matrix.
+- `dist_border::Matrix{F}`: Distance to the glacier border matrix.
+- `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
 - `nx::I`: Number of grid points in the x-direction.
 - `ny::I`: Number of grid points in the y-direction.
-- `cenlon::Union{F, Nothing}`: Longitude of the glacier center.
-- `cenlat::Union{F, Nothing}`: Latitude of the glacier center.
+- `cenlon::F`: Longitude of the glacier center.
+- `cenlat::F`: Latitude of the glacier center.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
 - `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
 - `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
@@ -50,25 +50,25 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::String
     name::String
     climate::Union{Climate2D, Nothing}
-    H₀::Union{Matrix{F}, Nothing}
+    H₀::Matrix{F}
     H_glathida::Matrix{F}
     S::Matrix{F}
     B::Matrix{F}
-    V::Union{Matrix{F}, Nothing}
-    Vx::Union{Matrix{F}, Nothing}
-    Vy::Union{Matrix{F}, Nothing}
+    V::Matrix{F}
+    Vx::Matrix{F}
+    Vy::Matrix{F}
     A::Union{F, Nothing}
     C::Union{F, Nothing}
     n::Union{F, Nothing}
-    slope::Union{Matrix{F}, Nothing}
-    dist_border::Union{Matrix{F}, Nothing}
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing}
+    slope::Matrix{F}
+    dist_border::Matrix{F}
+    Coords::Dict{String, Vector{Float64}}
     Δx::F
     Δy::F
     nx::I
     ny::I
-    cenlon::Union{F, Nothing}
-    cenlat::Union{F, Nothing}
+    cenlon::F
+    cenlat::F
     params_projection::Dict{String, Float64}
     thicknessData::Union{ThicknessData, Nothing}
     velocityData::Union{SurfaceVelocityData, Nothing}
@@ -81,25 +81,25 @@ Constructs a `Glacier2D` object with the given parameters, including default one
         rgi_id::Union{String, Nothing} = nothing,
         name::String = "",
         climate::Union{Climate2D, Nothing} = nothing,
-        H₀::Union{Matrix{F}, Nothing} = nothing,
-        H_glathida::Union{Matrix{F}, Nothing} = nothing,
-        S::Union{Matrix{F}, Nothing} = nothing,
-        B::Union{Matrix{F}, Nothing} = nothing,
-        V::Union{Matrix{F}, Nothing} = nothing,
-        Vx::Union{Matrix{F}, Nothing} = nothing,
-        Vy::Union{Matrix{F}, Nothing} = nothing,
+        H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        B::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        V::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         A::Union{F, Nothing} = nothing,
         C::Union{F, Nothing} = nothing,
         n::Union{F, Nothing} = nothing,
-        slope::Union{Matrix{F}, Nothing} = nothing,
-        dist_border::Union{Matrix{F}, Nothing} = nothing,
-        Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+        slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
         Δx::Union{F, Nothing} = nothing,
         Δy::Union{F, Nothing} = nothing,
         nx::Union{I, Nothing} = nothing,
         ny::Union{I, Nothing} = nothing,
-        cenlon::Union{F, Nothing} = nothing,
-        cenlat::Union{F, Nothing} = nothing,
+        cenlon::F = NaN,
+        cenlat::F = NaN,
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
         thicknessData::Union{ThicknessData, Nothing} = nothing,
         velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
@@ -109,25 +109,25 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `rgi_id::String`: The RGI identifier for the glacier.
 - `name::String`: The name of the glacier if available.
 - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
-- `H₀::Union{Matrix{F}, Nothing}`: Initial ice thickness matrix.
+- `H₀::Matrix{F}`: Initial ice thickness matrix.
 - `H_glathida::Matrix{F}`: Ice thickness matrix from GLATHIDA.
 - `S::Matrix{F}`: Surface elevation matrix.
 - `B::Matrix{F}`: Bed elevation matrix.
-- `V::Union{Matrix{F}, Nothing}`: Ice velocity magnitude matrix.
-- `Vx::Union{Matrix{F}, Nothing}`: Ice velocity in the x-direction matrix.
-- `Vy::Union{Matrix{F}, Nothing}`: Ice velocity in the y-direction matrix.
+- `V::Matrix{F}`: Ice velocity magnitude matrix.
+- `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
+- `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
 - `A::Union{F, Nothing}`: Flow law parameter.
 - `C::Union{F, Nothing}`: Sliding law parameter.
 - `n::Union{F, Nothing}`: Flow law exponent.
 - `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
 - `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
-- `Coords::Union{Dict{String, Vector{Float64}}, Nothing}`: Coordinates dictionary with keys "lon" and "lat".
+- `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
 - `nx::I`: Number of grid points in the x-direction.
 - `ny::I`: Number of grid points in the y-direction.
-- `cenlon::Union{F, Nothing}`: Central longitude of the glacier.
-- `cenlat::Union{F, Nothing}`: Central latitude of the glacier.
+- `cenlon::F`: Central longitude of the glacier.
+- `cenlat::F`: Central latitude of the glacier.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
 - `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
 - `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
@@ -139,25 +139,25 @@ function Glacier2D(;
     rgi_id::String = "",
     name::String = "",
     climate::Union{Climate2D, Nothing} = nothing,
-    H₀::Union{Matrix{F}, Nothing} = nothing,
-    H_glathida::Matrix{F} = Matrix{Float64}([;;]),
-    S::Matrix{F} = Matrix{Float64}([;;]),
-    B::Matrix{F} = Matrix{Float64}([;;]),
-    V::Union{Matrix{F}, Nothing} = nothing,
-    Vx::Union{Matrix{F}, Nothing} = nothing,
-    Vy::Union{Matrix{F}, Nothing} = nothing,
+    H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    B::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    V::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     A::Union{F, Nothing} = nothing,
     C::Union{F, Nothing} = nothing,
     n::Union{F, Nothing} = nothing,
-    slope::Union{Matrix{F}, Nothing} = nothing,
-    dist_border::Union{Matrix{F}, Nothing} = nothing,
-    Coords::Union{Dict{String, Vector{Float64}}, Nothing} = nothing,
+    slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+    Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
     Δx::F = 0,
     Δy::F = 0,
     nx::I = 0,
     ny::I = 0,
-    cenlon::Union{F, Nothing} = nothing,
-    cenlat::Union{F, Nothing} = nothing,
+    cenlon::F = NaN,
+    cenlat::F = NaN,
     params_projection::Dict{String, Float64} = Dict{String, Float64}(),
     thicknessData::Union{ThicknessData, Nothing} = nothing,
     velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
@@ -257,12 +257,10 @@ function Base.show(io::IO, glacier::Glacier2D)
     end
     println(" glathida elevation")
 
-    if !isnothing(glacier.S) & !isnothing(glacier.H₀)
-        print("Min,mean,max bedrock elevation S : ")
-        printstyled("$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
-        print("Mean,max ice thickness H₀ : ")
-        printstyled("$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
-    end
+    print("Min,mean,max bedrock elevation S : ")
+    printstyled("$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
+    print("Mean,max ice thickness H₀ : ")
+    printstyled("$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
 
     print("A= ")
     printstyled(@sprintf("%.3e", glacier.A); color=:blue)
