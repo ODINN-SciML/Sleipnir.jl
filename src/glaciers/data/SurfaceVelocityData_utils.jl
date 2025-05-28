@@ -38,15 +38,20 @@ function initialize_surfacevelocitydata(
     # Date of second adquisition
     date2 = velRast.date2.data[:]
 
+    date1 = Int32.(date1)
+    date2 = Int32.(date2)
+
     # Middle date
     if !interp
-        date1 = Int32.(date1)
-        date2 = Int32.(date2)
         date_mean = mjd.(0.5 .* date1 .+ 0.5 .* date2)
         date1 = mjd.(date1)
         date2 = mjd.(date2)
     else
         date_mean = dims(velRast, :mid_date).val.data
+        offset_date1 = Date(replace(metadata(velRast.date1)["units"], "days since " => ""), "yyyy-mm-dd HH:MM:SS")
+        offset_date2 = Date(replace(metadata(velRast.date2)["units"], "days since " => ""), "yyyy-mm-dd HH:MM:SS")
+        date1 = Day.(date1) + offset_date1
+        date2 = Day.(date2) + offset_date2
     end
     date1 = DateTime.(date1)
     date2 = DateTime.(date2)
