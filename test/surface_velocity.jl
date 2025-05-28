@@ -7,9 +7,11 @@ It corresponds to the interpolated data.
 """
 function fake_interpolated_datacube()
     dates = collect(DateTime(2011):Month(1):DateTime(2012))
-    date1 = Vector{Union{Missing, DateTime}}(dates[begin:end-1])
-    date2 = Vector{Union{Missing, DateTime}}(dates[begin+1:end])
-    mid_date = mjd.(0.5.*(datetime2julian.(date1).- 2400000.5) .+ 0.5.*(datetime2julian.(date2) .- 2400000.5))
+    offset_date1 = dates[begin]
+    offset_date2 = dates[begin+1]
+    date1 = Vector{Union{Missing, Int32}}( Dates.value.(Day.(dates[begin:end-1]-offset_date1)) )
+    date2 = Vector{Union{Missing, Int32}}( Dates.value.(Day.(dates[begin+1:end]-offset_date2)) )
+    mid_date = mjd.(0.5.*(datetime2julian.(dates[begin:end-1]).- 2400000.5) .+ 0.5.*(datetime2julian.(dates[begin+1:end]) .- 2400000.5))
     mid_date = Dim{:mid_date}(mid_date)
 
     xstart = 325550.0
@@ -30,8 +32,14 @@ function fake_interpolated_datacube()
 
     vx = Raster(vx, (x,y,mid_date))
     vy = Raster(vy, (x,y,mid_date))
-    date1 = Raster(date1, (mid_date,))
-    date2 = Raster(date2, (mid_date,))
+    date1 = Raster(date1, (mid_date,),
+        metadata=Dict{String, Any}(
+            "units" => "days since " * Dates.format(offset_date1, "yyyy-mm-dd HH:MM:SS"
+        )))
+    date2 = Raster(date2, (mid_date,),
+        metadata=Dict{String, Any}(
+            "units" => "days since " * Dates.format(offset_date2, "yyyy-mm-dd HH:MM:SS"
+        )))
     xcount_x = Raster(xcount_x, (x,y,mid_date))
     xcount_y = Raster(xcount_y, (x,y,mid_date))
 

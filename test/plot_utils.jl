@@ -31,6 +31,10 @@ function glaciers2D_plots()
             plot_glacier(results, "heatmaps", [:H,:B])
         end
 
+        @testset "Quivers" begin
+            plot = plot_glacier(results, "quivers", [:V_ref, :V])
+        end
+
         @testset "Statistics Evolution" begin
             plot_glacier(results, "evolution statistics", [:H], tspan=(2010.0,2015.0), metrics=["average","std","max","median","min"])
         end
