@@ -65,8 +65,8 @@ function Glacier1D(;
     slope::Vector{F} = Vector{Sleipnir.Float}([]),
     dist_border::Vector{F} = Vector{Sleipnir.Float}([]),
     Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
-    Δx::F = 0,
-    Δy::F = 0,
+    Δx::F = 0.,
+    Δy::F = 0.,
     nx::I = 0,
     ny::I = 0,
     ) where {F <: AbstractFloat, I <: Integer}
