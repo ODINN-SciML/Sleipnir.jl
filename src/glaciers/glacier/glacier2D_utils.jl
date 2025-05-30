@@ -182,9 +182,9 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
     if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
-        H₀ = F.(reverse((ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0)), dims=2)) # all matrices are reversed
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
     elseif params.simulation.ice_thickness_source == "Farinotti19"
-        H₀ = F.(reverse((ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0)), dims=2)) # all matrices are reversed
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
     if smoothing
@@ -197,7 +197,7 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
 
     try
         # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border::Matrix{Sleipnir.Float} = reverse(glacier_gd.dis_from_border.data, dims=2) # matrix needs to be reversed
+        dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
         if params.simulation.gridScalingFactor > 1
             # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
             dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
@@ -225,19 +225,18 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
         end
 
-        S::Matrix{Sleipnir.Float} = reverse(glacier_gd.topo.data, dims=2)
+        S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
         if params.simulation.gridScalingFactor > 1
             S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
         end
-        B = S .- H₀ # bedrock (matrix also needs to be reversed)
+        B = S .- H₀ # bedrock
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
 
         if params.simulation.velocities
-            # All matrices need to be reversed
-            V = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0), dims=2)
-            Vx = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0), dims=2)
-            Vy = reverse(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0), dims=2)
+            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
             fillNaN!(V)
             fillNaN!(Vx)
             fillNaN!(Vy)
