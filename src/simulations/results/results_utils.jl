@@ -57,7 +57,7 @@ function create_results(
 
     glacier = simulation.glaciers[glacier_idx]
 
-    t = light ? nothing : ts
+    t = light ? Vector{eltype(solution.t)}() : ts
     H = light ? [solution.u[begin],solution.u[end]] : us
 
     if !isnothing(processVelocity)
@@ -72,19 +72,19 @@ function create_results(
             Vy_ref = glacier.velocityData.vy
             V_ref = glacier.velocityData.vabs
         else
-            Vx_ref = nothing
-            Vy_ref = nothing
-            V_ref = nothing
+            Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
         end
     else
-        Vx = Vy = V = nothing
-        Vx_ref = Vy_ref = V_ref = nothing
+        Vx = Vy = V = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        Vx_ref = Vy_ref = V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
     if !isnothing(glacier.thicknessData)
         H_ref = glacier.thicknessData.H
     else
-        H_ref = nothing
+        H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
     # Simulations using Reverse Diff require an iceflow model per glacier
