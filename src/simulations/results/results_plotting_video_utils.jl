@@ -20,7 +20,6 @@ function make_thickness_video(
     end
     X, Y = GR.meshgrid(lon,lat)
 
-    # @infiltrate
     H = [ifelse.(h .== 0.0, NaN, h) for h in H_plot]
 
     fig = CairoMakie.Figure(; size = (600, 600))
