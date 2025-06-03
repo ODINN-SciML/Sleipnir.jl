@@ -66,21 +66,40 @@ apply_law!(::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("
 init_cache(::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache"))
 
 """
-    Law{T}(;f!, init_cache, inputs = nothing, callback_freq = nothing)    
+    Law{T}(; f!, init_cache, callback_freq=nothing, inputs=nothing)
 
-Defines a law applied to a model that mutates a cached internal state at each time step.
+Defines a physical or empirical law applied to a glacier model that mutates an internal state `T` at each simulation time step.
 
-This struct encapsulates:
-- a state update function `f!`,
-- a cache initializer,
-- and optionally a callback frequency (i.e. apply only every `callback_freq` time units).
+# Arguments
 
-Arguments:
-- `f!::Function`: A function with the signature `f!(cache::T, simulation, glacier_idx, t, θ)` that updates the internal state (`cache`), return value is ignored.
-  If `inputs` are provided, this function instead receives `f!(cache::T, inputs, θ)`
-- `init_cache::Function`: Function with signature `init_cache(simulation, glacier_idx, θ)::T` to initialize the internal state.
-- `callback_freq::Union{Nothing, AbstractFloat}`: Optional. If provided, the law becomes a callback law, applied every `callback_freq` time units.
-- `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Allows automatic generation of inputs passed to `f!` at runtime.
+- `f!::Function`: A function with signature `f!(cache::T, simulation, glacier_idx, t, θ)` that updates the internal state.
+  If `inputs` are provided, the function instead takes the form `f!(cache::T, inputs, θ)` or `f!(inputs, θ)` depending on arity.
+- `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that initializes the internal state for a given glacier.
+- `callback_freq::Union{Nothing, AbstractFloat}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
+- `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Provides automatically generated inputs passed to `f!` at runtime.
+
+# Type Parameters
+
+- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cache`.
+
+# Examples
+
+```
+# A law applied at every timestep, storing a scalar value
+Law{Array{Float64, 0}}(;
+    f! = (cache, _, _, t, θ) -> cache .= θ.scale * sin(2π * t + θ.shift) + θ.bias,
+    init_cache = (_, _, _) -> zeros(),
+)
+
+# A callback law applied once per month (assuming time in years)
+Law{Array{Float64, 0}}(;
+    f! = (cache, _, _, t, θ) -> cache .= θ.scale * sin(2π * t + θ.shift) + θ.bias,
+    init_cache = (_, _, _) -> zeros(),
+    callback_freq = 1 / 12,
+)
+
+# TODO: create a meaningful example of Law with glacier-shaped matrix
+```
 """
 struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
     f::F
