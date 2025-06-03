@@ -1,22 +1,22 @@
 # Defining dumb inputs is easier than creating a whole `Simulation` object for testing `generate_input`
 module DumbTestInputs
-    using Sleipnir
+    using Sleipnir: AbstractInput
     import Sleipnir: default_name, get_input
 
-    struct A <: Sleipnir.AbstractInput end
+    struct A <: AbstractInput end
     default_name(::A) = :a
     get_input(::A, simulation, glacier_idx, t) = ones(3)
 
-    struct B <: Sleipnir.AbstractInput end
+    struct B <: AbstractInput end
     default_name(::B) = :b
     get_input(::B, simulation, glacier_idx, t) = range(1, 3)
 
-    struct C <: Sleipnir.AbstractInput end
+    struct C <: AbstractInput end
     default_name(::C) = :c
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
-using Sleipnir: generate_inputs, apply_law
+using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, init_cache, cache_type
 
 generate_inputs_testset() = @testset "generate_inputs" begin
     (;A, B, C) = DumbTestInputs
@@ -29,26 +29,109 @@ generate_inputs_testset() = @testset "generate_inputs" begin
     @inferred generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.)
 end
 
+normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
+    (;A, B, C) = DumbTestInputs
+
+    @test _normalize_law_inputs((A(), B(), C())) == (a = A(), b = B(), c = C())
+    @test _normalize_law_inputs((a = A(), b = B(), c = C())) == (a = A(), b = B(), c = C())
+    @test _normalize_law_inputs((x = A(), y = B(), z = C())) == (x = A(), y = B(), z = C())
+end
+
 apply_law_testset() = @testset "apply_law" begin 
     (;A, B, C) = DumbTestInputs
 
-    law = Sleipnir.Law(;
-        inputs = (A(), B(), C()),
-        f = (inputs, θ) -> inputs.a .* inputs.b .+ inputs.c .+ θ.a,
-    )
+    @testset "Law without inputs" begin
+        # fake simulation
+        simulation = (;
+            glacier = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),                
+            ]
+        )
 
-    theta = (;a = 3.)
+        law = Law{Matrix{Float64}}(;
+            f! = function (cache, simulation, glacier_idx, t, θ)
+                @. cache = θ.a * t
+            end,
+            init_cache = function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glacier[glacier_idx]
+                zeros(nx, ny)
+            end,
+        )
 
-    @test apply_law(law, nothing, nothing, 2., theta) == [6., 7., 8.]
-    @inferred apply_law(law, nothing, nothing, 2., theta)
+        glacier_idx = 2
+        t = 2.
+        θ = (;a = 3.)
 
-    law = Sleipnir.Law(;
-        inputs = (x = A(), y = B(), z = C()),
-        f = (inputs, θ) -> inputs.x .* inputs.y .+ inputs.z .+ θ.a,
-    )
+        @test cache_type(law) == Matrix{Float64}
+        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
 
-    theta = (;a = 3.)
 
-    @test apply_law(law, nothing, nothing, 2., theta) == [6., 7., 8.]
-    @inferred apply_law(law, nothing, nothing, 2., theta)
+        apply_law!(law, cache, simulation, glacier_idx, t, θ)
+
+        @test cache == fill(6., 2, 3)
+    end
+
+    @testset "Law with inputs" begin
+        # fake simulation
+        simulation = (;
+            glacier = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),                
+            ]
+        )
+
+        law = Law{Matrix{Float64}}(;
+            inputs = (A(), B(), C()),
+            f! = function (cache, inputs, θ)
+                @. cache = θ.a * inputs.c
+            end,
+            init_cache = function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glacier[glacier_idx]
+                zeros(nx, ny)
+            end,
+        )
+
+        glacier_idx = 2
+        t = 2.
+        θ = (;a = 3.)
+
+        @test cache_type(law) == Matrix{Float64}
+        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+
+        apply_law!(law, cache, simulation, glacier_idx, t, θ)
+
+        @test cache == fill(6., 2, 3)
+
+
+        # fake simulation
+        simulation = (;
+            glacier = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),                
+            ]
+        )
+
+        law = Law{Matrix{Float64}}(;
+            inputs = (x = A(), y = B(), z = C()),
+            f! = function (cache, inputs, θ)
+                @. cache = θ.a * inputs.z
+            end,
+            init_cache = function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glacier[glacier_idx]
+                zeros(nx, ny)
+            end,
+        )
+
+        glacier_idx = 2
+        t = 2.
+        θ = (;a = 3.)
+
+        @test cache_type(law) == Matrix{Float64}
+        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+
+        apply_law!(law, cache, simulation, glacier_idx, t, θ)
+
+        @test cache == fill(6., 2, 3)
+    end
 end
