@@ -31,4 +31,16 @@ mutable struct Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <
     machine_learning::MLM
 end
 
+struct ModelCache{IFC, MBC}
+    iceflow::IFC
+    mass_balance::MBC
+end
 
+function init_cache(model::Model, simulation, glacier_idx, θ)
+    return ModelCache(
+        init_cache(model.iceflow, simulation, glacier_idx, θ),
+        nothing, # Since mass balance models dont use the "Cache" yet i just put nothing
+    )
+end
+
+cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
