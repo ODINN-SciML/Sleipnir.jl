@@ -1,31 +1,60 @@
 export plot_glacier_vid
 
-function make_thickness_video(H::Vector{Matrix{Float64}}, glacier::Glacier2D, simuparams::SimulationParameters, pathVideo::String; framerate::Int=24, baseTitle::String="")
-    lat = glacier.Coords["lat"]
-    lon = glacier.Coords["lon"]
-    mask = glacier.H₀ .!= 0
+function make_thickness_video(
+    H_plot::Vector{Matrix{Float64}},
+    glacier::Glacier2D,
+    simuparams::SimulationParameters,
+    pathVideo::String;
+    colormap::Symbol = :viridis,
+    colorrange::Union{Tuple, Nothing} = nothing,
+    framerate::Int = 24,
+    baseTitle::String = ""
+    )
+
+    if length(glacier.Coords["lat"]) > 0
+        lat = glacier.Coords["lat"]
+        lon = glacier.Coords["lon"]
+    else
+        lat = glacier.Δy .* collect(1:1:glacier.ny)
+        lon = glacier.Δx .* collect(1:1:glacier.nx)
+    end
     X, Y = GR.meshgrid(lon,lat)
 
-    # Create a figure
+    H = [ifelse.(h .== 0.0, NaN, h) for h in H_plot]
+
     fig = CairoMakie.Figure(; size = (600, 600))
 
     # Create an axis
-    ax = CairoMakie.Axis(fig[1, 1])
+    ax = CairoMakie.Axis(fig[1, 1], aspect = DataAspect())
+    xlims!(ax, lon[begin], lon[end])
+    ylims!(ax, lat[begin], lat[end])
 
     # Number of frames
-    nFrames = size(H,1)
+    nFrames = size(H, 1)
 
-    maxH = maximum(maximum.(H))
-    hm = CairoMakie.heatmap!(ax, reshape(X[mask],:), reshape(Y[mask],:), reshape(H[1][mask],:), colorrange=(0, maxH))
+    if isnothing(colorrange)
+        maxH = maximum(maximum.(H_plot))
+        colorrange = (0.0, maxH)
+    end
+
+    hm = CairoMakie.heatmap!(
+        ax,
+        reshape(X, :),
+        reshape(Y, :),
+        reshape(H[1], :),
+        colorrange = colorrange,
+        colormap = colormap,
+        nan_color = :transparent
+        )
     CairoMakie.Colorbar(fig[1, 2], hm, label = "Thickness (m)")
 
-    years = simuparams.tspan[1].+simuparams.step*collect(1:size(H,1))
+    years = simuparams.tspan[1] .+ simuparams.step * collect(1:size(H, 1))
 
     # Function to update the heatmap for each frame
     function _update_heatmap(frame_nb)
-        hm[1] = reshape(X[mask],:)
-        hm[2] = reshape(Y[mask],:)
-        hm[3] = reshape(H[frame_nb][mask],:)
+        hm[1] = reshape(X, :)
+        hm[2] = reshape(Y, :)
+        hm[3] = reshape(H[frame_nb], :)
         year = Int(floor(years[frame_nb]))
         ax.title = baseTitle*" (t = $year)"
     end
