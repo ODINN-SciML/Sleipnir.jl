@@ -30,26 +30,35 @@ function create_results(
     simulation::SIM,
     glacier_idx::I,
     solution,
-    loss=nothing;
-    light=false,
-    batch_id::Union{Nothing, I}=nothing,
-    processVelocity::Union{Nothing, Function}=nothing
+    loss = nothing;
+    light = false,
+    tstops::Union{Vector, Nothing} = nothing,
+    batch_id::Union{Nothing, I} = nothing,
+    processVelocity::Union{Nothing, Function} = nothing
 ) where {SIM <: Simulation, I <: Integer}
-    # The solution contains all the steps including the intermediate ones
-    # This results in solution having multiple values for a given time step, we select the last one of each time step
-    t₀ = simulation.parameters.simulation.tspan[1]
-    t₁ = simulation.parameters.simulation.tspan[2]
-    Δt = simulation.parameters.simulation.step
+
+    if isnothing(tstops)
+         # The solution contains all the steps including the intermediate ones
+        # This results in solution having multiple values for a given time step, we select the last one of each time step
+        t₀ = simulation.parameters.simulation.tspan[1]
+        t₁ = simulation.parameters.simulation.tspan[2]
+        Δt = simulation.parameters.simulation.step
+        nSteps = (t₁-t₀) / Δt
+        timeSteps = t₀ .+ collect(0:nSteps) .* Δt
+        ϵ = 1e-6 # Need this because of numerical rounding
+        compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
+        solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
+        ts = solution.t[solStepIndices]
+        us = solution.u[solStepIndices]
+    else
+        ts = tstops
+        us = solution(ts).u
+    end
+
     glacier = simulation.glaciers[glacier_idx]
 
-    nSteps = (t₁-t₀) / Δt
-    timeSteps = t₀ .+ collect(0:nSteps) .* Δt
-    ϵ = 1e-6 # Need this because of numerical rounding
-    compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
-    solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
-
-    t = light ? Vector{eltype(solution.t)}() : solution.t[solStepIndices]
-    H = light ? [solution.u[begin],solution.u[end]] : solution.u[solStepIndices]
+    t = light ? Vector{eltype(solution.t)}() : ts
+    H = light ? [solution.u[begin],solution.u[end]] : us
 
     if !isnothing(processVelocity)
         velocities = map(Hi -> processVelocity(simulation, Hi; batch_id=batch_id), H)
@@ -90,28 +99,30 @@ function create_results(
         θ = nothing
     end
 
-    results = Results(glacier, iceflow_model;
-                      H = H,
-                      H_ref = H_ref,
-                      S = iceflow_model.S,
-                      B = glacier.B,
-                      V = V,
-                      Vx = Vx,
-                      Vy = Vy,
-                      V_ref = V_ref,
-                      Vx_ref = Vx_ref,
-                      Vy_ref = Vy_ref,
-                      Δx = glacier.Δx,
-                      Δy = glacier.Δy,
-                      lon = glacier.cenlon,
-                      lat = glacier.cenlat,
-                      nx = glacier.nx,
-                      ny = glacier.ny,
-                      t = t,
-                      tspan = simulation.parameters.simulation.tspan,
-                      θ = θ,
-                      loss = loss
-                    )
+    results = Results(
+        glacier,
+        iceflow_model;
+        H = H,
+        H_ref = H_ref,
+        S = iceflow_model.S,
+        B = glacier.B,
+        V = V,
+        Vx = Vx,
+        Vy = Vy,
+        V_ref = V_ref,
+        Vx_ref = Vx_ref,
+        Vy_ref = Vy_ref,
+        Δx = glacier.Δx,
+        Δy = glacier.Δy,
+        lon = glacier.cenlon,
+        lat = glacier.cenlat,
+        nx = glacier.nx,
+        ny = glacier.ny,
+        t = t,
+        tspan = simulation.parameters.simulation.tspan,
+        θ = θ,
+        loss = loss
+    )
 
     return results
 end
