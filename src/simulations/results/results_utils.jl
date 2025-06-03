@@ -80,9 +80,9 @@ function create_results(
 
     # Simulations using Reverse Diff require an iceflow model per glacier
     if isnothing(batch_id)
-        iceflow_model = simulation.model.iceflow
+        iceflow_cache = simulation.cache.iceflow
     else
-        iceflow_model = simulation.model.iceflow[batch_id]
+        iceflow_cache = simulation.cache.iceflow[batch_id]
     end
     if !isnothing(simulation.model.machine_learning)
         θ = simulation.model.machine_learning.θ
@@ -90,10 +90,10 @@ function create_results(
         θ = nothing
     end
 
-    results = Results(glacier, iceflow_model;
+    results = Results(glacier, iceflow_cache;
                       H = H,
                       H_ref = H_ref,
-                      S = iceflow_model.S,
+                      S = iceflow_cache.S,
                       B = glacier.B,
                       V = V,
                       Vx = Vx,
