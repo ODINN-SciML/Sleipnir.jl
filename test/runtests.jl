@@ -46,6 +46,7 @@ end
 
 @testset "Law" begin
     generate_inputs_testset()
+    normalize_law_inputs_testset()
     apply_law_testset()
 end
 
