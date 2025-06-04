@@ -73,7 +73,7 @@ Defines a physical or empirical law applied to a glacier model that mutates an i
 # Arguments
 
 - `f!::Function`: A function with signature `f!(cache::T, simulation, glacier_idx, t, θ)` that updates the internal state.
-  If `inputs` are provided, the function instead takes the form `f!(cache::T, inputs, θ)` or `f!(inputs, θ)` depending on arity.
+  If `inputs` are provided, the function instead takes the form `f!(cache::T, inputs, θ)`.
 - `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that initializes the internal state for a given glacier.
 - `callback_freq::Union{Nothing, AbstractFloat}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
 - `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Provides automatically generated inputs passed to `f!` at runtime.
