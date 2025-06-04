@@ -30,9 +30,9 @@ manually, but rather through the `initialize_glaciers` function.
 - `V::Matrix{F}`: Ice velocity magnitude matrix.
 - `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
 - `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
-- `A::Union{F, Nothing}`: Flow law parameter.
+- `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
-- `n::Union{F, Nothing}`: Flow law exponent.
+- `n::F`: Flow law exponent.
 - `slope::Matrix{F}`: Surface slope matrix.
 - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
 - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
@@ -57,9 +57,9 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     V::Matrix{F}
     Vx::Matrix{F}
     Vy::Matrix{F}
-    A::Union{F, Nothing}
+    A::F
     C::F
-    n::Union{F, Nothing}
+    n::F
     slope::Matrix{F}
     dist_border::Matrix{F}
     Coords::Dict{String, Vector{Float64}}
@@ -88,16 +88,16 @@ Constructs a `Glacier2D` object with the given parameters, including default one
         V::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        A::Union{F, Nothing} = nothing,
+        A::F = 0.0,
         C::F = 0.0,
-        n::Union{F, Nothing} = nothing,
+        n::F = 0.0,
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
-        Δx::Union{F, Nothing} = nothing,
-        Δy::Union{F, Nothing} = nothing,
-        nx::Union{I, Nothing} = nothing,
-        ny::Union{I, Nothing} = nothing,
+        Δx::F = 0.0,
+        Δy::F = 0.0,
+        nx::I = 0,
+        ny::I = 0,
         cenlon::F = NaN,
         cenlat::F = NaN,
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
@@ -116,9 +116,9 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `V::Matrix{F}`: Ice velocity magnitude matrix.
 - `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
 - `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
-- `A::Union{F, Nothing}`: Flow law parameter.
+- `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
-- `n::Union{F, Nothing}`: Flow law exponent.
+- `n::F`: Flow law exponent.
 - `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
 - `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
 - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
@@ -146,14 +146,14 @@ function Glacier2D(;
     V::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-    A::Union{F, Nothing} = nothing,
+    A::F = 0.0,
     C::F = 0.0,
-    n::Union{F, Nothing} = nothing,
+    n::F = 0.0,
     slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
-    Δx::F = 0,
-    Δy::F = 0,
+    Δx::F = 0.0,
+    Δy::F = 0.0,
     nx::I = 0,
     ny::I = 0,
     cenlon::F = NaN,
@@ -196,10 +196,10 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         a.climate == b.climate &&
                                         safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) &&
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
-                                        safe_approx(a.A, b.A) && a.C == b.C && safe_approx(a.n, b.n) &&
+                                        a.A == b.A && a.C == b.C && a.n == b.n &&
                                         isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
-                                        safe_approx(a.Coords, b.Coords) && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
-                                        safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny) &&
+                                        safe_approx(a.Coords, b.Coords) && a.Δx == b.Δx && a.Δy == b.Δy &&
+                                        a.nx == b.nx && a.ny == b.ny &&
                                         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
                                         safe_approx(a.params_projection, b.params_projection) &&
                                         safe_approx(a.thicknessData, b.thicknessData) && safe_approx(a.velocityData, b.velocityData)
