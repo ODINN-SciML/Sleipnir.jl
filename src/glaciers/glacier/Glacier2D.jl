@@ -31,7 +31,7 @@ manually, but rather through the `initialize_glaciers` function.
 - `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
 - `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
 - `A::Union{F, Nothing}`: Flow law parameter.
-- `C::Union{F, Nothing}`: Sliding law parameter.
+- `C::F`: Sliding law parameter.
 - `n::Union{F, Nothing}`: Flow law exponent.
 - `slope::Matrix{F}`: Surface slope matrix.
 - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
@@ -58,7 +58,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     Vx::Matrix{F}
     Vy::Matrix{F}
     A::Union{F, Nothing}
-    C::Union{F, Nothing}
+    C::F
     n::Union{F, Nothing}
     slope::Matrix{F}
     dist_border::Matrix{F}
@@ -89,7 +89,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
         Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         A::Union{F, Nothing} = nothing,
-        C::Union{F, Nothing} = nothing,
+        C::F = 0.0,
         n::Union{F, Nothing} = nothing,
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
@@ -117,7 +117,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `Vx::Matrix{F}`: Ice velocity in the x-direction matrix.
 - `Vy::Matrix{F}`: Ice velocity in the y-direction matrix.
 - `A::Union{F, Nothing}`: Flow law parameter.
-- `C::Union{F, Nothing}`: Sliding law parameter.
+- `C::F`: Sliding law parameter.
 - `n::Union{F, Nothing}`: Flow law exponent.
 - `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
 - `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
@@ -147,7 +147,7 @@ function Glacier2D(;
     Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     A::Union{F, Nothing} = nothing,
-    C::Union{F, Nothing} = nothing,
+    C::F = 0.0,
     n::Union{F, Nothing} = nothing,
     slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
@@ -196,7 +196,7 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         a.climate == b.climate &&
                                         safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) &&
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
-                                        safe_approx(a.A, b.A) && safe_approx(a.C, b.C) && safe_approx(a.n, b.n) &&
+                                        safe_approx(a.A, b.A) && a.C == b.C && safe_approx(a.n, b.n) &&
                                         isapprox(a.slope, b.slope; rtol=1e-3) && safe_approx(a.dist_border, b.dist_border) &&
                                         safe_approx(a.Coords, b.Coords) && safe_approx(a.Δx, b.Δx) && safe_approx(a.Δy, b.Δy) &&
                                         safe_approx(a.nx, b.nx) && safe_approx(a.ny, b.ny) &&
