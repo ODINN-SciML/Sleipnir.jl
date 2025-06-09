@@ -120,8 +120,6 @@ struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
     end
 end
 
-ConstantLaw(value::T) where T = Law{T}(Returns(value), (_, _, _) -> (), nothing)
-
 Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(WithInputs(inputs, f), init_cache, callback_freq)
 Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq)
 Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache) where{T} = Law{T}(inputs, f!, init_cache, callback_freq)
@@ -136,4 +134,46 @@ is_callback_law(::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = true
 callback_freq(::Law{<:Any, <:Any, <:Any, Nothing}) = throw("This law dont have callback")
 callback_freq(law::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = law.callback_freq
 
-export Law
+
+"""
+    ConstantLaw{T}(init_cache)
+
+Creates a constant law of type `Law{T}` that holds a fixed value for the entire simulation.
+
+This is useful to inject glacier-specific or global constants into the simulation without modifying them over time.
+The update function is a no-op, and only the `init_cache` function matters.
+
+# Arguments
+
+- `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that provides the constant value.
+
+# Examples
+
+```
+# Same value for all glaciers
+n_law = ConstantLaw(Returns(4.))
+
+# Value depending on the glacier
+n_law = ConstantLaw((sim, i, θ) -> sim.glaciers[i].n)
+
+# Learned value
+n_law = ConstantLaw((sim, i, θ) -> θ.n)
+```
+"""
+struct ConstantLaw{CACHE_TYPE, INIT} <: AbstractLaw
+    init_cache::INIT
+
+    function ConstantLaw{CACHE_TYPE}(init_cache) where CACHE_TYPE
+        return new{CACHE_TYPE, typeof(init_cache)}(init_cache)
+    end
+end
+
+apply_law!(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
+init_cache(law::ConstantLaw, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
+cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
+
+is_callback_law(::ConstantLaw) = false
+
+callback_freq(::ConstantLaw) = throw("This law dont have callback")
+
+export Law, ConstantLaw

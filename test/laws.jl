@@ -40,6 +40,35 @@ end
 apply_law_testset() = @testset "apply_law" begin 
     (;A, B, C) = DumbTestInputs
 
+    @testset "ConstantLaw" begin
+        # fake simulation
+        simulation = (;
+            glacier = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),                
+            ]
+        )
+
+        law = ConstantLaw{Matrix{Float64}}(
+            function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glacier[glacier_idx]
+                fill(6., nx, ny)
+            end,
+        )
+
+        glacier_idx = 2
+        t = 2.
+        θ = (;a = 3.)
+
+        @test cache_type(law) == Matrix{Float64}
+        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+
+
+        apply_law!(law, cache, simulation, glacier_idx, t, θ)
+
+        @test cache == fill(6., 2, 3)
+    end
+
     @testset "Law without inputs" begin
         # fake simulation
         simulation = (;
