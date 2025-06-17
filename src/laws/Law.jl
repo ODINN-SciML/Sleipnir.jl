@@ -174,6 +174,6 @@ cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 
 is_callback_law(::ConstantLaw) = false
 
-callback_freq(::ConstantLaw) = throw("This law dont have callback")
+callback_freq(::ConstantLaw) = throw("This law doesn't have callback")
 
 export Law, ConstantLaw
