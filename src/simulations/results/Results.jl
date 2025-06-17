@@ -16,6 +16,9 @@ A mutable struct to store the results of simulations.
 - `V_ref::Matrix{F}`: Reference data for glacier ice surface velocities `V`.
 - `Vx_ref::Matrix{F}`: Reference data for the x-component of the glacier ice surface velocity `Vx`.
 - `Vy_ref::Matrix{F}`: Reference data for the y-component of the glacier ice surface velocity `Vy`.
+- `date_Vref::Vector{F}`: Date of velocity observation (mean of `date1` and `date2`).
+- `date1_Vref::Vector{F}`: First date of velocity acquisition.
+- `date2_Vref::Vector{F}`: Second date of velocity acquisition.
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
 - `lon::F`: Longitude of the glacier grid center.
@@ -41,6 +44,9 @@ mutable struct Results{F <: AbstractFloat, I <: Integer}
     V_ref::Vector{Matrix{F}}
     Vx_ref::Vector{Matrix{F}}
     Vy_ref::Vector{Matrix{F}}
+    date_Vref::Vector{F}
+    date1_Vref::Vector{F}
+    date2_Vref::Vector{F}
     Δx::F
     Δy::F
     lon::F
@@ -58,6 +64,7 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
                                     a.S == b.S && a.B == b.B && a.x == b.x && a.y == b.y &&
                                     a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
                                     a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
+                                    a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref && a.date2_Vref == b.date2_Vref &&
                                     a.Δx == b.Δx && a.Δy == b.Δy &&
                                     a.lon == b.lon && a.lat == b.lat &&
                                     a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
@@ -77,6 +84,9 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
         V_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vx_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vy_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        date_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
+        date1_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
+        date2_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
         Δx::F = glacier.Δx,
         Δy::F = glacier.Δy,
         lon::F = glacier.cenlon,
@@ -106,6 +116,9 @@ Construct a `Results` object for a glacier simulation.
 - `V_ref::Vector{Matrix{F}}`: Reference velocity magnitude matrix. Defaults to an empty vector.
 - `Vx_ref::Vector{Matrix{F}}`: Reference velocity in the x-direction matrix. Defaults to an empty vector.
 - `Vy_ref::Vector{Matrix{F}}`: Reference velocity in the y-direction matrix. Defaults to an empty vector.
+- `date_Vref::Vector{F}`: Date of velocity observation (mean of `date1` and `date2`). Defaults to an empty vector.
+- `date1_Vref::Vector{F}`: First date of velocity acquisition. Defaults to an empty vector.
+- `date2_Vref::Vector{F}`: Second date of velocity acquisition. Defaults to an empty vector.
 - `Δx::F`: Grid spacing in the x-direction. Defaults to `glacier.Δx`.
 - `Δy::F`: Grid spacing in the y-direction. Defaults to `glacier.Δy`.
 - `lon::F`: Longitude of the glacier grid center. Defaults to `glacier.cenlon`.
@@ -132,6 +145,9 @@ function Results(glacier::G, ifm::IF;
         V_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vx_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vy_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        date_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
+        date1_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
+        date2_Vref::Vector{F} = Vector{Sleipnir.Float}([]),
         Δx::F = glacier.Δx,
         Δy::F = glacier.Δy,
         lon::F = glacier.cenlon,
@@ -151,6 +167,7 @@ function Results(glacier::G, ifm::IF;
     results = Results{Sleipnir.Float, Sleipnir.Int}(rgi_id, H, H_glathida, H_ref, S, B,
                       x, y,
                       V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
+                      date_Vref, date1_Vref, date2_Vref,
                       Δx, Δy,lon,lat, nx, ny, t, tspan,
                       θ, loss)
 
