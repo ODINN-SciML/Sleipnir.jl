@@ -245,7 +245,6 @@ function plot_glacier_quivers(
     end
 
     num_vars = length(variables)
-    @info "num_vars",num_vars
     rows, cols = if num_vars == 1
         1, 1
     elseif num_vars == 2
