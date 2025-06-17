@@ -43,7 +43,7 @@ apply_law_testset() = @testset "apply_law" begin
     @testset "ConstantLaw" begin
         # fake simulation
         simulation = (;
-            glacier = [
+            glaciers = [
                 (; nx=5, ny=4),
                 (; nx=2, ny=3),                
             ]
@@ -51,7 +51,7 @@ apply_law_testset() = @testset "apply_law" begin
 
         law = ConstantLaw{Matrix{Float64}}(
             function (simulation, glacier_idx, θ)
-                (; nx, ny) = simulation.glacier[glacier_idx]
+                (; nx, ny) = simulation.glaciers[glacier_idx]
                 fill(6., nx, ny)
             end,
         )
@@ -72,7 +72,7 @@ apply_law_testset() = @testset "apply_law" begin
     @testset "Law without inputs" begin
         # fake simulation
         simulation = (;
-            glacier = [
+            glaciers = [
                 (; nx=5, ny=4),
                 (; nx=2, ny=3),                
             ]
@@ -83,7 +83,7 @@ apply_law_testset() = @testset "apply_law" begin
                 @. cache = θ.a * t
             end,
             init_cache = function (simulation, glacier_idx, θ)
-                (; nx, ny) = simulation.glacier[glacier_idx]
+                (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
         )
@@ -104,7 +104,7 @@ apply_law_testset() = @testset "apply_law" begin
     @testset "Law with inputs" begin
         # fake simulation
         simulation = (;
-            glacier = [
+            glaciers = [
                 (; nx=5, ny=4),
                 (; nx=2, ny=3),                
             ]
@@ -116,7 +116,7 @@ apply_law_testset() = @testset "apply_law" begin
                 @. cache = θ.a * inputs.c
             end,
             init_cache = function (simulation, glacier_idx, θ)
-                (; nx, ny) = simulation.glacier[glacier_idx]
+                (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
         )
@@ -135,7 +135,7 @@ apply_law_testset() = @testset "apply_law" begin
 
         # fake simulation
         simulation = (;
-            glacier = [
+            glaciers = [
                 (; nx=5, ny=4),
                 (; nx=2, ny=3),                
             ]
@@ -147,7 +147,7 @@ apply_law_testset() = @testset "apply_law" begin
                 @. cache = θ.a * inputs.z
             end,
             init_cache = function (simulation, glacier_idx, θ)
-                (; nx, ny) = simulation.glacier[glacier_idx]
+                (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
         )
