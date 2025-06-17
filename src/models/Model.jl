@@ -31,6 +31,8 @@ mutable struct Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <
     machine_learning::MLM
 end
 
+Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
+
 struct ModelCache{IFC, MBC}
     iceflow::IFC
     mass_balance::MBC
