@@ -33,6 +33,22 @@ end
 
 Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
+"""
+    ModelCache{IFC, MBC}
+
+Cache struct that holds the internal state or memory buffers for the components of a `Model`.
+
+Typically used to store per-glacier preallocated buffers or intermediate results
+that persist across time steps during simulation.
+
+# Fields
+- `iceflow::IFC`: Cache associated with the iceflow model.
+- `mass_balance::MBC`: Cache associated with the mass balance model.
+
+# Type Parameters
+- `IFC`: Cache type for the iceflow model.
+- `MBC`: Cache type for the mass balance model.
+"""
 struct ModelCache{IFC, MBC}
     iceflow::IFC
     mass_balance::MBC
@@ -41,7 +57,8 @@ end
 function init_cache(model::Model, simulation, glacier_idx, θ)
     return ModelCache(
         init_cache(model.iceflow, simulation, glacier_idx, θ),
-        nothing, # Since mass balance models dont use the "Cache" yet i just put nothing
+        # Since mass balance models dont use the "Cache" yet we can just put nothing
+        nothing, 
     )
 end
 

@@ -70,6 +70,24 @@ init_cache(::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete s
 
 Defines a physical or empirical law applied to a glacier model that mutates an internal state `T` at each simulation time step.
 
+!!! warning
+    The type `T` must be *mutable*, since `f!` is expected to update `cache::T` in place. 
+    Using an immutable type (like `Float64`) will silently fail or raise an error.
+
+```
+# ❌ Will not work: Float64 is immutable, so cache .= ... has no effect
+Law{Float64}(;
+    f! = (cache, _, _, t, θ) -> cache = θ.scale * sin(2π * t + θ.shift),
+    init_cache = (_, _, _) -> 0.0,
+)
+
+# ✅ Correct: using a 0-dimensional array allows in-place mutation
+Law{Array{Float64, 0}}(;
+    f! = (cache, _, _, t, θ) -> cache .= θ.scale * sin(2π * t + θ.shift) + θ.bias,
+    init_cache = (_, _, _) -> zeros(),
+)
+```
+
 # Arguments
 
 - `f!::Function`: A function with signature `f!(cache::T, simulation, glacier_idx, t, θ)` that updates the internal state.
@@ -147,17 +165,21 @@ The update function is a no-op, and only the `init_cache` function matters.
 
 - `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that provides the constant value.
 
+# Type Parameters
+
+- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cache`.
+
 # Examples
 
 ```
 # Same value for all glaciers
-n_law = ConstantLaw(Returns(4.))
+n_law = ConstantLaw{Float64}(Returns(4.))
 
 # Value depending on the glacier
-n_law = ConstantLaw((sim, i, θ) -> sim.glaciers[i].n)
+n_law = ConstantLaw{Float64}((sim, i, θ) -> sim.glaciers[i].n)
 
 # Learned value
-n_law = ConstantLaw((sim, i, θ) -> θ.n)
+n_law = ConstantLaw{Float64}((sim, i, θ) -> θ.n)
 ```
 """
 struct ConstantLaw{CACHE_TYPE, INIT} <: AbstractLaw
