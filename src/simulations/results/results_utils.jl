@@ -4,7 +4,7 @@ function datetime_to_floatyear(dt::DateTime)
     start_next_year = DateTime(y + 1, 1, 1)
     # Compute total seconds in the year and seconds since start of year
     seconds_in_year = convert(Int, Dates.value(Day((start_next_year - start_of_year)))) * 24 * 60 * 60
-    seconds_since_start = convert(Int, Dates.value(Day(dt - start_of_year))) * 24 * 60 * 60 + Dates.value(Hour(dt)) * 3600 + Dates.value(Minute(dt)) * 60 + Dates.value(Second(dt))
+    seconds_since_start = convert(Int, floor((dt - start_of_year)/Day(1))) * 24 * 60 * 60 + Dates.value(Hour(dt)) * 3600 + Dates.value(Minute(dt)) * 60 + Dates.value(Second(dt))
     return y + seconds_since_start / seconds_in_year
 end
 
