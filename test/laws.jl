@@ -25,8 +25,8 @@ generate_inputs_testset() = @testset "generate_inputs" begin
     @test generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.) == (x = ones(3), y = range(1, 3), z = 2.)
 
     # type stability
-    @inferred generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.)
-    @inferred generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.)
+    JET.@test_opt generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.)
+    JET.@test_opt generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.)
 end
 
 normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
@@ -61,7 +61,9 @@ apply_law_testset() = @testset "apply_law" begin
         θ = (;a = 3.)
 
         @test cache_type(law) == Matrix{Float64}
-        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
 
         @test cache == fill(6., 2, 3)
 
@@ -88,7 +90,9 @@ apply_law_testset() = @testset "apply_law" begin
         θ = (;a = 3.)
 
         @test cache_type(law) == Float64
-        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
         
         @test cache == 5.
 
@@ -121,7 +125,9 @@ apply_law_testset() = @testset "apply_law" begin
         θ = (;a = 3.)
 
         @test cache_type(law) == Matrix{Float64}
-        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
 
         apply_law!(law, cache, simulation, glacier_idx, t, θ)
 
@@ -153,7 +159,9 @@ apply_law_testset() = @testset "apply_law" begin
         θ = (;a = 3.)
 
         @test cache_type(law) == Matrix{Float64}
-        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
 
         apply_law!(law, cache, simulation, glacier_idx, t, θ)
 
@@ -184,7 +192,9 @@ apply_law_testset() = @testset "apply_law" begin
         θ = (;a = 3.)
 
         @test cache_type(law) == Matrix{Float64}
-        cache = @inferred init_cache(law, simulation, glacier_idx, θ)
+        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
 
         apply_law!(law, cache, simulation, glacier_idx, t, θ)
 
