@@ -63,6 +63,7 @@ include("parameters/Parameters.jl")
 # The utils of surface velocity data, glaciers and climate need the struct to be already
 # defined since they depend on each other. This is why we import them afterwards
 include("glaciers/data/SurfaceVelocityData_utils.jl")
+include("glaciers/data/SurfaceVelocityMapping_utils.jl")
 include("glaciers/glacier/glacier2D_utils.jl")
 include("glaciers/climate/climate2D_utils.jl")
 
@@ -71,6 +72,9 @@ include("models/Model.jl")
 
 # Everything related to running simulations in ODINN
 include("simulations/Simulation.jl")
+
+# Fake data used in the tests
+include("data/surface_velocity.jl")
 
 ##############################################
 #######    PRE-LOADED VARIABLES     ##########
