@@ -20,7 +20,7 @@ Arguments:
 - `compute_vabs_error::Bool`: Whether to compute the absolute error uncertainty.
 """
 function initialize_surfacevelocitydata(
-    raster::Union{String, RasterStack};
+    raster::Union{String, <: RasterStack};
     glacier::Union{G, Nothing}=nothing,
     mapping::VM=MeanDateVelocityMapping(),
     compute_vabs_error::Bool=true
