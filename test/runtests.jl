@@ -17,6 +17,7 @@ using Dates
 using DateFormats
 using JET
 
+include("iceflow_def.jl")
 include("params_construction.jl")
 include("glaciers_construction.jl")
 include("surface_velocity.jl")
