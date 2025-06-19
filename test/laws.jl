@@ -37,7 +37,25 @@ normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
     @test _normalize_law_inputs((x = A(), y = B(), z = C())) == (x = A(), y = B(), z = C())
 end
 
-apply_law_testset() = @testset "apply_law" begin 
+function test_law(;
+    law,
+    simulation,
+    glacier_idx,
+    θ,
+    t,
+    expected_cache_type,
+    expected_cache,
+)
+    @test cache_type(law) == expected_cache_type
+    JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+
+    cache = init_cache(law, simulation, glacier_idx, θ)
+
+    apply_law!(law, cache, simulation, glacier_idx, t, θ)
+    @test cache == expected_cache
+end
+
+apply_law_testset() = @testset "Law" begin 
     (;A, B, C) = MockTestInputs
 
     @testset "ConstantLaw" begin
@@ -56,20 +74,15 @@ apply_law_testset() = @testset "apply_law" begin
             end,
         )
 
-        glacier_idx = 2
-        t = 2.
-        θ = (;a = 3.)
-
-        @test cache_type(law) == Matrix{Float64}
-        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
-
-        cache = init_cache(law, simulation, glacier_idx, θ)
-
-        @test cache == fill(6., 2, 3)
-
-        apply_law!(law, cache, simulation, glacier_idx, t, θ)
-
-        @test cache == fill(6., 2, 3)
+        test_law(;
+            law,
+            simulation,
+            glacier_idx = 2,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = fill(6., 2, 3),
+            expected_cache_type = Matrix{Float64},
+        )
 
         # fake simulation
         simulation = (;
@@ -85,20 +98,15 @@ apply_law_testset() = @testset "apply_law" begin
             end,
         )
 
-        glacier_idx = 2
-        t = 2.
-        θ = (;a = 3.)
-
-        @test cache_type(law) == Float64
-        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
-
-        cache = init_cache(law, simulation, glacier_idx, θ)
-        
-        @test cache == 5.
-
-        apply_law!(law, cache, simulation, glacier_idx, t, θ)
-
-        @test cache == 5.
+        test_law(;
+            law,
+            simulation,
+            glacier_idx = 2,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = 5.,
+            expected_cache_type = Float64,
+        )
     end
 
     @testset "Law without inputs" begin
@@ -120,18 +128,15 @@ apply_law_testset() = @testset "apply_law" begin
             end,
         )
 
-        glacier_idx = 2
-        t = 2.
-        θ = (;a = 3.)
-
-        @test cache_type(law) == Matrix{Float64}
-        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
-
-        cache = init_cache(law, simulation, glacier_idx, θ)
-
-        apply_law!(law, cache, simulation, glacier_idx, t, θ)
-
-        @test cache == fill(6., 2, 3)
+        test_law(;
+            law,
+            simulation,
+            glacier_idx = 2,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = fill(6., 2, 3),
+            expected_cache_type = Matrix{Float64},
+        )
     end
 
     @testset "Law with inputs" begin
@@ -154,19 +159,15 @@ apply_law_testset() = @testset "apply_law" begin
             end,
         )
 
-        glacier_idx = 2
-        t = 2.
-        θ = (;a = 3.)
-
-        @test cache_type(law) == Matrix{Float64}
-        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
-
-        cache = init_cache(law, simulation, glacier_idx, θ)
-
-        apply_law!(law, cache, simulation, glacier_idx, t, θ)
-
-        @test cache == fill(6., 2, 3)
-
+        test_law(;
+            law,
+            simulation,
+            glacier_idx = 2,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = fill(6., 2, 3),
+            expected_cache_type = Matrix{Float64},
+        )
 
         # fake simulation
         simulation = (;
@@ -187,17 +188,14 @@ apply_law_testset() = @testset "apply_law" begin
             end,
         )
 
-        glacier_idx = 2
-        t = 2.
-        θ = (;a = 3.)
-
-        @test cache_type(law) == Matrix{Float64}
-        JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
-
-        cache = init_cache(law, simulation, glacier_idx, θ)
-
-        apply_law!(law, cache, simulation, glacier_idx, t, θ)
-
-        @test cache == fill(6., 2, 3)
+        test_law(;
+            law,
+            simulation,
+            glacier_idx = 2,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = fill(6., 2, 3),
+            expected_cache_type = Matrix{Float64},
+        )
     end
 end
