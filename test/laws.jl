@@ -1,5 +1,5 @@
-# Defining dumb inputs is easier than creating a whole `Simulation` object for testing `generate_input`
-module DumbTestInputs
+# Using mock inputs is simpler than building a full `Simulation` object for testing `generate_input`
+module MockTestInputs
     using Sleipnir: AbstractInput
     import Sleipnir: default_name, get_input
 
@@ -19,7 +19,7 @@ end
 using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, init_cache, cache_type
 
 generate_inputs_testset() = @testset "generate_inputs" begin
-    (;A, B, C) = DumbTestInputs
+    (;A, B, C) = MockTestInputs
 
     @test generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.) == (a = ones(3), b = range(1, 3), c = 3.)    
     @test generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.) == (x = ones(3), y = range(1, 3), z = 2.)
@@ -30,7 +30,7 @@ generate_inputs_testset() = @testset "generate_inputs" begin
 end
 
 normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
-    (;A, B, C) = DumbTestInputs
+    (;A, B, C) = MockTestInputs
 
     @test _normalize_law_inputs((A(), B(), C())) == (a = A(), b = B(), c = C())
     @test _normalize_law_inputs((a = A(), b = B(), c = C())) == (a = A(), b = B(), c = C())
@@ -38,7 +38,7 @@ normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
 end
 
 apply_law_testset() = @testset "apply_law" begin 
-    (;A, B, C) = DumbTestInputs
+    (;A, B, C) = MockTestInputs
 
     @testset "ConstantLaw" begin
         # fake simulation
