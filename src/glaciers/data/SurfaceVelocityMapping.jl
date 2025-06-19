@@ -22,9 +22,13 @@ windows since the velocity can vary within this time window.
 # Fields
 - `spatialInterp::Symbol`: The spatial interpolation to use to map the ice surface
     velocity grid to the glacier grid. For the moment only `:nearest` is supported.
+- `thresDate::Float`: Threshold in days to accept or reject a surface velocity
+    snapshot. This allows selecting surface velocity data that is close enough to
+    the current time step in the loss function.
 """
 @kwdef struct MeanDateVelocityMapping <: VelocityMapping
     spatialInterp::Symbol = :nearest
+    thresDate::Float = 60/365
 end
 
 """

@@ -225,6 +225,8 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
         S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
         if params.simulation.gridScalingFactor > 1
             S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
+            longitudes = longitudes[begin:params.simulation.gridScalingFactor:end]
+            latitudes = latitudes[begin:params.simulation.gridScalingFactor:end]
         end
         B = S .- H₀ # bedrock
 
