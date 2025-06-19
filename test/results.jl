@@ -1,5 +1,3 @@
-include("iceflow_def.jl")
-
 function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     rgi_paths = get_rgi_paths()
     rgi_ids = ["RGI60-11.03646"]

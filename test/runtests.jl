@@ -17,11 +17,13 @@ using Dates
 using DateFormats
 using JET
 
+include("iceflow_def.jl")
 include("params_construction.jl")
 include("glaciers_construction.jl")
 include("surface_velocity.jl")
 include("plot_utils.jl")
 include("results.jl")
+include("laws.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
@@ -41,6 +43,12 @@ end
 @testset "Plotting functions" begin
     @testset "Glaciers 2D plots" glaciers2D_plots()
     @testset "Video plot test" make_thickness_video_test()
+end
+
+@testset "Law" begin
+    generate_inputs_testset()
+    normalize_law_inputs_testset()
+    apply_law_testset()
 end
 
 end
