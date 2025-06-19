@@ -48,7 +48,7 @@ glaciers = initialize_glaciers(rgi_ids, params)
 function initialize_glaciers(
     rgi_ids::Vector{String},
     params::Parameters;
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
 
     # Generate missing glaciers file
@@ -122,7 +122,7 @@ function initialize_glacier(
     rgi_id::String,
     parameters::Parameters;
     smoothing=false,
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
     glacier = build_glacier(rgi_id, parameters; smoothing=smoothing)
