@@ -66,6 +66,24 @@ apply_law!(::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("
 init_cache(::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache"))
 
 """
+    build_affect(law::AbstractLaw, cache, glacier_idx, θ)
+    
+Return a `!`-style function suitable for use in a callback, which applies the given `law`
+to update the `cache` for a specific glacier and parameters `θ`, using the simulation time.
+"""
+function build_affect(law::AbstractLaw, cache, glacier_idx, θ)
+    # The let block make sure that every variable are type stable
+    return let law = law, cache = cache, glacier_idx = glacier_idx, θ = θ
+        function affect!(integrator)
+            simulation = integrator.p
+            t = integrator.t
+
+            apply_law!(law, cache, simulation, glacier_idx, t, θ)
+        end
+    end
+end
+
+"""
     Law{T}(; f!, init_cache, callback_freq=nothing, inputs=nothing)
 
 Defines a physical or empirical law applied to a glacier model that mutates an internal state `T` at each simulation time step.

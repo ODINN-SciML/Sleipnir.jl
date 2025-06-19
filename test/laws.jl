@@ -16,7 +16,7 @@ module MockTestInputs
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
-using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, init_cache, cache_type
+using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, build_affect, init_cache, cache_type
 
 generate_inputs_testset() = @testset "generate_inputs" begin
     (;A, B, C) = MockTestInputs
@@ -49,10 +49,49 @@ function test_law(;
     @test cache_type(law) == expected_cache_type
     JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
 
-    cache = init_cache(law, simulation, glacier_idx, θ)
+    # test apply_law!
+    let
+        cache = init_cache(law, simulation, glacier_idx, θ)
 
-    apply_law!(law, cache, simulation, glacier_idx, t, θ)
-    @test cache == expected_cache
+        apply_law!(law, cache, simulation, glacier_idx, t, θ)
+        @test cache == expected_cache
+    end
+
+    # test apply_law! stability
+    let
+        cache = init_cache(law, simulation, glacier_idx, θ)
+
+        JET.@test_opt apply_law!(law, cache, simulation, glacier_idx, t, θ)
+    end
+
+    # test build_affect
+    let
+        # fake integrator
+        integrator = (;
+            p = simulation,
+            t = t,
+        )
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
+        affect! = build_affect(law, cache, glacier_idx, θ)
+
+        affect!(integrator)
+        @test cache == expected_cache
+    end
+
+    # test build_affect stability
+    let
+        # fake integrator
+        integrator = (;
+            p = simulation,
+            t = t,
+        )
+
+        cache = init_cache(law, simulation, glacier_idx, θ)
+        affect! = build_affect(law, cache, glacier_idx, θ)
+
+        JET.@test_opt affect!(integrator)
+    end
 end
 
 apply_law_testset() = @testset "Law" begin 
