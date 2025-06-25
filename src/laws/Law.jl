@@ -9,8 +9,8 @@ Concrete subtypes must implement:
 """
 abstract type AbstractInput end
 
-default_name(::AbstractInput) = throw(error("Concrete subtypes of AbstractInput must implement default_name"))
-get_input(::AbstractInput, simulation, glacier_idx, t) = throw(error("Concrete subtypes of AbstractInput must implement get_input"))
+default_name(inp::AbstractInput) = throw(error("Concrete subtypes of AbstractInput must implement default_name. Please provide an implementation for $(typeof(inp))."))
+get_input(inp::AbstractInput, simulation, glacier_idx, t) = throw(error("Concrete subtypes of AbstractInput must implement get_input. Please provide an implementation for $(typeof(inp))."))
 
 function generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
     map(inputs) do input
@@ -62,8 +62,8 @@ Concrete subtypes must implement:
 - `init_cache(::ConcreteLaw, glacier, glacier_idx)::`
 """
 abstract type AbstractLaw end
-apply_law!(::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law!"))
-init_cache(::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache"))
+apply_law!(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law!. Please provide an implementation for $(typeof(inp))."))
+init_cache(inp::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(inp))."))
 
 """
     build_affect(law::AbstractLaw, cache, glacier_idx, θ)
@@ -167,7 +167,7 @@ cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_callback_law(::Law{<:Any, <:Any, <:Any, Nothing}) = false
 is_callback_law(::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = true
 
-callback_freq(::Law{<:Any, <:Any, <:Any, Nothing}) = throw("This law dont have callback")
+callback_freq(::Law{<:Any, <:Any, <:Any, Nothing}) = throw("This law does not have callback")
 callback_freq(law::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = law.callback_freq
 
 
