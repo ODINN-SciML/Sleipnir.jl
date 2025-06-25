@@ -87,12 +87,7 @@ function create_results(
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
-    # Simulations using Reverse Diff require an iceflow model per glacier
-    if isnothing(batch_id)
-        iceflow_cache = simulation.cache.iceflow
-    else
-        iceflow_cache = simulation.cache.iceflow[batch_id]
-    end
+    iceflow_cache = simulation.cache.iceflow
     if !isnothing(simulation.model.machine_learning)
         θ = simulation.model.machine_learning.θ
     else
