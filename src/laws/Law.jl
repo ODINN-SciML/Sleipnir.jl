@@ -1,4 +1,4 @@
-export AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, get_input, AbstractInput, generate_inputs
+export NullLaw, AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, get_input, AbstractInput, generate_inputs
 
 """
     AbstractInput
@@ -42,12 +42,12 @@ _normalize_law_inputs(inputs::NamedTuple) = inputs
 _normalize_law_inputs(inputs) = NamedTuple{default_name.(inputs)}(inputs)
 
 function (with_input_f::WithInputs)(simulation, glacier_idx, t, θ)
-    inputs = generate_inputs(f.inputs, simulation, glacier_idx, t)
+    inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(inputs, θ)
 end
 
 function (with_input_f::WithInputs)(cache, simulation, glacier_idx, t, θ)
-    inputs = generate_inputs(f.inputs, simulation, glacier_idx, t)
+    inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, inputs, θ)
 end
 
@@ -223,7 +223,20 @@ apply_law!(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
 init_cache(law::ConstantLaw, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_differentiable(law::ConstantLaw) = true
-
 is_callback_law(::ConstantLaw) = false
+callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
 
-callback_freq(::ConstantLaw) = throw("This law doesn't have callback")
+
+"""
+    NullLaw <: AbstractLaw
+
+This struct represents a law that is not used in the iceflow model.
+"""
+struct NullLaw <: AbstractLaw end
+
+apply_law!(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
+init_cache(law::NullLaw, simulation, glacier_idx, θ) = zeros(Sleipnir.Float)
+cache_type(law::NullLaw) = Array{Sleipnir.Float, 0}
+is_differentiable(law::NullLaw) = false
+is_callback_law(::NullLaw) = false
+callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
