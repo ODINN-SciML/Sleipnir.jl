@@ -16,7 +16,7 @@ module MockTestInputs
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
-using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, build_affect, init_cache, cache_type
+using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, build_affect, init_cache, cache_type, is_differentiable
 
 generate_inputs_testset() = @testset "generate_inputs" begin
     (;A, B, C) = MockTestInputs
@@ -45,6 +45,7 @@ function test_law(;
     t,
     expected_cache_type,
     expected_cache,
+    expected_is_differentiable,
 )
     @test cache_type(law) == expected_cache_type
     JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
@@ -92,6 +93,12 @@ function test_law(;
 
         JET.@test_opt affect!(integrator)
     end
+
+    # test is_differentiable
+    let
+        @test is_differentiable(law) == expected_is_differentiable
+        JET.@test_opt is_differentiable(law)
+    end
 end
 
 apply_law_testset() = @testset "Law" begin 
@@ -102,7 +109,7 @@ apply_law_testset() = @testset "Law" begin
         simulation = (;
             glaciers = [
                 (; nx=5, ny=4),
-                (; nx=2, ny=3),                
+                (; nx=2, ny=3),
             ]
         )
 
@@ -121,13 +128,14 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
+            expected_is_differentiable = true,
         )
 
         # fake simulation
         simulation = (;
             glaciers = [
                 (; nx=5, ny=4, n=4.),
-                (; nx=2, ny=3, n=5.),                
+                (; nx=2, ny=3, n=5.),
             ]
         )
 
@@ -145,6 +153,7 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = 5.,
             expected_cache_type = Float64,
+            expected_is_differentiable = true,
         )
     end
 
@@ -153,7 +162,7 @@ apply_law_testset() = @testset "Law" begin
         simulation = (;
             glaciers = [
                 (; nx=5, ny=4),
-                (; nx=2, ny=3),                
+                (; nx=2, ny=3),
             ]
         )
 
@@ -175,6 +184,7 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
+            expected_is_differentiable = false,
         )
     end
 
@@ -183,7 +193,7 @@ apply_law_testset() = @testset "Law" begin
         simulation = (;
             glaciers = [
                 (; nx=5, ny=4),
-                (; nx=2, ny=3),                
+                (; nx=2, ny=3),
             ]
         )
 
@@ -196,6 +206,7 @@ apply_law_testset() = @testset "Law" begin
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
+            is_differentiable = true,
         )
 
         test_law(;
@@ -206,13 +217,14 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
+            expected_is_differentiable = true,
         )
 
         # fake simulation
         simulation = (;
             glaciers = [
                 (; nx=5, ny=4),
-                (; nx=2, ny=3),                
+                (; nx=2, ny=3),
             ]
         )
 
@@ -235,6 +247,7 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
+            expected_is_differentiable = false,
         )
     end
 end
