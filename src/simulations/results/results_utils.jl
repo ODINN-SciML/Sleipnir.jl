@@ -3,10 +3,10 @@
         simulation::SIM,
         glacier_idx::I,
         solution,
-        loss=nothing;
-        light=false,
-        batch_id::Union{Nothing, I}=nothing,
-        processVelocity::Union{Nothing, Function}=nothing
+        loss = nothing;
+        light = false,
+        tstops::Union{Vector, Nothing} = nothing,
+        processVelocity::Union{Nothing, Function} = nothing,
     ) where {SIM <: Simulation, I <: Integer}
 
 Create a `Results` object from a given simulation and solution.
@@ -17,8 +17,7 @@ Create a `Results` object from a given simulation and solution.
 - `solution`: The solution object containing all the steps including intermediate ones.
 - `loss=nothing`: The loss value, default is `nothing`.
 - `light=false`: A boolean flag to indicate if only the first and last steps of the solution should be used.
-- `batch_id::Union{Nothing, I}=nothing`: The batch ID, default is `nothing`.
-- `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the batch ID and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+- `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
 - `results`: A `Results` object containing the processed simulation data.
@@ -33,8 +32,7 @@ function create_results(
     loss = nothing;
     light = false,
     tstops::Union{Vector, Nothing} = nothing,
-    batch_id::Union{Nothing, I} = nothing,
-    processVelocity::Union{Nothing, Function} = nothing
+    processVelocity::Union{Nothing, Function} = nothing,
 ) where {SIM <: Simulation, I <: Integer}
 
     if isnothing(tstops)
@@ -57,11 +55,11 @@ function create_results(
 
     glacier = simulation.glaciers[glacier_idx]
 
-    t = light ? Vector{eltype(solution.t)}() : ts
+    t = light ? Vector{eltype(solution.t)}([solution.t[begin],solution.t[end]]) : ts
     H = light ? [solution.u[begin],solution.u[end]] : us
 
     if !isnothing(processVelocity)
-        velocities = map(Hi -> processVelocity(simulation, Hi; batch_id=batch_id), H)
+        velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti), H, t)
         Vx = [velocities[i][1] for i in range(1,length(velocities))]
         Vy = [velocities[i][2] for i in range(1,length(velocities))]
         V  = [velocities[i][3] for i in range(1,length(velocities))]
@@ -124,7 +122,7 @@ end
 
 
 """
-    save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Int, SIM <: Simulation}
+    save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Integer, SIM <: Simulation}
 
 Save the results of a simulation to a file.
 
@@ -136,7 +134,7 @@ Save the results of a simulation to a file.
 # Description
 This function saves the results of a simulation to a file in JLD2 format. If the `path` argument is not provided, the function will create a default path based on the current project directory. The results are saved in a file named `prediction_<nglaciers>glaciers_<tspan>.jld2`, where `<nglaciers>` is the number of glaciers in the simulation and `<tspan>` is the simulation time span.
 """
-function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Int, SIM <: Simulation}
+function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Integer, SIM <: Simulation}
     # Create path for simulation results
     if isnothing(path)
         predictions_path = joinpath(dirname(Base.current_project()), "data/results/predictions")
