@@ -1,7 +1,9 @@
+export AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, get_input, AbstractInput, generate_inputs
+
 """
     AbstractInput
 
-Abstract type representing an input source for a `Law`.  
+Abstract type representing an input source for a `Law`.
 Concrete subtypes must implement:
 
 - `default_name(::ConcreteInput)`: returns the default field name (as a `Symbol`) under which this input will be accessed in the law's input `NamedTuple`.
@@ -46,9 +48,6 @@ function (f::WithInputs)(cache, simulation, glacier_idx, t, θ)
     inputs = generate_inputs(f.inputs, simulation, glacier_idx, t)
     return f.f(cache, inputs, θ)
 end
-
-_normalize_law_f(::Nothing, f) = f
-_normalize_law_f(inputs, f) = WithInputs(inputs, f)
 
 """
     AbstractLaw
@@ -224,5 +223,3 @@ is_differentiable(law::ConstantLaw) = true
 is_callback_law(::ConstantLaw) = false
 
 callback_freq(::ConstantLaw) = throw("This law doesn't have callback")
-
-export Law, ConstantLaw

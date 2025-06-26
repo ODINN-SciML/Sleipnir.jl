@@ -16,7 +16,7 @@ module MockTestInputs
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
-using Sleipnir: _normalize_law_inputs, generate_inputs, Law, apply_law!, build_affect, init_cache, cache_type, is_differentiable
+using Sleipnir: _normalize_law_inputs
 
 generate_inputs_testset() = @testset "generate_inputs" begin
     (;A, B, C) = MockTestInputs
@@ -101,7 +101,7 @@ function test_law(;
     end
 end
 
-apply_law_testset() = @testset "Law" begin 
+apply_law_testset() = @testset "Law" begin
     (;A, B, C) = MockTestInputs
 
     @testset "ConstantLaw" begin

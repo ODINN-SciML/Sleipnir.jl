@@ -61,5 +61,6 @@ function init_cache(model::Model, simulation, glacier_idx, θ)
         nothing,
     )
 end
+init_cache(model::Model, simulation, glacier_idx) = init_cache(model, simulation, glacier_idx, nothing)
 
 cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}

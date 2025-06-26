@@ -1,5 +1,5 @@
 """
-    mutable struct Results{F <: AbstractFloat, I <: Int}
+    mutable struct Results{F <: AbstractFloat, I <: Integer}
 
 A mutable struct to store the results of simulations.
 
@@ -26,7 +26,7 @@ A mutable struct to store the results of simulations.
 - `θ::Union{Nothing, ComponentArray{F}}`: Machine learning model parameters.
 - `loss::Union{Nothing, Vector{F}}` Vector with evolution of loss function.
 """
-mutable struct Results{F <: AbstractFloat, I <: Int}
+mutable struct Results{F <: AbstractFloat, I <: Integer}
     rgi_id::String
     H::Vector{Matrix{F}}
     H_glathida::Matrix{F}
@@ -87,7 +87,7 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
         tspan::Tuple{F, F} = (NaN, NaN),
         θ::Union{Nothing,ComponentArray{F}} = nothing,
         loss::Union{Nothing,Vector{F}} = nothing
-    ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
+    ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Integer}
 
 Construct a `Results` object for a glacier simulation.
 
@@ -142,7 +142,7 @@ function Results(glacier::G, ifm::IF;
         tspan::Tuple{F, F} = (NaN, NaN),
         θ::Union{Nothing,ComponentArray{F}} = nothing,
         loss::Union{Nothing,Vector{F}} = nothing
-    ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Int}
+    ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Integer}
 
     x = glacier.Coords["lon"]
     y = glacier.Coords["lat"]
