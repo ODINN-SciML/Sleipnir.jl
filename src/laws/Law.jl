@@ -21,9 +21,11 @@ function generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
 end
 
 """
-    WithInputs
+    WithInputs{IN, F}
 
-Given tuple of `AbstractInput`s and a function `f`, return a callable struct 
+Given a tuple of `AbstractInput`s and a function `f`, returns a callable struct.
+This struct `with_input_f` can be evaluated as a function that generates the inputs and then applies the function's law `with_input_f.f`.
+It is for internal use only and is not exposed to the user.
 """
 struct WithInputs{IN, F}
     inputs::IN
@@ -39,14 +41,14 @@ end
 _normalize_law_inputs(inputs::NamedTuple) = inputs
 _normalize_law_inputs(inputs) = NamedTuple{default_name.(inputs)}(inputs)
 
-function (f::WithInputs)(simulation, glacier_idx, t, θ)
+function (with_input_f::WithInputs)(simulation, glacier_idx, t, θ)
     inputs = generate_inputs(f.inputs, simulation, glacier_idx, t)
-    return f.f(inputs, θ)
+    return with_input_f.f(inputs, θ)
 end
 
-function (f::WithInputs)(cache, simulation, glacier_idx, t, θ)
+function (with_input_f::WithInputs)(cache, simulation, glacier_idx, t, θ)
     inputs = generate_inputs(f.inputs, simulation, glacier_idx, t)
-    return f.f(cache, inputs, θ)
+    return with_input_f.f(cache, inputs, θ)
 end
 
 """
@@ -114,9 +116,11 @@ Law{Array{Float64, 0}}(;
 - `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Provides automatically generated inputs passed to `f!` at runtime.
 - `is_differentiable::Bool`: Optional. Whether the law can be differentiated within ODINN or not.
   For a law to be differentiable within ODINN, its inputs must be carefully handled.
-  For the moment only a subset of laws are supported and the user should not use this
-  parameter unless he knows what he is doing. Trying to use unsupported laws for
+  For the moment only a subset of laws are supported and the users should not use this
+  parameter unless they know what they are doing. Trying to use unsupported laws for
   inversions in ODINN is highly discouraged as it may result in incorrect gradients.
+  In the future we plan to fully support arbitrary laws once ODINN can be fully
+  differentiated using Enzyme.
 
 # Type Parameters
 
