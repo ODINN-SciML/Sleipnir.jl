@@ -1,4 +1,4 @@
-export NullLaw, AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, get_input, AbstractInput, generate_inputs
+export NullLaw, AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, apply_laws!, get_input, AbstractInput, generate_inputs
 
 """
     AbstractInput
@@ -240,3 +240,6 @@ cache_type(law::NullLaw) = Array{Sleipnir.Float, 0}
 is_differentiable(law::NullLaw) = false
 is_callback_law(::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
+
+
+apply_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_laws! for your own model.")
