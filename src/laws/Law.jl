@@ -1,4 +1,6 @@
-export NullLaw, AbstractLaw, Law, ConstantLaw, init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, apply_laws!, get_input, AbstractInput, generate_inputs
+export NullLaw, AbstractLaw, Law, ConstantLaw
+export init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, apply_all_non_callback_laws!
+export AbstractInput, get_input, generate_inputs
 
 """
     AbstractInput
@@ -21,17 +23,17 @@ function generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
 end
 
 """
-    WithInputs{IN, F}
+    GenInputsAndApply{IN, F}
 
 Given a tuple of `AbstractInput`s and a function `f`, returns a callable struct.
 This struct `with_input_f` can be evaluated as a function that generates the inputs and then applies the function's law `with_input_f.f`.
 It is for internal use only and is not exposed to the user.
 """
-struct WithInputs{IN, F}
+struct GenInputsAndApply{IN, F}
     inputs::IN
     f::F
 
-    function WithInputs(inputs, f)
+    function GenInputsAndApply(inputs, f)
         inputs = _normalize_law_inputs(inputs)
 
         return new{typeof(inputs), typeof(f)}(inputs, f)
@@ -41,12 +43,12 @@ end
 _normalize_law_inputs(inputs::NamedTuple) = inputs
 _normalize_law_inputs(inputs) = NamedTuple{default_name.(inputs)}(inputs)
 
-function (with_input_f::WithInputs)(simulation, glacier_idx, t, θ)
+function (with_input_f::GenInputsAndApply)(simulation, glacier_idx, t, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(inputs, θ)
 end
 
-function (with_input_f::WithInputs)(cache, simulation, glacier_idx, t, θ)
+function (with_input_f::GenInputsAndApply)(cache, simulation, glacier_idx, t, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, inputs, θ)
 end
@@ -166,7 +168,7 @@ struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
     end
 end
 
-Law{T}(inputs, f, init_cache, callback_freq; is_differentiable::Bool = false) where {T} = Law{T}(WithInputs(inputs, f), init_cache, callback_freq; is_differentiable=is_differentiable)
+Law{T}(inputs, f, init_cache, callback_freq; is_differentiable::Bool = false) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq; is_differentiable=is_differentiable)
 Law{T}(::Nothing, f, init_cache, callback_freq; is_differentiable::Bool = false) where{T} = Law{T}(f, init_cache, callback_freq; is_differentiable=is_differentiable)
 Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, is_differentiable::Bool = false) where{T} = Law{T}(inputs, f!, init_cache, callback_freq; is_differentiable=is_differentiable)
 
@@ -242,4 +244,4 @@ is_callback_law(::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
 
 
-apply_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_laws! for your own model.")
+apply_all_non_callback_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_all_non_callback_laws! for your own model.")
