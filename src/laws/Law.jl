@@ -1,6 +1,6 @@
 export NullLaw, AbstractLaw, Law, ConstantLaw
 export init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, apply_all_non_callback_laws!
-export AbstractInput, get_input, generate_inputs
+export AbstractInput, get_input, inputs
 
 """
     AbstractInput
@@ -183,6 +183,10 @@ is_callback_law(::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = true
 callback_freq(::Law{<:Any, <:Any, <:Any, Nothing}) = throw("This law does not have callback")
 callback_freq(law::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = law.callback_freq
 
+# Define whether inputs are provided or not through GenInputsAndApply
+inputs(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = law.f.inputs
+inputs(law::Law) = throw("Inputs are not defined.")
+
 
 """
     ConstantLaw{T}(init_cache)
@@ -227,6 +231,7 @@ cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_differentiable(law::ConstantLaw) = true
 is_callback_law(::ConstantLaw) = false
 callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
+inputs(law::ConstantLaw) = (;)
 
 
 """
@@ -242,6 +247,7 @@ cache_type(law::NullLaw) = Array{Sleipnir.Float, 0}
 is_differentiable(law::NullLaw) = false
 is_callback_law(::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
+inputs(law::NullLaw) = (;)
 
 
 apply_all_non_callback_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_all_non_callback_laws! for your own model.")

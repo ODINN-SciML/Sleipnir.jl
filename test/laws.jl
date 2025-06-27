@@ -16,12 +16,12 @@ module MockTestInputs
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
-using Sleipnir: _normalize_law_inputs
+using Sleipnir: _normalize_law_inputs, generate_inputs
 
 generate_inputs_testset() = @testset "generate_inputs" begin
     (;A, B, C) = MockTestInputs
 
-    @test generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.) == (a = ones(3), b = range(1, 3), c = 3.)    
+    @test generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.) == (a = ones(3), b = range(1, 3), c = 3.)
     @test generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.) == (x = ones(3), y = range(1, 3), z = 2.)
 
     # type stability
@@ -46,6 +46,8 @@ function test_law(;
     expected_cache_type,
     expected_cache,
     expected_is_differentiable,
+    inputs_defined,
+    expected_inputs,
 )
     @test cache_type(law) == expected_cache_type
     JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
@@ -95,9 +97,21 @@ function test_law(;
     end
 
     # test is_differentiable
-    let
-        @test is_differentiable(law) == expected_is_differentiable
-        JET.@test_opt is_differentiable(law)
+    @test is_differentiable(law) == expected_is_differentiable
+    JET.@test_opt is_differentiable(law)
+
+    # test inputs
+    if inputs_defined
+        @test inputs(law) == expected_inputs
+        JET.@test_opt inputs(law)
+    else
+        # Check that it fails
+        try
+            inputs(law)
+            @test false
+        catch error
+            @test error == "Inputs are not defined."
+        end
     end
 end
 
@@ -129,6 +143,8 @@ apply_law_testset() = @testset "Law" begin
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
             expected_is_differentiable = true,
+            inputs_defined = true,
+            expected_inputs = (;),
         )
 
         # fake simulation
@@ -154,6 +170,8 @@ apply_law_testset() = @testset "Law" begin
             expected_cache = 5.,
             expected_cache_type = Float64,
             expected_is_differentiable = true,
+            inputs_defined = true,
+            expected_inputs = (;),
         )
     end
 
@@ -185,6 +203,8 @@ apply_law_testset() = @testset "Law" begin
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
             expected_is_differentiable = false,
+            inputs_defined = false,
+            expected_inputs = (;),
         )
     end
 
@@ -218,6 +238,8 @@ apply_law_testset() = @testset "Law" begin
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
             expected_is_differentiable = true,
+            inputs_defined = true,
+            expected_inputs = (a=A(), b=B(), c=C()),
         )
 
         # fake simulation
@@ -248,6 +270,8 @@ apply_law_testset() = @testset "Law" begin
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
             expected_is_differentiable = false,
+            inputs_defined = true,
+            expected_inputs = (x = A(), y = B(), z = C()),
         )
     end
 end
