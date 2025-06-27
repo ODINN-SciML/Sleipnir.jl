@@ -1,5 +1,5 @@
 export NullLaw, AbstractLaw, Law, ConstantLaw
-export init_cache, cache_type, is_differentiable, is_callback_law, callback_freq, build_affect, apply_law!, apply_all_non_callback_laws!
+export init_cache, cache_type, is_callback_law, callback_freq, build_affect, apply_law!, apply_all_non_callback_laws!
 export AbstractInput, get_input, inputs
 
 """
@@ -87,7 +87,7 @@ function build_affect(law::AbstractLaw, cache, glacier_idx, θ)
 end
 
 """
-    Law{T}(; f!, init_cache, callback_freq=nothing, inputs=nothing, is_differentiable=false)
+    Law{T}(; f!, init_cache, callback_freq=nothing, inputs=nothing)
 
 Defines a physical or empirical law applied to a glacier model that mutates an internal state `T` at each simulation time step.
 
@@ -116,13 +116,6 @@ Law{Array{Float64, 0}}(;
 - `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that initializes the internal state for a given glacier.
 - `callback_freq::Union{Nothing, AbstractFloat}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
 - `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Provides automatically generated inputs passed to `f!` at runtime.
-- `is_differentiable::Bool`: Optional. Whether the law can be differentiated within ODINN or not.
-  For a law to be differentiable within ODINN, its inputs must be carefully handled.
-  For the moment only a subset of laws are supported and the users should not use this
-  parameter unless they know what they are doing. Trying to use unsupported laws for
-  inversions in ODINN is highly discouraged as it may result in incorrect gradients.
-  In the future we plan to fully support arbitrary laws once ODINN can be fully
-  differentiated using Enzyme.
 
 # Type Parameters
 
@@ -151,9 +144,8 @@ struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
     f::F
     init_cache::INIT
     callback_freq::FREQ
-    is_differentiable::Bool
 
-    function Law{CACHE_TYPE}(f, init_cache, callback_freq; is_differentiable::Bool = false) where {CACHE_TYPE}
+    function Law{CACHE_TYPE}(f, init_cache, callback_freq) where {CACHE_TYPE}
         new{
             CACHE_TYPE,
             typeof(f),
@@ -163,19 +155,17 @@ struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
             f,
             init_cache,
             callback_freq,
-            is_differentiable,
         )
     end
 end
 
-Law{T}(inputs, f, init_cache, callback_freq; is_differentiable::Bool = false) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq; is_differentiable=is_differentiable)
-Law{T}(::Nothing, f, init_cache, callback_freq; is_differentiable::Bool = false) where{T} = Law{T}(f, init_cache, callback_freq; is_differentiable=is_differentiable)
-Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, is_differentiable::Bool = false) where{T} = Law{T}(inputs, f!, init_cache, callback_freq; is_differentiable=is_differentiable)
+Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq)
+Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq)
+Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache) where{T} = Law{T}(inputs, f!, init_cache, callback_freq)
 
 apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
 init_cache(law::Law, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
-is_differentiable(law::Law) = law.is_differentiable
 
 is_callback_law(::Law{<:Any, <:Any, <:Any, Nothing}) = false
 is_callback_law(::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = true
@@ -228,7 +218,6 @@ end
 apply_law!(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
 init_cache(law::ConstantLaw, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
-is_differentiable(law::ConstantLaw) = true
 is_callback_law(::ConstantLaw) = false
 callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
 inputs(law::ConstantLaw) = (;)
@@ -244,7 +233,6 @@ struct NullLaw <: AbstractLaw end
 apply_law!(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
 init_cache(law::NullLaw, simulation, glacier_idx, θ) = zeros(Sleipnir.Float)
 cache_type(law::NullLaw) = Array{Sleipnir.Float, 0}
-is_differentiable(law::NullLaw) = false
 is_callback_law(::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
 inputs(law::NullLaw) = (;)
