@@ -45,7 +45,6 @@ function test_law(;
     t,
     expected_cache_type,
     expected_cache,
-    expected_is_differentiable,
     inputs_defined,
     expected_inputs,
 )
@@ -96,10 +95,6 @@ function test_law(;
         JET.@test_opt affect!(integrator)
     end
 
-    # test is_differentiable
-    @test is_differentiable(law) == expected_is_differentiable
-    JET.@test_opt is_differentiable(law)
-
     # test inputs
     if inputs_defined
         @test inputs(law) == expected_inputs
@@ -142,7 +137,6 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
-            expected_is_differentiable = true,
             inputs_defined = true,
             expected_inputs = (;),
         )
@@ -169,7 +163,6 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = 5.,
             expected_cache_type = Float64,
-            expected_is_differentiable = true,
             inputs_defined = true,
             expected_inputs = (;),
         )
@@ -202,7 +195,6 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
-            expected_is_differentiable = false,
             inputs_defined = false,
             expected_inputs = (;),
         )
@@ -226,7 +218,6 @@ apply_law_testset() = @testset "Law" begin
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
-            is_differentiable = true,
         )
 
         test_law(;
@@ -237,7 +228,6 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
-            expected_is_differentiable = true,
             inputs_defined = true,
             expected_inputs = (a=A(), b=B(), c=C()),
         )
@@ -269,7 +259,6 @@ apply_law_testset() = @testset "Law" begin
             t = 2.0,
             expected_cache = fill(6., 2, 3),
             expected_cache_type = Matrix{Float64},
-            expected_is_differentiable = false,
             inputs_defined = true,
             expected_inputs = (x = A(), y = B(), z = C()),
         )
