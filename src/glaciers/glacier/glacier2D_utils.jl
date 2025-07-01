@@ -124,11 +124,8 @@ function initialize_glacier(
     smoothing=false,
     velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
 )
-    # Initialize glacier initial topography
-    glacier = initialize_glacier_data(rgi_id, parameters; smoothing=smoothing)
-
-    # Initialize glacier climate
-    initialize_glacier_climate!(glacier, parameters)
+    # Build glacier and its associated climate
+    glacier = build_glacier(rgi_id, parameters; smoothing=smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
@@ -148,9 +145,9 @@ function convertRasterStackToFloat64(rs::RasterStack)
 end
 
 """
-    initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false, test=false)
+    build_glacier(rgi_id::String, params::Parameters; smoothing=false, test=false)
 
-Initialize glacier data for a given RGI ID and parameters.
+Build glacier object for a given RGI ID and parameters.
 
 # Arguments
 - `rgi_id::String`: The RGI ID of the glacier.
@@ -169,7 +166,7 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=false)
+function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
@@ -254,11 +251,13 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
         slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
         name = get(get_rgi_names(), rgi_id, "")
 
-        # We initialize the Glacier with all the initial topographical
-        glacier = Glacier2D(
+        # Initialize glacier climate
+        climate = initialize_climate(rgi_id, params, S, Coords)
+
+        return Glacier2D(
             rgi_id = rgi_id,
             name = name,
-            climate = nothing,
+            climate = climate,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
             slope = slope, dist_border = dist_border,
@@ -266,7 +265,6 @@ function initialize_glacier_data(rgi_id::String, params::Parameters; smoothing=f
             cenlon = cenlon, cenlat = cenlat,
             params_projection = params_projection
         )
-        return glacier
 
     catch error
         @show error
