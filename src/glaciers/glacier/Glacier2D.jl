@@ -22,7 +22,7 @@ manually, but rather through the `initialize_glaciers` function.
 # Fields
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
 - `name::String`: The name of the glacier if available.
-- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `climate::Climate2D`: The climate data associated with the glacier.
 - `H₀::Matrix{F}`: Initial ice thickness matrix.
 - `H_glathida::Matrix{F}`: Ice thickness matrix from the GLATHIDA dataset.
 - `S::Matrix{F}`: Surface elevation matrix.
@@ -49,7 +49,7 @@ manually, but rather through the `initialize_glaciers` function.
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     rgi_id::String
     name::String
-    climate::Union{Climate2D, Nothing}
+    climate::Climate2D
     H₀::Matrix{F}
     H_glathida::Matrix{F}
     S::Matrix{F}
@@ -78,9 +78,9 @@ end
 Constructs a `Glacier2D` object with the given parameters, including default ones.
 
     Glacier2D(;
-        rgi_id::Union{String, Nothing} = nothing,
+        rgi_id::String = "",
         name::String = "",
-        climate::Union{Climate2D, Nothing} = nothing,
+        climate::Climate2D = nothing,
         H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
@@ -108,7 +108,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 # Arguments
 - `rgi_id::String`: The RGI identifier for the glacier.
 - `name::String`: The name of the glacier if available.
-- `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier.
+- `climate::Climate2D`: The climate data associated with the glacier.
 - `H₀::Matrix{F}`: Initial ice thickness matrix.
 - `H_glathida::Matrix{F}`: Ice thickness matrix from GLATHIDA.
 - `S::Matrix{F}`: Surface elevation matrix.
@@ -119,8 +119,8 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
 - `n::F`: Flow law exponent.
-- `slope::Union{Matrix{F}, Nothing}`: Slope matrix.
-- `dist_border::Union{Matrix{F}, Nothing}`: Distance to border matrix.
+- `slope::Matrix{F}`: Slope matrix.
+- `dist_border::Matrix{F}`: Distance to border matrix.
 - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
@@ -138,7 +138,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 function Glacier2D(;
     rgi_id::String = "",
     name::String = "",
-    climate::Union{Climate2D, Nothing} = nothing,
+    climate::Climate2D = nothing,
     H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
