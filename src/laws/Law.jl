@@ -239,3 +239,13 @@ inputs(law::NullLaw) = (;)
 
 
 apply_all_non_callback_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_all_non_callback_laws! for your own model.")
+
+
+# Display setup
+repr(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = "$(values(inputs(law))) -> $(cache_type(law))"
+repr(law::Law) = "(simulation, t) -> $(cache_type(law))"
+repr(law::ConstantLaw) = "() -> $(cache_type(law))"
+repr(law::NullLaw) = "NullLaw"
+function Base.show(io::IO, law::AbstractLaw)
+    print(repr(law))
+end
