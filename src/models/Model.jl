@@ -64,3 +64,21 @@ end
 init_cache(model::Model, simulation, glacier_idx) = init_cache(model, simulation, glacier_idx, nothing)
 
 cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
+
+
+# Display setup
+function Base.show(io::IO, model::Model)
+    println("**** Model ****")
+    println()
+    println(model.iceflow)
+    println()
+    println(model.mass_balance)
+    println()
+    if isnothing(model.machine_learning)
+        println("No learnable components")
+    else
+        println("Learnable components")
+        println(model.machine_learning)
+    end
+    print("***************")
+end
