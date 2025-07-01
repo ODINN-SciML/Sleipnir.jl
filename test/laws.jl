@@ -101,12 +101,7 @@ function test_law(;
         JET.@test_opt inputs(law)
     else
         # Check that it fails
-        try
-            inputs(law)
-            @test false
-        catch error
-            @test error == "Inputs are not defined."
-        end
+        @test_throws "Inputs are not defined." inputs(law)
     end
 end
 
