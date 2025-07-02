@@ -100,7 +100,7 @@ function create_results(
     else
         Vx = Vy = V = Vector{Matrix{Sleipnir.Float}}([[;;]])
         Vx_ref = Vy_ref = V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-        date_Vref = date1_Vref = date2_Vref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        date_Vref = date1_Vref = date2_Vref = Vector{Sleipnir.Float}([])
     end
 
     if !isnothing(glacier.thicknessData)
