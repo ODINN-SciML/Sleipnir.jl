@@ -1,5 +1,3 @@
-include("iceflow_def.jl")
-
 function glaciers2D_plots()
     rgi_paths = get_rgi_paths()
     rgi_ids = ["RGI60-07.00042"]
