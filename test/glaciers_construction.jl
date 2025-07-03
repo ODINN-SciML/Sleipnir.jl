@@ -33,7 +33,7 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
     )
 
     glaciers = initialize_glaciers(rgi_ids, params)
-    # JET.@test_opt target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+    JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
 
     # Test prints
     println(glaciers)
