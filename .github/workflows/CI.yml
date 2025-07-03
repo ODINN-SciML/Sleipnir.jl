@@ -7,7 +7,6 @@ on:
     tags: '*'
 env:
   PR_NUMBER: ${{ github.event.number }}
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 permissions:
   # needed to allow julia-actions/cache to delete old caches that it has created
   actions: write
@@ -19,8 +18,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 jobs:
+  pr-check:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if branch has an open PR
+        id: check
+        run: |
+          if gh pr list --head "$GITHUB_REF_NAME" --state open --json number | grep -q '"number":'; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    needs: pr-check
+    # Skip CI if PR exists (on push only)
+    if: github.event_name != 'push' || needs.pr-check.outputs.skip == 'false'
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -37,16 +56,6 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v4
-      - name: Check if branch has an open PR
-        id: prcheck
-        run: |
-          gh pr list --head "$GITHUB_REF_NAME" --state open --json number | grep -q '"number":'
-        continue-on-error: true
-      - name: Exit if open PR exists (on push only)
-        if: github.event_name == 'push' && steps.prcheck.outcome == 'success'
-        run: |
-          echo "Open PR found for this branch, skipping workflow."
-          exit 0
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
