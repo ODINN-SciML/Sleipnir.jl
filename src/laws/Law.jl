@@ -116,6 +116,9 @@ Law{Array{Float64, 0}}(;
 - `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that initializes the internal state for a given glacier.
 - `callback_freq::Union{Nothing, AbstractFloat}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
 - `inputs::Union{Nothing, Tuple{<:AbstractInput}}`: Optional. Provides automatically generated inputs passed to `f!` at runtime.
+- `max_value::F`: Optional. The maximum value that the law can take, used for plotting and capping the function output.
+- `min_value::F`: Optional. The minimum value that the law can take, used for plotting and capping the function output.
+- `name::Symbol`: A name for the law, used for identification and plotting.
 
 # Type Parameters
 
@@ -140,31 +143,47 @@ Law{Array{Float64, 0}}(;
 # TODO: create a meaningful example of Law with glacier-shaped matrix
 ```
 """
-struct Law{CACHE_TYPE, F, INIT, FREQ} <: AbstractLaw
+struct Law{CACHE_TYPE, F, INIT, FREQ, MAX, MIN, NAME} <: AbstractLaw
     f::F
     init_cache::INIT
     callback_freq::FREQ
+    max_value::MAX
+    min_value::MIN
+    name::NAME
 
-    function Law{CACHE_TYPE}(f, init_cache, callback_freq) where {CACHE_TYPE}
+    function Law{CACHE_TYPE}(f, init_cache, callback_freq, max_value, min_value, name) where {CACHE_TYPE}
         new{
             CACHE_TYPE,
             typeof(f),
             typeof(init_cache),
             typeof(callback_freq),
+            typeof(max_value),
+            typeof(min_value),
+            typeof(name),
         }(
             f,
             init_cache,
             callback_freq,
+            max_value,
+            min_value,
+            name,
         )
     end
 end
 
-Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq)
-Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq)
-Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache) where{T} = Law{T}(inputs, f!, init_cache, callback_freq)
+# Outer constructor with default values for max_value and min_value
+Law{CACHE_TYPE}(f, init_cache, callback_freq; max_value = NaN, min_value = NaN, name) where {CACHE_TYPE} =
+    Law{CACHE_TYPE}(f, init_cache, callback_freq, max_value, min_value, name)
+
+Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, NaN, NaN, :unknown)
+Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq, NaN, NaN, :unknown)
+Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, max_value = NaN, min_value = NaN, name) where{T} = Law{T}(inputs, f!, init_cache, callback_freq, max_value, min_value, name)
+Law{T}(inputs, f, init_cache, callback_freq, max_value, min_value, name) where {T} =
+    Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, max_value, min_value, name)
 
 apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
 init_cache(law::Law, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
+init_cache(law::Law, simulation, glacier_idx, θ; scalar) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
 cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 
 is_callback_law(::Law{<:Any, <:Any, <:Any, Nothing}) = false
