@@ -48,7 +48,7 @@ glaciers = initialize_glaciers(rgi_ids, params)
 function initialize_glaciers(
     rgi_ids::Vector{String},
     params::Parameters;
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
 
     # Generate missing glaciers file
@@ -122,7 +122,7 @@ function initialize_glacier(
     rgi_id::String,
     parameters::Parameters;
     smoothing=false,
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
     glacier = build_glacier(rgi_id, parameters; smoothing=smoothing)
@@ -225,6 +225,8 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
         S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
         if params.simulation.gridScalingFactor > 1
             S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
+            longitudes = longitudes[begin:params.simulation.gridScalingFactor:end]
+            latitudes = latitudes[begin:params.simulation.gridScalingFactor:end]
         end
         B = S .- H₀ # bedrock
 
