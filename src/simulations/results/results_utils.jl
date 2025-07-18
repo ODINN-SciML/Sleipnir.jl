@@ -58,8 +58,15 @@ function create_results(
     t = light ? Vector{eltype(solution.t)}([solution.t[begin],solution.t[end]]) : ts
     H = light ? [solution.u[begin],solution.u[end]] : us
 
+    iceflow_cache = simulation.cache.iceflow
+    if !isnothing(simulation.model.machine_learning)
+        θ = simulation.model.machine_learning.θ
+    else
+        θ = nothing
+    end
+
     if !isnothing(processVelocity)
-        velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti), H, t)
+        velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti, θ), H, t)
         Vx = [velocities[i][1] for i in range(1,length(velocities))]
         Vy = [velocities[i][2] for i in range(1,length(velocities))]
         V  = [velocities[i][3] for i in range(1,length(velocities))]
@@ -83,13 +90,6 @@ function create_results(
         H_ref = glacier.thicknessData.H
     else
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-    end
-
-    iceflow_cache = simulation.cache.iceflow
-    if !isnothing(simulation.model.machine_learning)
-        θ = simulation.model.machine_learning.θ
-    else
-        θ = nothing
     end
 
     results = Results(
