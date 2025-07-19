@@ -99,9 +99,11 @@ Constructor for `SimulationParameters` type, including default values.
 - `AssertionError`: If `ice_thickness_source` is not `"Millan22"` or `"Farinotti19"`.
 
 # Notes
-- If the global variable ODINN_OVERWRITE_MULTI is set to true, multiprocessing is
-    disabled in any case. This is to fix the documentation generation as for the
-    moment Literate.jl freezes when multiprocessing is enabled.
+- If the global variable `ODINN_OVERWRITE_MULTI` is set to true, multiprocessing is
+    is enabled in any case and the number of workers specified in the simulation
+    parameters must correspond to the number of processes with which Julia has been
+    started. This is to allow the documentation to build successfully in ODINN as we
+    cannot change the number of process in the CI.
 """
 function SimulationParameters(;
     use_MB::Bool = true,
@@ -123,12 +125,6 @@ function SimulationParameters(;
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
-
-    # Literate.jl fails at generating the documentation when multiprocessing is enabled
-    if lowercase(get(ENV, "ODINN_OVERWRITE_MULTI", "false")) == "true"
-        workers = 1
-        multiprocessing = false
-    end
 
     simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
                                                 overwrite_climate, use_glathida_data,
