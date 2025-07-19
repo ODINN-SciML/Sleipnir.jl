@@ -3,18 +3,25 @@
 ############  FUNCTIONS   #####################
 ###############################################
 
-export initialize_glacier_climate!, downscale_2D_climate!, downscale_2D_climate,
+export downscale_2D_climate!, downscale_2D_climate,
     get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
     apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
 """
-    initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
+    initialize_climate(
+        rgi_id,
+        params::Parameters,
+        S::Matrix{<: AbstractFloat},
+        Coords::Dict
+    )
 
-Initialize the climate data for a given glacier.
+Initialize the climate data given a RGI ID, a matrix of surface elevation and glacier coordinates.
 
 # Arguments
-- `glacier::AbstractGlacier`: The glacier object to initialize the climate data for.
+- `rgi_id`: The glacier RGI ID.
 - `params::Parameters`: The parameters containing simulation settings and paths.
+-  `S::Matrix{<: AbstractFloat}`: Matrix of surface elevation used to initialize the downscaled climate data.
+- `Coords::Dict`: Coordinates of the glacier.
 
 # Description
 This function initializes the climate data for a glacier by:
@@ -23,24 +30,31 @@ This function initializes the climate data for a glacier by:
 3. Calculating the cumulative climate data for the dummy period.
 4. Downscaling the cumulative climate data to a 2D grid.
 5. Retrieving long-term temperature data for the glacier.
-6. Storing the climate data in the glacier object, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
+6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
 """
-function initialize_glacier_climate!(glacier::AbstractGlacier, params::Parameters)
+function initialize_climate(
+    rgi_id,
+    params::Parameters,
+    S::Matrix{<: AbstractFloat},
+    Coords::Dict
+)
     dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
-    raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
+    raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
     if Sleipnir.doublePrec
         raw_climate = convertRasterStackToFloat64(raw_climate)
     end
     climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
-    climate_2D_step = downscale_2D_climate(climate_step, glacier)
-    longterm_temps = get_longterm_temps(glacier.rgi_id, params, raw_climate)
-    glacier.climate = Climate2D(raw_climate = raw_climate,
-                            climate_raw_step = raw_climate[At(dummy_period)],
-                            climate_step = climate_step,
-                            climate_2D_step = climate_2D_step,
-                            longterm_temps = longterm_temps,
-                            avg_temps = round(mean(raw_climate[At(dummy_period)].temp); digits=10), # This mean is not reproducible across platforms, the rounding is to ensure reproducibility in the tests
-                            avg_gradients = mean(raw_climate[At(dummy_period)].gradient))
+    climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
+    longterm_temps = get_longterm_temps(rgi_id, params, raw_climate)
+    return Climate2D(
+        raw_climate = raw_climate,
+        climate_raw_step = raw_climate[At(dummy_period)],
+        climate_step = climate_step,
+        climate_2D_step = climate_2D_step,
+        longterm_temps = longterm_temps,
+        avg_temps = round(mean(raw_climate[At(dummy_period)].temp); digits=10), # This mean is not reproducible across platforms, the rounding is to ensure reproducibility in the tests
+        avg_gradients = mean(raw_climate[At(dummy_period)].gradient)
+    )
 end
 
 """
@@ -261,9 +275,9 @@ function downscale_2D_climate!(glacier::Glacier2D)
 end
 
 """
-    downscale_2D_climate(climate_step::Dict, glacier::Glacier2D) -> Climate2Dstep
+    downscale_2D_climate(climate_step::Dict, S::Matrix{<: AbstractFloat}, Coords::Dict)
 
-Downscales climate data to a 2D grid based on the provided glacier information.
+Downscales climate data to a 2D grid based on the provided matrix of surface elevation and coordinates.
 
 # Arguments
 - `climate_step::Dict`: A dictionary containing climate data for a specific time step. Expected keys are:
@@ -273,9 +287,8 @@ Downscales climate data to a 2D grid based on the provided glacier information.
   - `"gradient"`: Temperature gradient.
   - `"avg_gradient"`: Average temperature gradient.
   - `"ref_hgt"`: Reference height.
-- `glacier::Glacier2D`: A `Glacier2D` object containing glacier data. Expected fields are:
-  - `S`: Surface elevation data.
-  - `Coords`: A dictionary with keys `"lon"` and `"lat"` for longitude and latitude coordinates.
+- `S::Matrix{<: AbstractFloat}`: Surface elevation data.
+- `Coords::Dict`: A dictionary with keys `"lon"` and `"lat"` for longitude and latitude coordinates.
 
 # Returns
 - `Climate2Dstep`: A `Climate2Dstep` object containing the downscaled climate data with fields:
@@ -290,47 +303,33 @@ Downscales climate data to a 2D grid based on the provided glacier information.
   - `ref_hgt`: Reference height.
 
 # Description
-This function creates dummy 2D arrays based on the glacier surface elevation data and applies the climate step data to these arrays. It then constructs a `Climate2Dstep` object with the downscaled climate data and applies temperature gradients to compute the snow/rain fraction for the selected period.
+This function creates dummy 2D arrays based on the provided surface elevation data and applies the climate step data to these arrays. It then constructs a `Climate2Dstep` object with the downscaled climate data and applies temperature gradients to compute the snow/rain fraction for the selected period.
 """
-function downscale_2D_climate(climate_step::Dict, glacier::Glacier2D)
+function downscale_2D_climate(climate_step::Dict, S::Matrix{<: AbstractFloat}, Coords::Dict)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
-    FT = typeof(glacier.S[1])
-    dummy_grid = zeros(size(glacier.S))
+    FT = typeof(S[1])
+    dummy_grid = zeros(size(S))
     temp_2D = climate_step["avg_temp"] .+ dummy_grid
     PDD_2D = climate_step["temp"] .+ dummy_grid
     snow_2D = climate_step["prcp"] .+ dummy_grid
     rain_2D = climate_step["prcp"] .+ dummy_grid
-    climate_2D_step = Climate2Dstep(temp=temp_2D,
-                       PDD=PDD_2D,
-                       snow=snow_2D,
-                       rain=rain_2D,
-                       gradient=Float64(climate_step["gradient"]),
-                       avg_gradient=Float64(climate_step["avg_gradient"]),
-                       x=glacier.Coords["lon"],
-                       y=glacier.Coords["lat"],
-                       ref_hgt=Float64(climate_step["ref_hgt"]))
+    climate_2D_step = Climate2Dstep(
+        temp=temp_2D,
+        PDD=PDD_2D,
+        snow=snow_2D,
+        rain=rain_2D,
+        gradient=Float64(climate_step["gradient"]),
+        avg_gradient=Float64(climate_step["avg_gradient"]),
+        x=Coords["lon"],
+        y=Coords["lat"],
+        ref_hgt=Float64(climate_step["ref_hgt"])
+    )
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with xarray structure
+    apply_t_cumul_grad!(climate_2D_step, reshape(S, size(S))) # Reproject current S with xarray structure
 
     return climate_2D_step
 
-end
-
-"""
-    downscale_2D_climate(glacier::Glacier2D)
-
-Downscales the climate data for a given 2D glacier.
-
-# Arguments
-- `glacier::Glacier2D`: The glacier object containing the climate data to be downscaled.
-
-# Returns
-- `climate_2D_step`: The downscaled 2D climate data for the glacier.
-"""
-function downscale_2D_climate(glacier::Glacier2D)
-    climate_2D_step = downscale_2D_climate(glacier.climate.climate_step, glacier)
-    return climate_2D_step
 end
 
 """

@@ -1,5 +1,3 @@
-include("iceflow_def.jl")
-
 function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     rgi_paths = get_rgi_paths()
     rgi_ids = ["RGI60-11.03646"]
@@ -26,11 +24,11 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     if useDatacube
         fakeRasterStack = fake_interpolated_datacube()
         glaciers = initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack))
-        # JET.@test_opt target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack)) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+        # JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params; velocityDatacubes=Dict{String, RasterStack}(rgi_ids[1] => fakeRasterStack)) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
         prefix = "_vel"
     else
         glaciers = initialize_glaciers(rgi_ids, params)
-        # JET.@test_opt target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+        # JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
         prefix = ""
     end
 
