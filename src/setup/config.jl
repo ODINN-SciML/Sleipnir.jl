@@ -19,7 +19,7 @@ function __init__()
     end
     if (!isdir(prepro_dir)) | existsAndRedownload
         @info "Downloading preprocessed data"
-        tarGzFile = Downloads.download("https://docs.google.com/uc?export=download&id=1d070a_YqN5aPAONpnzL9hfInv1DA8z3p")
+        tarGzFile = Downloads.download("https://drive.usercontent.google.com/download?id=1d070a_YqN5aPAONpnzL9hfInv1DA8z3p&export=download&authuser=1&confirm=t&at=AN8xHooaYmz09qhYCH--PX23RwmA:1753298453038&uuid=f6991b49-5132-4935-8281-5935306e0de1")
         tar_gz = open(tarGzFile)
         tar = GzipDecompressorStream(tar_gz)
         tempDir = Tar.extract(tar)
