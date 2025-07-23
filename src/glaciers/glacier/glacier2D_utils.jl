@@ -1,6 +1,7 @@
 
 export initialize_glaciers
 export is_in_glacier
+export glacierName
 
 ###############################################
 ############  FUNCTIONS   #####################
@@ -462,6 +463,33 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
         @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
 
+end
+
+"""
+    glacierName(rgi_id::String)
+    glacierName(rgi_ids::Vector{String})
+
+Returns the name(s) of one or multiple glaciers based the given RGI ID(s).
+It uses the `rgi62_stats.csv` file from OGGM.
+"""
+function glacierName(rgi_id::String)
+    return glacierName([rgi_id])[1]
+end
+function glacierName(rgi_ids::Vector{String})
+    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
+    rgi_stats = CSV.File(pathCsv)
+    return [glacierName(rgi_id, rgi_stats) for rgi_id in rgi_ids]
+end
+function glacierName(rgi_id::String, rgi_stats)
+    name = rgi_stats.Name[rgi_stats.RGIId .== rgi_id]
+    name = replace(name, missing => "")
+    if length(name)==0
+        @warn "RGI ID $(rgi_id) has no corresponding entry in rgi62_stats."
+        name = [""]
+    elseif length(name)>1
+        @warn "RGI ID $(rgi_id) has multiple corresponding entries in rgi62_stats."
+    end
+    return name[1]
 end
 
 """
