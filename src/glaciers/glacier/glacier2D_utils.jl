@@ -683,8 +683,7 @@ Arguments:
 function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
     B = convert.(F, (A .!= 0))
     for i in 1:distance
-        # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
-        B = min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
+        B .= min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
     end
     return B .> 0.001
 end
