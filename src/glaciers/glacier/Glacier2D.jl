@@ -230,6 +230,9 @@ diffToDict(a::Glacier2D, b::Glacier2D) = Dict{Symbol, Bool}(
 )
 
 # Display setup
+function Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D)
+    Base.show(io, glacier)
+end
 function Base.show(io::IO, glacier::Glacier2D)
     if !isnothing(glacier.H₀)
         H=round.(255*glacier.H₀/maximum(glacier.H₀))
@@ -285,8 +288,8 @@ end
 
 # Vectorial form
 # If you don't understand what's going on below, refer to https://discourse.julialang.org/t/improving-doc-for-display-print-show-repr/69124/3
-function Base.show(io::IO, ::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
-    return Base.show(io, glaciers)
+function Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
+    Base.show(io, glaciers)
 end
 function Base.show(io::IO, glaciers::Vector{G}) where {G <: AbstractGlacier}
     len = length(glaciers)
