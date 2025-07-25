@@ -122,6 +122,9 @@ function DummyClimate2D(;
 end
 
 # Display setup
+function Base.show(io::IO, type::MIME"text/plain", climate::Climate2D)
+    Base.show(io, climate)
+end
 function Base.show(io::IO, climate::Climate2D)
     printstyled("Climate2D\n";color=:yellow)
 
@@ -186,6 +189,9 @@ function Base.show(io::IO, climate::Climate2D)
     print(" ]")
 end
 
+function Base.show(io::IO, type::MIME"text/plain", climate_step::Climate2Dstep)
+    Base.show(io, climate_step)
+end
 function Base.show(io::IO, climate_step::Climate2Dstep)
     printstyled("Climate2Dstep";color=:yellow)
     print(" with a ")

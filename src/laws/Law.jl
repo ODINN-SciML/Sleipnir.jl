@@ -246,6 +246,7 @@ repr(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = "$(keys(in
 repr(law::Law) = "(simulation, t) -> $(cache_type(law))"
 repr(law::ConstantLaw) = "ConstantLaw -> $(cache_type(law))"
 repr(law::NullLaw) = "NullLaw"
+Base.show(io::IO, type::MIME"text/plain", law::AbstractLaw) = Base.show(io, law)
 function Base.show(io::IO, law::AbstractLaw)
     print(repr(law))
 end
