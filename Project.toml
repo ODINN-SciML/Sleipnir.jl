@@ -38,7 +38,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [compat]
 BenchmarkTools = "1"
 CSV = "0.10.15"
-CairoMakie = "0.12.18, 0.13"
+CairoMakie = "0.12.18, 0.13, 0.15"
 CodecZlib = "0.7.6"
 ComponentArrays = "0.15"
 CoordRefSystems = "0.16, 0.17, 0.18"
