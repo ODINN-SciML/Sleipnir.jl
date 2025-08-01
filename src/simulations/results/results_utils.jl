@@ -52,7 +52,11 @@ function create_results(
         t₁ = simulation.parameters.simulation.tspan[2]
         Δt = simulation.parameters.simulation.step
         nSteps = (t₁-t₀) / Δt
-        timeSteps = t₀ .+ collect(0:nSteps) .* Δt
+        # timeSteps = t₀ .+ collect(0:nSteps) .* Δt
+        timeSteps = range(t₀, t₁, step = Δt)
+        if timeSteps[end] !== t₁
+            push!(timeSteps, t₁)
+        end
         ϵ = 1e-6 # Need this because of numerical rounding
         compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
         solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
