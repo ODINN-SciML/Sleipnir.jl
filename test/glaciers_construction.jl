@@ -15,7 +15,7 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
 
     params = Parameters(
         simulation=SimulationParameters(
-            velocities=false,
+            use_velocities=false,
             use_glathida_data=use_glathida_data,
             working_dir=Sleipnir.root_dir,
             test_mode=true,
@@ -24,7 +24,7 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
     )
     JET.@test_opt target_modules=(Sleipnir,) Parameters(
         simulation=SimulationParameters(
-            velocities=false,
+            use_velocities=false,
             use_glathida_data=use_glathida_data,
             working_dir=Sleipnir.root_dir,
             test_mode=true,

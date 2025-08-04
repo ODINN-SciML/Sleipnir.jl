@@ -179,7 +179,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
+    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.use_velocities
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
     elseif params.simulation.ice_thickness_source == "Farinotti19"
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
@@ -231,7 +231,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
 
-        if params.simulation.velocities
+        if params.simulation.use_velocities
             V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
             Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
             Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
@@ -380,7 +380,7 @@ The function reads a task log CSV file from the working directory specified in `
 """
 function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
     task_log = CSV.File(joinpath(params.simulation.working_dir, "task_log.csv"))
-    if params.simulation.velocities & params.simulation.use_glathida_data
+    if params.simulation.use_velocities & params.simulation.use_glathida_data
         glacier_filter = (task_log.velocity_to_gdir .!= "SUCCESS") .&& (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
     elseif params.simulation.use_glathida_data
         glacier_filter = (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")

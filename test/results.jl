@@ -5,7 +5,7 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
 
     params = Parameters(
         simulation=SimulationParameters(
-            velocities=false,
+            use_velocities=false,
             use_glathida_data=false,
             working_dir=Sleipnir.root_dir,
             test_mode=true,
@@ -14,7 +14,7 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     )
     JET.@test_opt target_modules=(Sleipnir,) Parameters(
         simulation=SimulationParameters(
-            velocities=false,
+            use_velocities=false,
             use_glathida_data=false,
             working_dir=Sleipnir.root_dir,
             test_mode=true,

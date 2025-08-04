@@ -5,7 +5,7 @@ function glaciers2D_plots()
 
     params = Parameters(
         simulation=SimulationParameters(
-            velocities=false,
+            use_velocities=false,
             use_glathida_data=false,
             working_dir=Sleipnir.root_dir,
             test_mode=true,
@@ -61,7 +61,7 @@ function make_thickness_video_test()
         simulation = SimulationParameters(
             use_MB = true,
             use_iceflow = true,
-            velocities = true,
+            use_velocities = true,
             use_glathida_data = false,
             tspan = (2014.0, 2015.0),
             working_dir = working_dir,

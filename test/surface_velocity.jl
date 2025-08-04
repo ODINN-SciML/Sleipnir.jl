@@ -167,7 +167,7 @@ function surface_velocity_data()
     rgi_paths = Dict(k => rgi_paths[k] for k in rgi_ids)
     params = Parameters(
         simulation=SimulationParameters(
-            velocities=true,
+            use_velocities=true,
             use_glathida_data=false,
             working_dir=Sleipnir.root_dir,
             test_mode=true,
@@ -176,7 +176,7 @@ function surface_velocity_data()
     )
     JET.@test_opt target_modules=(Sleipnir,) Parameters(
         simulation=SimulationParameters(
-            velocities=true,
+            use_velocities=true,
             use_glathida_data=false,
             working_dir=Sleipnir.root_dir,
             test_mode=true,
