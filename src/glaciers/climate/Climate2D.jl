@@ -54,6 +54,14 @@ Base.:(==)(a::Climate2Draw, b::Climate2Draw) = a.prcp == b.prcp && a.temp == b.t
 
 Base.length(a::Climate2Draw) = length(a.Ti)
 
+diffToDict(a::Climate2Draw, b::Climate2Draw) = Dict{Symbol, Bool}(
+    :prcp => a.prcp == b.prcp,
+    :temp => a.temp == b.temp,
+    :gradient => a.gradient == b.gradient,
+    :ref_hgt => a.ref_hgt == b.ref_hgt,
+    :Ti => a.Ti == b.Ti,
+)
+
 """
     Climate2Dstep{F <: AbstractFloat}
 
@@ -113,7 +121,7 @@ end
 
 Base.:(==)(a::Climate2D, b::Climate2D) = a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
                                       a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
-                                      a.longterm_temps == b.longterm_temps && a.avg_temps == b.avg_temps &&
+                                      a.longterm_temps ≈ b.longterm_temps && a.avg_temps ≈ b.avg_temps &&
                                       a.avg_gradients == b.avg_gradients
 
 diffToDict(a::Climate2D, b::Climate2D) = Dict{Symbol, Bool}(

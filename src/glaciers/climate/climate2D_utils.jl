@@ -54,7 +54,7 @@ function initialize_climate(
         climate_step = climate_step,
         climate_2D_step = climate_2D_step,
         longterm_temps = longterm_temps,
-        avg_temps = round(mean(climate_raw_step.temp); digits=10), # This mean is not reproducible across platforms, the rounding is to ensure reproducibility in the tests
+        avg_temps = mean(climate_raw_step.temp),
         avg_gradients = mean(climate_raw_step.gradient)
     )
 end

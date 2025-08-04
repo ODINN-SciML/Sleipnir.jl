@@ -54,6 +54,9 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
             println("Glacier fields identical: ", Sleipnir.diffToDict(glaciers[i], glaciers_ref[i]))
             if !(glaciers[i].climate == glaciers_ref[i].climate)
                 println("Climate fields identical: = ", Sleipnir.diffToDict(glaciers[i].climate, glaciers_ref[i].climate))
+                if !(glaciers[i].climate.raw_climate == glaciers_ref[i].climate.raw_climate)
+                    println("Raw climate fields identical: = ", Sleipnir.diffToDict(glaciers[i].climate.raw_climate, glaciers_ref[i].climate.raw_climate))
+                end
             end
         end
     end
