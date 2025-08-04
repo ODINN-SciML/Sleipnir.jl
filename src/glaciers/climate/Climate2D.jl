@@ -2,6 +2,59 @@
 export Climate2Dstep, Climate2D
 
 """
+    Climate2Draw{F <: AbstractFloat}
+
+An immutable struct representing raw climate data loaded from OGGM.
+This struct represents the data contained in the netCDF file and it ensures type
+stability as the concrete type of a `RasterStack` depends on the loaded data.
+
+# Keyword arguments
+- `prcp::Vector{F}`: Vector of the total daily precipitation amount.
+- `temp::Vector{F}`: Vector of 2m daily temperature at the reference elevation.
+- `gradient::Vector{F}`: Vector of daily temperature gradient.
+- `ref_hgt::F`: Reference elevation of the raw climate data.
+- `Ti::Vector{DateTime}`: Vector of `DateTime` representing the time step of each of the raw climate data.
+"""
+struct Climate2Draw{F <: AbstractFloat}
+    prcp::Vector{F}
+    temp::Vector{F}
+    gradient::Vector{F}
+    ref_hgt::F
+    Ti::Vector{DateTime}
+
+    function Climate2Draw(raw_climate_rasterstack)
+        return Climate2Draw(
+            replace(raw_climate_rasterstack.prcp.data, missing => NaN),
+            replace(raw_climate_rasterstack.temp.data, missing => NaN),
+            replace(raw_climate_rasterstack.gradient.data, missing => NaN),
+            Sleipnir.Float(metadata(raw_climate_rasterstack)["ref_hgt"]),
+            dims(raw_climate_rasterstack, Ti).val.data,
+        )
+    end
+    function Climate2Draw(
+        prcp::Vector{F} = Vector{Sleipnir.Float}([]),
+        temp::Vector{F} = Vector{Sleipnir.Float}([]),
+        gradient::Vector{F} = Vector{Sleipnir.Float}([]),
+        ref_hgt::F = 0.0,
+        Ti::Vector{DateTime} = Vector{DateTime}([]),
+    ) where {F <: AbstractFloat}
+        N = length(Ti)
+        @assert N==length(prcp) "Number of elements in prcp should match number of time steps Ti."
+        @assert N==length(temp) "Number of elements in temp should match number of time steps Ti."
+        @assert N==length(gradient) "Number of elements in gradient should match number of time steps Ti."
+        new{Sleipnir.Float}(
+            prcp, temp, gradient, ref_hgt, Ti
+        )
+    end
+end
+
+Base.:(==)(a::Climate2Draw, b::Climate2Draw) = a.prcp == b.prcp && a.temp == b.temp &&
+                                      a.gradient == b.gradient && a.ref_hgt == b.ref_hgt &&
+                                      a.Ti == b.Ti
+
+Base.length(a::Climate2Draw) = length(a.Ti)
+
+"""
     Climate2Dstep{F <: AbstractFloat}
 
 A mutable struct representing a 2D climate time step with various climate-related parameters.
@@ -40,17 +93,17 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
     Climate2D{F <: AbstractFloat}
 
 # Keyword arguments
-- `raw_climate::RasterStack`: Raw climate dataset for the whole simulation.
-- `climate_raw_step::RasterStack`: Raw climate trimmed for the current step to avoid memory allocations.
+- `raw_climate::Climate2Draw`: Raw climate dataset for the whole simulation.
+- `climate_raw_step::Climate2Draw`: Raw climate trimmed for the current step to avoid memory allocations.
 - `climate_step::Dict`: Climate data for the current step.
 - `climate_2D_step::Climate2Dstep`: 2D climate data for the current step to feed to the mass balance (MB) model.
 - `longterm_temps::Vector{F}`: Long-term temperatures for the ice rheology.
 - `avg_temps::F`: Intermediate buffer for computing average temperatures.
 - `avg_gradients::F`: Intermediate buffer for computing average gradients.
 """
-@kwdef mutable struct Climate2D{F <: AbstractFloat}
-    raw_climate::RasterStack
-    climate_raw_step::RasterStack
+@kwdef mutable struct Climate2D{CLIMRAW <: Climate2Draw, F <: AbstractFloat}
+    raw_climate::CLIMRAW
+    climate_raw_step::CLIMRAW
     climate_step::Dict
     climate_2D_step::Climate2Dstep
     longterm_temps::Vector{F}
@@ -89,8 +142,7 @@ Arguments:
 function DummyClimate2D(;
     longterm_temps::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {F <: AbstractFloat}
-    ras = Raster(rand(X(1:0), Y(1:0), Ti(DateTime(2001):Month(1):DateTime(2002))))
-    emptyRasterStack = RasterStack(ras)
+    emptyClimate2Draw = Climate2Draw()
     dummyMatrix = [0.;;]
     emptyClimate2Dstep = Climate2Dstep(
         temp = dummyMatrix,
@@ -103,9 +155,9 @@ function DummyClimate2D(;
         y = [0.],
         ref_hgt = 0.
     )
-    return Climate2D(
-        raw_climate = emptyRasterStack,
-        climate_raw_step = emptyRasterStack,
+    return Climate2D{typeof(emptyClimate2Draw), Sleipnir.Float}(
+        raw_climate = emptyClimate2Draw,
+        climate_raw_step = emptyClimate2Draw,
         climate_step = Dict(
             "gradient" => 0.0,
             "temp" => 0.0,
@@ -147,9 +199,9 @@ function Base.show(io::IO, climate::Climate2D)
     print(" with ")
     printstyled(length(climate.climate_raw_step);color=:red)
     print(" time steps [ ")
-    printstyled(Dates.format(dims(climate.climate_raw_step, Ti)[begin], "yyyy-mm-dd");color=:green)
+    printstyled(Dates.format(climate.climate_raw_step.Ti[begin], "yyyy-mm-dd");color=:green)
     print(" → ")
-    printstyled(Dates.format(dims(climate.climate_raw_step, Ti)[end], "yyyy-mm-dd");color=:green)
+    printstyled(Dates.format(climate.climate_raw_step.Ti[end], "yyyy-mm-dd");color=:green)
     println(" ]")
 
     println("  climate_step:")
@@ -183,9 +235,9 @@ function Base.show(io::IO, climate::Climate2D)
     print(" with ")
     printstyled("$(length(climate.raw_climate))";color=:red)
     print(" time steps [ ")
-    printstyled(Dates.format(dims(climate.raw_climate, Ti)[begin], "yyyy-mm-dd");color=:green)
+    printstyled(Dates.format(climate.raw_climate.Ti[begin], "yyyy-mm-dd");color=:green)
     print(" → ")
-    printstyled(Dates.format(dims(climate.raw_climate, Ti)[end], "yyyy-mm-dd");color=:green)
+    printstyled(Dates.format(climate.raw_climate.Ti[end], "yyyy-mm-dd");color=:green)
     print(" ]")
 end
 
