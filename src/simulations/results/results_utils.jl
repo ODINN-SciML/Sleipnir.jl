@@ -80,7 +80,6 @@ function create_results(
     end
 
     if !isnothing(processVelocity)
-        # TODO: check that obtained velocity works for both PDE and UDE
         velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti, θ), H, t)
         Vx = [velocities[i][1] for i in range(1,length(velocities))]
         Vy = [velocities[i][2] for i in range(1,length(velocities))]
@@ -113,13 +112,6 @@ function create_results(
     else
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
-
-    # iceflow_cache = simulation.cache.iceflow
-    # if !isnothing(simulation.model.machine_learning)
-    #     θ = simulation.model.machine_learning.θ
-    # else
-    #     θ = nothing
-    # end
 
     results = Results(
         glacier,

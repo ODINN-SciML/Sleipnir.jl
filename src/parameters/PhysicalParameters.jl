@@ -7,12 +7,12 @@ A structure representing physical parameters used in simulations.
 # Fields
 - `ρ::F`: Density of ice.
 - `g::F`: Gravitational acceleration.
-- `ϵ::F`: A small parameter, often used for perturbations.
+- `ϵ::F`: Regularization used in the square root of norms for AD numerical stability.
 - `η₀::F`: Initial viscosity.
-- `maxA::F`: Maximum A.
-- `minA::F`: Minimum A.
-- `maxTlaw::F`: Maximum temperature according to some law.
-- `minTlaw::F`: Minimum temperature according to some law.
+- `maxA::F`: Maximum value for `A` (Glen's coefficient).
+- `minA::F`: Minimum value for `A` (Glen's coefficient).
+- `maxTlaw::F`: Maximum value of Temperature used in simulations on fake law.
+- `minTlaw::F`: Minimum value of Temperature used in simulations on fake law.
 - `noise_A_magnitude::F`: Magnitude of noise in A.
 """
 struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
@@ -33,8 +33,8 @@ Initialize the physical parameters of a model.
     PhysicalParameters(;
         ρ::Float64 = 900.0,
         g::Float64 = 9.81,
-        ϵ::Float64 = 1e-3,
-        η₀::F = 1.0, 
+        ϵ::Float64 = 1e-10,
+        η₀::F = 1.0,
         maxA::Float64 = 8e-17,
         minA::Float64 = 8.5e-20,
         maxTlaw::Float64 = 1.0,
@@ -44,21 +44,21 @@ Initialize the physical parameters of a model.
 
 Keyword arguments
 =================
-    - `ρ`: Ice density
-    - `g`: Gravitational constant
-    - `ϵ`: Small number
-    - `η₀`:  
-    - `maxA`: Maximum value for `A` (Glen's coefficient)
-    - `minA`: Minimum value for `A` (Glen's coefficient)
-    - `maxTlaw`: Maximum value of Temperature used in simulations on fake law
-    - `minTlaw`: Minimum value of Temperature used in simulations on fake law
+    - `ρ`: Density of ice.
+    - `g`: Gravitational acceleration.
+    - `ϵ`: Regularization used in the square root of norms for AD numerical stability.
+    - `η₀`: Initial viscosity.
+    - `maxA`: Maximum value for `A` (Glen's coefficient).
+    - `minA`: Minimum value for `A` (Glen's coefficient).
+    - `maxTlaw`: Maximum value of Temperature used in simulations on fake law.
+    - `minTlaw`: Minimum value of Temperature used in simulations on fake law.
     - `noise_A_magnitude`: Magnitude of noise added to A
 """
 function PhysicalParameters(;
             ρ::F = 900.0,
             g::F = 9.81,
-            ϵ::F = 1e-3,
-            η₀::F = 1.0, 
+            ϵ::F = 1e-10,
+            η₀::F = 1.0,
             maxA::F = 8e-17,
             minA::F = 8.5e-20,
             maxTlaw::F = 1.0,
@@ -75,7 +75,7 @@ function PhysicalParameters(;
     return physical_parameters
 end
 
-Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g && 
+Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g &&
                                       a.ϵ == b.ϵ && a.η₀ == b.η₀ &&
                                       a.maxA == b.maxA && a.minA == b.minA && a.maxTlaw == b.maxTlaw &&
                                       a.noise_A_magnitude == b.noise_A_magnitude
