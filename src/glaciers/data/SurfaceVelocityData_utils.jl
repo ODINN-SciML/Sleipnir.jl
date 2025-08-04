@@ -262,7 +262,7 @@ function grid(
             vyG[ix,iy,begin:end] .= block_vy[indx[ix]+shiftx,indy[iy]+shifty,:]
         end
     else
-        @error "$(mapping.spatialInterp) spatial interpolation method is not implemented"
+        throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
     end
     return xG, yG, vxG, vyG
 end
