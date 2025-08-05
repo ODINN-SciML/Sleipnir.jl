@@ -75,8 +75,6 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, TH
 end
 
 """
-Constructs a `Glacier2D` object with the given parameters, including default ones.
-
     Glacier2D(;
         rgi_id::String = "",
         name::String = "",
@@ -109,6 +107,8 @@ Constructs a `Glacier2D` object with the given parameters, including default one
         THICKDATA <: Union{ThicknessData, Nothing},
         SURFVELDATA <: Union{SurfaceVelocityData, Nothing},
     }
+
+Constructs a `Glacier2D` object with the given parameters, including default ones.
 
 # Arguments
 - `rgi_id::String`: The RGI identifier for the glacier.
@@ -188,13 +188,13 @@ function Glacier2D(;
 end
 
 """
-Copies a `Glacier2D` object and updates the thickness and/or surface velocity data.
-
     Glacier2D(
         glacier::Glacier2D;
         thicknessData::Union{ThicknessData, Nothing} = nothing,
         velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
     )
+
+Copies a `Glacier2D` object and updates the thickness and/or surface velocity data.
 
 # Arguments
 - `glacier::Glacier2D`: The original glacier struct.

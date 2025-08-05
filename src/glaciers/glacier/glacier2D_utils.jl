@@ -253,7 +253,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
         name = get(get_rgi_names(), rgi_id, "")
 
         # Initialize glacier climate
-        climate = initialize_climate(rgi_id, params, S, Coords)
+        climate = Climate2D(rgi_id, params, S, Coords)
 
         return Glacier2D(
             rgi_id = rgi_id,

@@ -66,7 +66,7 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
 
     Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLIMSTEP <: ClimateStep, CLIM2DSTEP <: Climate2Dstep, F <: AbstractFloat}
 
-# Keyword arguments
+# Fields
 - `raw_climate::CLIMRAW`: Raw climate dataset for the whole simulation.
 - `climate_raw_step::CLIMRAWSTEP`: Raw climate trimmed for the current step to avoid memory allocations.
 - `climate_step::ClimateStep`: Climate data for the current step.
@@ -75,6 +75,44 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
 - `avg_temps::F`: Intermediate buffer for computing average temperatures.
 - `avg_gradients::F`: Intermediate buffer for computing average gradients.
 - `ref_hgt::F`: Reference elevation of the raw climate data.
+
+    Climate2D(
+        rgi_id,
+        params::Parameters,
+        S::Matrix{<: AbstractFloat},
+        Coords::Dict,
+    )
+
+Initialize the climate data given a RGI ID, a matrix of surface elevation and glacier coordinates.
+
+# Arguments
+- `rgi_id`: The glacier RGI ID.
+- `params::Parameters`: The parameters containing simulation settings and paths.
+-  `S::Matrix{<: AbstractFloat}`: Matrix of surface elevation used to initialize the downscaled climate data.
+- `Coords::Dict`: Coordinates of the glacier.
+
+# Description
+This function initializes the climate data for a glacier by:
+1. Creating a dummy period based on the simulation time span and step.
+2. Loading the raw climate data from a NetCDF file.
+3. Calculating the cumulative climate data for the dummy period.
+4. Downscaling the cumulative climate data to a 2D grid.
+5. Retrieving long-term temperature data for the glacier.
+6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
+
+    Climate2D(
+        raw_climate::RasterStack,
+        climate_raw_step::RasterStack,
+        climate_step::ClimateStep,
+        climate_2D_step::Climate2Dstep,
+        longterm_temps::Vector{<: AbstractFloat},
+        avg_temps::AbstractFloat,
+        avg_gradients::AbstractFloat,
+        ref_hgt::AbstractFloat,
+    )
+
+Initialize the climate data with the fields provided as arguments.
+Refer to the list of fields for a complete description of the arguments.
 """
 @kwdef mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLIMSTEP <: ClimateStep, CLIM2DSTEP <: Climate2Dstep, F <: AbstractFloat}
     raw_climate::CLIMRAW
@@ -85,6 +123,60 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
     avg_temps::F
     avg_gradients::F
     ref_hgt::F
+
+    function Climate2D(
+        rgi_id,
+        params::Parameters,
+        S::Matrix{<: AbstractFloat},
+        Coords::Dict,
+    )
+        dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
+        raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
+        if Sleipnir.doublePrec
+            raw_climate = convertRasterStackToFloat64(raw_climate)
+        end
+        climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
+        climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
+        longterm_temps = get_longterm_temps(rgi_id, params, raw_climate)
+        climate_raw_step = raw_climate[At(dummy_period)]
+        return new{
+                typeof(raw_climate),
+                typeof(climate_raw_step),
+                typeof(climate_step),
+                typeof(climate_2D_step),
+                Sleipnir.Float,
+            }(
+            raw_climate = raw_climate,
+            climate_raw_step = climate_raw_step,
+            climate_step = climate_step,
+            climate_2D_step = climate_2D_step,
+            longterm_temps = longterm_temps,
+            avg_temps = mean(climate_raw_step.temp),
+            avg_gradients = mean(climate_raw_step.gradient),
+            ref_hgt = metadata(raw_climate)["ref_hgt"],
+        )
+    end
+    function Climate2D(
+        raw_climate::RasterStack,
+        climate_raw_step::RasterStack,
+        climate_step::ClimateStep,
+        climate_2D_step::Climate2Dstep,
+        longterm_temps::Vector{<: AbstractFloat},
+        avg_temps::AbstractFloat,
+        avg_gradients::AbstractFloat,
+        ref_hgt::AbstractFloat,
+    )
+        return new{typeof(raw_climate), typeof(climate_raw_step), typeof(climate_step), typeof(climate_2D_step), Sleipnir.Float}(
+            raw_climate = raw_climate,
+            climate_raw_step = climate_raw_step,
+            climate_step = climate_step,
+            climate_2D_step = climate_2D_step,
+            longterm_temps = longterm_temps,
+            avg_temps = avg_temps,
+            avg_gradients = avg_gradients,
+            ref_hgt = ref_hgt,
+        )
+    end
 end
 
 Base.:(==)(a::Climate2D, b::Climate2D) = a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
@@ -141,16 +233,7 @@ function DummyClimate2D(;
         ref_hgt = 0.0,
         prcp = 0.0,
     )
-    return Climate2D{typeof(emptyRasterStack), typeof(emptyRasterStack), typeof(climate_step), typeof(emptyClimate2Dstep), Sleipnir.Float}(
-        raw_climate = emptyRasterStack,
-        climate_raw_step = emptyRasterStack,
-        climate_step = climate_step,
-        climate_2D_step = emptyClimate2Dstep,
-        longterm_temps = longterm_temps,
-        avg_temps = 0.,
-        avg_gradients = 0.,
-        ref_hgt = 0.0,
-    )
+    return Climate2D(emptyRasterStack, emptyRasterStack, climate_step, emptyClimate2Dstep, longterm_temps, 0.0, 0.0, 0.0)
 end
 
 # TODO: update show with ref_hgt

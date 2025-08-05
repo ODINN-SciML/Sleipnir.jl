@@ -8,58 +8,6 @@ export downscale_2D_climate!, downscale_2D_climate,
     apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
 """
-    initialize_climate(
-        rgi_id,
-        params::Parameters,
-        S::Matrix{<: AbstractFloat},
-        Coords::Dict
-    )
-
-Initialize the climate data given a RGI ID, a matrix of surface elevation and glacier coordinates.
-
-# Arguments
-- `rgi_id`: The glacier RGI ID.
-- `params::Parameters`: The parameters containing simulation settings and paths.
--  `S::Matrix{<: AbstractFloat}`: Matrix of surface elevation used to initialize the downscaled climate data.
-- `Coords::Dict`: Coordinates of the glacier.
-
-# Description
-This function initializes the climate data for a glacier by:
-1. Creating a dummy period based on the simulation time span and step.
-2. Loading the raw climate data from a NetCDF file.
-3. Calculating the cumulative climate data for the dummy period.
-4. Downscaling the cumulative climate data to a 2D grid.
-5. Retrieving long-term temperature data for the glacier.
-6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
-"""
-function initialize_climate(
-    rgi_id,
-    params::Parameters,
-    S::Matrix{<: AbstractFloat},
-    Coords::Dict
-)
-    dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
-    raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
-    if Sleipnir.doublePrec
-        raw_climate = convertRasterStackToFloat64(raw_climate)
-    end
-    climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
-    climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
-    longterm_temps = get_longterm_temps(rgi_id, params, raw_climate)
-    climate_raw_step = raw_climate[At(dummy_period)]
-    return Climate2D{typeof(raw_climate), typeof(climate_raw_step), typeof(climate_step), typeof(climate_2D_step), Sleipnir.Float}(
-        raw_climate = raw_climate,
-        climate_raw_step = climate_raw_step,
-        climate_step = climate_step,
-        climate_2D_step = climate_2D_step,
-        longterm_temps = longterm_temps,
-        avg_temps = mean(climate_raw_step.temp),
-        avg_gradients = mean(climate_raw_step.gradient),
-        ref_hgt = metadata(raw_climate)["ref_hgt"],
-    )
-end
-
-"""
     generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
 
 Generate raw climate files for a given RGI (Randolph Glacier Inventory) ID and simulation parameters.
