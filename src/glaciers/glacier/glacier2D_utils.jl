@@ -72,7 +72,7 @@ function initialize_glaciers(
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
 
-    glaciers::Vector{Glacier2D{Sleipnir.Float, Sleipnir.Int}} = pmap( # Ensure type stability
+    glaciers = pmap(
         (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
         rgi_ids
     )
@@ -131,7 +131,7 @@ function initialize_glacier(
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
         refVelocity = initialize_surfacevelocitydata(velocityDatacubes[glacier.rgi_id]; glacier=glacier, mapping=mapping)
-        glacier.velocityData = refVelocity
+        glacier = Glacier2D(glacier, velocityData = refVelocity) # Rebuild glacier since we cannot change type of `glacier.velocityData`
     end
 
     return glacier

@@ -17,12 +17,12 @@ providing `nothing` as the default value.
 /!\\ WARNING /!\\ `Glacier` objects should not be constructed
 manually, but rather through the `initialize_glaciers` function.
 
-`Glacier2D{F <: AbstractFloat, I <: Integer}`
+`Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{ThicknessData, Nothing}, SURFVELDATA <: Union{SurfaceVelocityData, Nothing}}`
 
 # Fields
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
 - `name::String`: The name of the glacier if available.
-- `climate::Climate2D`: The climate data associated with the glacier.
+- `climate::CLIM`: The climate data associated with the glacier.
 - `H₀::Matrix{F}`: Initial ice thickness matrix.
 - `H_glathida::Matrix{F}`: Ice thickness matrix from the GLATHIDA dataset.
 - `S::Matrix{F}`: Surface elevation matrix.
@@ -43,13 +43,13 @@ manually, but rather through the `initialize_glaciers` function.
 - `cenlon::F`: Longitude of the glacier center.
 - `cenlat::F`: Latitude of the glacier center.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
-- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
-- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
+- `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
+- `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
 """
-mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
+mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{ThicknessData, Nothing}, SURFVELDATA <: Union{SurfaceVelocityData, Nothing}} <: AbstractGlacier
     rgi_id::String
     name::String
-    climate::Climate2D
+    climate::CLIM
     H₀::Matrix{F}
     H_glathida::Matrix{F}
     S::Matrix{F}
@@ -70,8 +70,8 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer} <: AbstractGlacier
     cenlon::F
     cenlat::F
     params_projection::Dict{String, Float64}
-    thicknessData::Union{ThicknessData, Nothing}
-    velocityData::Union{SurfaceVelocityData, Nothing}
+    thicknessData::THICKDATA
+    velocityData::SURFVELDATA
 end
 
 """
@@ -101,9 +101,14 @@ Constructs a `Glacier2D` object with the given parameters, including default one
         cenlon::F = NaN,
         cenlat::F = NaN,
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
-        thicknessData::Union{ThicknessData, Nothing} = nothing,
-        velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
-    ) where {F <: AbstractFloat, I <: Integer}
+        thicknessData::THICKDATA = nothing,
+        velocityData::SURFVELDATA = nothing,
+    ) where {
+        F <: AbstractFloat,
+        I <: Integer,
+        THICKDATA <: Union{ThicknessData, Nothing},
+        SURFVELDATA <: Union{SurfaceVelocityData, Nothing},
+    }
 
 # Arguments
 - `rgi_id::String`: The RGI identifier for the glacier.
@@ -129,8 +134,8 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `cenlon::F`: Central longitude of the glacier.
 - `cenlat::F`: Central latitude of the glacier.
 - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
-- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values.
-- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values.
+- `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
+- `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
 
 # Returns
 - A `Glacier2D` object with the specified parameters.
@@ -159,21 +164,64 @@ function Glacier2D(;
     cenlon::F = NaN,
     cenlat::F = NaN,
     params_projection::Dict{String, Float64} = Dict{String, Float64}(),
-    thicknessData::Union{ThicknessData, Nothing} = nothing,
-    velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
-) where {F <: AbstractFloat, I <: Integer}
+    thicknessData::THICKDATA = nothing,
+    velocityData::SURFVELDATA = nothing,
+) where {
+    F <: AbstractFloat,
+    I <: Integer,
+    THICKDATA <: Union{ThicknessData, Nothing},
+    SURFVELDATA <: Union{SurfaceVelocityData, Nothing},
+}
 
     # Define default float and integer type for constructor
     ft = Sleipnir.Float
     it = Sleipnir.Int
 
-    return Glacier2D{ft,it}(
+    return Glacier2D{ft,it,typeof(climate),typeof(thicknessData),typeof(velocityData)}(
         rgi_id, name, climate, H₀, H_glathida,
         S, B, V, Vx, Vy, A, C, n,
         slope, dist_border, Coords,
         Δx, Δy, nx, ny,
         cenlon, cenlat, params_projection,
-        thicknessData, velocityData)
+        thicknessData, velocityData,
+    )
+end
+
+"""
+Copies a `Glacier2D` object and updates the thickness and/or surface velocity data.
+
+    Glacier2D(
+        glacier::Glacier2D;
+        thicknessData::Union{ThicknessData, Nothing} = nothing,
+        velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+    )
+
+# Arguments
+- `glacier::Glacier2D`: The original glacier struct.
+- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values. Default is `nothing` which keeps the existing thickness data.
+- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values. Default is `nothing` which keeps the existing surface velocity data.
+
+# Returns
+- A `Glacier2D` object that is a copy of the original one with the thickness and/or surface velocity data updated.
+"""
+function Glacier2D(
+    glacier::Glacier2D;
+    thicknessData::Union{ThicknessData, Nothing} = nothing,
+    velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+)
+    # Define default float and integer type for constructor
+    ft = Sleipnir.Float
+    it = Sleipnir.Int
+    thicknessData = isnothing(thicknessData) ? glacier.thicknessData : thicknessData
+    velocityData = isnothing(velocityData) ? glacier.velocityData : velocityData
+    return Glacier2D{ft, it,typeof(glacier.climate),typeof(thicknessData),typeof(velocityData)}(
+        glacier.rgi_id, glacier.name, glacier.climate, glacier.H₀, glacier.H_glathida,
+        glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy, glacier.A, glacier.C, glacier.n,
+        glacier.slope, glacier.dist_border, glacier.Coords,
+        glacier.Δx, glacier.Δy, glacier.nx, glacier.ny,
+        glacier.cenlon, glacier.cenlat, glacier.params_projection,
+        thicknessData, velocityData,
+    )
 end
 
 ###############################################
