@@ -44,11 +44,10 @@ function clean()
         run(`$(Base.julia_cmd())`)
     end
     exit()
- end
+end
 
- function enable_multiprocessing(params::Sleipnir.Parameters)
-    procs = params.simulation.workers
-    if procs > 0 && params.simulation.multiprocessing
+function enable_multiprocessing(procs::Int)
+    if procs > 0
         if nprocs() < procs
             @eval begin
             addprocs($procs - nprocs(); exeflags="--project")
