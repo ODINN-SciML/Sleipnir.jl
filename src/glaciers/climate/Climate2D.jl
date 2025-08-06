@@ -114,7 +114,7 @@ This function initializes the climate data for a glacier by:
 Initialize the climate data with the fields provided as arguments.
 Refer to the list of fields for a complete description of the arguments.
 """
-@kwdef mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLIMSTEP <: ClimateStep, CLIM2DSTEP <: Climate2Dstep, F <: AbstractFloat}
+mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLIMSTEP <: ClimateStep, CLIM2DSTEP <: Climate2Dstep, F <: AbstractFloat}
     raw_climate::CLIMRAW
     climate_raw_step::CLIMRAWSTEP
     climate_step::CLIMSTEP
@@ -146,14 +146,14 @@ Refer to the list of fields for a complete description of the arguments.
                 typeof(climate_2D_step),
                 Sleipnir.Float,
             }(
-            raw_climate = raw_climate,
-            climate_raw_step = climate_raw_step,
-            climate_step = climate_step,
-            climate_2D_step = climate_2D_step,
-            longterm_temps = longterm_temps,
-            avg_temps = mean(climate_raw_step.temp),
-            avg_gradients = mean(climate_raw_step.gradient),
-            ref_hgt = metadata(raw_climate)["ref_hgt"],
+            raw_climate,
+            climate_raw_step,
+            climate_step,
+            climate_2D_step,
+            longterm_temps,
+            mean(climate_raw_step.temp),
+            mean(climate_raw_step.gradient),
+            metadata(raw_climate)["ref_hgt"],
         )
     end
     function Climate2D(
@@ -167,14 +167,14 @@ Refer to the list of fields for a complete description of the arguments.
         ref_hgt::AbstractFloat,
     )
         return new{typeof(raw_climate), typeof(climate_raw_step), typeof(climate_step), typeof(climate_2D_step), Sleipnir.Float}(
-            raw_climate = raw_climate,
-            climate_raw_step = climate_raw_step,
-            climate_step = climate_step,
-            climate_2D_step = climate_2D_step,
-            longterm_temps = longterm_temps,
-            avg_temps = avg_temps,
-            avg_gradients = avg_gradients,
-            ref_hgt = ref_hgt,
+            raw_climate,
+            climate_raw_step,
+            climate_step,
+            climate_2D_step,
+            longterm_temps,
+            avg_temps,
+            avg_gradients,
+            ref_hgt,
         )
     end
 end

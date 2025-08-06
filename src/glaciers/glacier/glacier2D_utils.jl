@@ -126,7 +126,7 @@ function initialize_glacier(
     velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
-    glacier = build_glacier(rgi_id, parameters; smoothing=smoothing)
+    glacier = Glacier2D(rgi_id, parameters; smoothing=smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
@@ -146,7 +146,7 @@ function convertRasterStackToFloat64(rs::RasterStack)
 end
 
 """
-    build_glacier(rgi_id::String, params::Parameters; smoothing=false, test=false)
+    Glacier2D(rgi_id::String, params::Parameters; smoothing=false, test=false)
 
 Build glacier object for a given RGI ID and parameters.
 
@@ -167,7 +167,7 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
+function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])

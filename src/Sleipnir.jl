@@ -55,11 +55,11 @@ include("setup/config.jl")
 # Anything related to managing glacier data used for data assimilation
 include("glaciers/data/Data.jl")
 
-# Anything related to managing glacier topographical and climate variables
-include("glaciers/glacier/Glacier.jl")
-
 # All parameters needed for the models
 include("parameters/Parameters.jl")
+
+# Anything related to managing glacier topographical and climate variables
+include("glaciers/glacier/Glacier.jl")
 
 # The utils of surface velocity data, glaciers and climate need the struct to be already
 # defined since they depend on each other. This is why we import them afterwards

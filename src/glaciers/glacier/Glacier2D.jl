@@ -17,7 +17,7 @@ providing `nothing` as the default value.
 /!\\ WARNING /!\\ `Glacier` objects should not be constructed
 manually, but rather through the `initialize_glaciers` function.
 
-`Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{ThicknessData, Nothing}, SURFVELDATA <: Union{SurfaceVelocityData, Nothing}}`
+`Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{<: ThicknessData, Nothing}, SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing}}`
 
 # Fields
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
@@ -46,7 +46,7 @@ manually, but rather through the `initialize_glaciers` function.
 - `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
 - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
 """
-mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{ThicknessData, Nothing}, SURFVELDATA <: Union{SurfaceVelocityData, Nothing}} <: AbstractGlacier
+mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{<: ThicknessData, Nothing}, SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing}} <: AbstractGlacier
     rgi_id::String
     name::String
     climate::CLIM
@@ -104,8 +104,8 @@ end
     ) where {
         F <: AbstractFloat,
         I <: Integer,
-        THICKDATA <: Union{ThicknessData, Nothing},
-        SURFVELDATA <: Union{SurfaceVelocityData, Nothing},
+        THICKDATA <: Union{<: ThicknessData, Nothing},
+        SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing},
     }
 
 Constructs a `Glacier2D` object with the given parameters, including default ones.
@@ -169,15 +169,10 @@ function Glacier2D(;
 ) where {
     F <: AbstractFloat,
     I <: Integer,
-    THICKDATA <: Union{ThicknessData, Nothing},
-    SURFVELDATA <: Union{SurfaceVelocityData, Nothing},
+    THICKDATA <: Union{<: ThicknessData, Nothing},
+    SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing},
 }
-
-    # Define default float and integer type for constructor
-    ft = Sleipnir.Float
-    it = Sleipnir.Int
-
-    return Glacier2D{ft,it,typeof(climate),typeof(thicknessData),typeof(velocityData)}(
+    return Glacier2D{Sleipnir.Float,Sleipnir.Int,typeof(climate),typeof(thicknessData),typeof(velocityData)}(
         rgi_id, name, climate, H₀, H_glathida,
         S, B, V, Vx, Vy, A, C, n,
         slope, dist_border, Coords,
@@ -190,31 +185,31 @@ end
 """
     Glacier2D(
         glacier::Glacier2D;
-        thicknessData::Union{ThicknessData, Nothing} = nothing,
-        velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+        thicknessData::Union{<: ThicknessData, Nothing} = nothing,
+        velocityData::Union{<: SurfaceVelocityData, Nothing} = nothing,
     )
 
 Copies a `Glacier2D` object and updates the thickness and/or surface velocity data.
 
 # Arguments
 - `glacier::Glacier2D`: The original glacier struct.
-- `thicknessData::Union{ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values. Default is `nothing` which keeps the existing thickness data.
-- `velocityData::Union{SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values. Default is `nothing` which keeps the existing surface velocity data.
+- `thicknessData::Union{<: ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values. Default is `nothing` which keeps the existing thickness data.
+- `velocityData::Union{<: SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values. Default is `nothing` which keeps the existing surface velocity data.
 
 # Returns
 - A `Glacier2D` object that is a copy of the original one with the thickness and/or surface velocity data updated.
 """
 function Glacier2D(
     glacier::Glacier2D;
-    thicknessData::Union{ThicknessData, Nothing} = nothing,
-    velocityData::Union{SurfaceVelocityData, Nothing} = nothing,
+    thicknessData::Union{<: ThicknessData, Nothing} = nothing,
+    velocityData::Union{<: SurfaceVelocityData, Nothing} = nothing,
 )
-    # Define default float and integer type for constructor
-    ft = Sleipnir.Float
-    it = Sleipnir.Int
     thicknessData = isnothing(thicknessData) ? glacier.thicknessData : thicknessData
     velocityData = isnothing(velocityData) ? glacier.velocityData : velocityData
-    return Glacier2D{ft, it,typeof(glacier.climate),typeof(thicknessData),typeof(velocityData)}(
+    return Glacier2D{
+            Sleipnir.Float, Sleipnir.Int,
+            typeof(glacier.climate),typeof(thicknessData),typeof(velocityData)
+        }(
         glacier.rgi_id, glacier.name, glacier.climate, glacier.H₀, glacier.H_glathida,
         glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy, glacier.A, glacier.C, glacier.n,
         glacier.slope, glacier.dist_border, glacier.Coords,
