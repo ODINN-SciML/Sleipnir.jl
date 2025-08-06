@@ -362,62 +362,6 @@ end
 
 # [End] Glathida Utilities
 
-
-"""
-    filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
-
-Filters out glaciers from the provided `glaciers` vector that are marked as missing in the OGGM task log (provided by Gungnir) or in a previously saved file.
-
-# Arguments
-- `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects to be filtered.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
-
-# Returns
-- `missing_glaciers::Vector{String}`: A vector of glacier IDs that were filtered out.
-
-# Details
-The function reads a task log CSV file from the working directory specified in `params`. It then determines which glaciers are missing based on the task log and additional conditions specified in `params`. If a previously saved file of missing glaciers exists, it loads and merges the missing glaciers from that file. Finally, it removes the missing glaciers from the `glaciers` vector and saves the updated list of missing glaciers to a file.
-"""
-function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
-    task_log = CSV.File(joinpath(params.simulation.working_dir, "task_log.csv"))
-    if params.simulation.use_velocities & params.simulation.use_glathida_data
-        glacier_filter = (task_log.velocity_to_gdir .!= "SUCCESS") .&& (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    elseif params.simulation.use_glathida_data
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    else
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS")
-    end
-
-    glacier_ids = Vector{String}([])
-
-    for id in task_log["index"]
-        push!(glacier_ids, id)
-    end
-    missing_glaciers = glacier_ids[glacier_filter]
-
-    try
-        missing_glaciers_old = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-        for missing_glacier in missing_glaciers_old
-            @show missing_glacier
-            if all(missing_glacier .!= missing_glaciers) # if the glacier is already not present, let's add it
-                push!(missing_glaciers, missing_glacier)
-            end
-        end
-    catch error
-        @warn "$error: No missing_glaciers.jld file available. Skipping..."
-    end
-
-    for id in missing_glaciers
-        deleteat!(glaciers, findall(x->x.rgi_id==id, glaciers))
-    end
-
-    # Save missing glaciers in a file
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
-    #@warn "Filtering out these glaciers from gdir list: $missing_glaciers"
-
-    return missing_glaciers
-end
-
 """
     filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters)
 
