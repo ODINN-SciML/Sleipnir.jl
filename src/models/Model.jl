@@ -67,18 +67,19 @@ cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
 
 
 # Display setup
-function Base.show(io::IO, model::Model)
+function Base.show(io::IO, type::MIME"text/plain", model::Model)
     println("**** Model ****")
     println()
-    println(model.iceflow)
+    Base.show(io, type, model.iceflow)
     println()
-    println(model.mass_balance)
+    Base.show(io, type, model.mass_balance)
     println()
     if isnothing(model.machine_learning)
         println("No learnable components")
     else
         println("Learnable components")
-        println(model.machine_learning)
+        Base.show(io, type, model.machine_learning)
+        println()
     end
     print("***************")
 end
