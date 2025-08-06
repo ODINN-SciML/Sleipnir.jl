@@ -77,7 +77,7 @@ function Parameters(;
         physical, simulation,
         nothing, nothing, nothing, nothing)
 
-    enable_multiprocessing(parameters)
+    enable_multiprocessing(parameters.simulation.multiprocessing ? parameters.simulation.workers : 0)
 
     return parameters
 end
