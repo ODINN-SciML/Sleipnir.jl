@@ -72,7 +72,7 @@ function initialize_glaciers(
         pmap((rgi_id) -> generate_raw_climate_files(rgi_id, params.simulation), rgi_ids)
     end
 
-    glaciers::Vector{Glacier2D{Sleipnir.Float, Sleipnir.Int}} = pmap( # Ensure type stability
+    glaciers = pmap(
         (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
         rgi_ids
     )
@@ -126,12 +126,12 @@ function initialize_glacier(
     velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
-    glacier = build_glacier(rgi_id, parameters; smoothing=smoothing)
+    glacier = Glacier2D(rgi_id, parameters; smoothing=smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
         refVelocity = initialize_surfacevelocitydata(velocityDatacubes[glacier.rgi_id]; glacier=glacier, mapping=mapping)
-        glacier.velocityData = refVelocity
+        glacier = Glacier2D(glacier, velocityData = refVelocity) # Rebuild glacier since we cannot change type of `glacier.velocityData`
     end
 
     return glacier
@@ -146,7 +146,7 @@ function convertRasterStackToFloat64(rs::RasterStack)
 end
 
 """
-    build_glacier(rgi_id::String, params::Parameters; smoothing=false, test=false)
+    Glacier2D(rgi_id::String, params::Parameters; smoothing=false, test=false)
 
 Build glacier object for a given RGI ID and parameters.
 
@@ -167,7 +167,7 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
+function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
@@ -179,7 +179,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
     # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.velocities
+    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.use_velocities
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
     elseif params.simulation.ice_thickness_source == "Farinotti19"
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
@@ -231,7 +231,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
 
         Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
 
-        if params.simulation.velocities
+        if params.simulation.use_velocities
             V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
             Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
             Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
@@ -253,7 +253,7 @@ function build_glacier(rgi_id::String, params::Parameters; smoothing=false)
         name = get(get_rgi_names(), rgi_id, "")
 
         # Initialize glacier climate
-        climate = initialize_climate(rgi_id, params, S, Coords)
+        climate = Climate2D(rgi_id, params, S, Coords)
 
         return Glacier2D(
             rgi_id = rgi_id,
@@ -361,62 +361,6 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
 end
 
 # [End] Glathida Utilities
-
-
-"""
-    filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
-
-Filters out glaciers from the provided `glaciers` vector that are marked as missing in the OGGM task log (provided by Gungnir) or in a previously saved file.
-
-# Arguments
-- `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects to be filtered.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
-
-# Returns
-- `missing_glaciers::Vector{String}`: A vector of glacier IDs that were filtered out.
-
-# Details
-The function reads a task log CSV file from the working directory specified in `params`. It then determines which glaciers are missing based on the task log and additional conditions specified in `params`. If a previously saved file of missing glaciers exists, it loads and merges the missing glaciers from that file. Finally, it removes the missing glaciers from the `glaciers` vector and saves the updated list of missing glaciers to a file.
-"""
-function filter_missing_glaciers!(glaciers::Vector{Glacier2D}, params::Parameters)
-    task_log = CSV.File(joinpath(params.simulation.working_dir, "task_log.csv"))
-    if params.simulation.velocities & params.simulation.use_glathida_data
-        glacier_filter = (task_log.velocity_to_gdir .!= "SUCCESS") .&& (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    elseif params.simulation.use_glathida_data
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS") .&& (task_log.thickness_to_gdir .!= "SUCCESS")
-    else
-        glacier_filter = (task_log.gridded_attributes .!= "SUCCESS")
-    end
-
-    glacier_ids = Vector{String}([])
-
-    for id in task_log["index"]
-        push!(glacier_ids, id)
-    end
-    missing_glaciers = glacier_ids[glacier_filter]
-
-    try
-        missing_glaciers_old = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-        for missing_glacier in missing_glaciers_old
-            @show missing_glacier
-            if all(missing_glacier .!= missing_glaciers) # if the glacier is already not present, let's add it
-                push!(missing_glaciers, missing_glacier)
-            end
-        end
-    catch error
-        @warn "$error: No missing_glaciers.jld file available. Skipping..."
-    end
-
-    for id in missing_glaciers
-        deleteat!(glaciers, findall(x->x.rgi_id==id, glaciers))
-    end
-
-    # Save missing glaciers in a file
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
-    #@warn "Filtering out these glaciers from gdir list: $missing_glaciers"
-
-    return missing_glaciers
-end
 
 """
     filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters)

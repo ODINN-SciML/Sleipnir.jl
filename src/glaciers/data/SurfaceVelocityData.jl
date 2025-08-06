@@ -93,9 +93,7 @@ function SurfaceVelocityData(;
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
     isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
-
-    ft = Sleipnir.Float
-    return SurfaceVelocityData{ft}(
+    return SurfaceVelocityData{Sleipnir.Float}(
         x, y, lat, lon,
         vx, vy, vabs, vx_error, vy_error, vabs_error,
         date, date1, date2, date_error, isGridGlacierAligned
