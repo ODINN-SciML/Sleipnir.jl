@@ -14,7 +14,7 @@ rgi_ids = ["RGI60-07.00042", "RGI60-07.00065"] # Use glaciers that have glathida
 
 params = Parameters(
     simulation=SimulationParameters(
-        velocities=false,
+        use_velocities=false,
         use_glathida_data=true,
         working_dir=Sleipnir.root_dir,
         test_mode=true,

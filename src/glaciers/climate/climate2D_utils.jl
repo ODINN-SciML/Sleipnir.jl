@@ -8,56 +8,6 @@ export downscale_2D_climate!, downscale_2D_climate,
     apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
 """
-    initialize_climate(
-        rgi_id,
-        params::Parameters,
-        S::Matrix{<: AbstractFloat},
-        Coords::Dict
-    )
-
-Initialize the climate data given a RGI ID, a matrix of surface elevation and glacier coordinates.
-
-# Arguments
-- `rgi_id`: The glacier RGI ID.
-- `params::Parameters`: The parameters containing simulation settings and paths.
--  `S::Matrix{<: AbstractFloat}`: Matrix of surface elevation used to initialize the downscaled climate data.
-- `Coords::Dict`: Coordinates of the glacier.
-
-# Description
-This function initializes the climate data for a glacier by:
-1. Creating a dummy period based on the simulation time span and step.
-2. Loading the raw climate data from a NetCDF file.
-3. Calculating the cumulative climate data for the dummy period.
-4. Downscaling the cumulative climate data to a 2D grid.
-5. Retrieving long-term temperature data for the glacier.
-6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
-"""
-function initialize_climate(
-    rgi_id,
-    params::Parameters,
-    S::Matrix{<: AbstractFloat},
-    Coords::Dict
-)
-    dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
-    raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
-    if Sleipnir.doublePrec
-        raw_climate = convertRasterStackToFloat64(raw_climate)
-    end
-    climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
-    climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
-    longterm_temps = get_longterm_temps(rgi_id, params, raw_climate)
-    return Climate2D(
-        raw_climate = raw_climate,
-        climate_raw_step = raw_climate[At(dummy_period)],
-        climate_step = climate_step,
-        climate_2D_step = climate_2D_step,
-        longterm_temps = longterm_temps,
-        avg_temps = round(mean(raw_climate[At(dummy_period)].temp); digits=10), # This mean is not reproducible across platforms, the rounding is to ensure reproducibility in the tests
-        avg_gradients = mean(raw_climate[At(dummy_period)].gradient)
-    )
-end
-
-"""
     generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
 
 Generate raw climate files for a given RGI (Randolph Glacier Inventory) ID and simulation parameters.
@@ -107,7 +57,7 @@ end
 
 
 """
-    get_cumulative_climate!(climate, period; gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
+    get_cumulative_climate!(climate, period; gradient_bounds=[-0.009, -0.003])
 
 Calculate and update the cumulative climate data for a given period.
 
@@ -115,46 +65,47 @@ Calculate and update the cumulative climate data for a given period.
 - `climate::Climate`: The climate object containing raw climate data.
 - `period::Period`: The period for which to calculate the cumulative climate data.
 - `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
-- `default_grad::Float64`: Optional. The default gradient value to use. Default is `-0.0065`.
 
 # Updates
 - `climate.climate_raw_step`: The raw climate data for the given period.
 - `climate.avg_temps`: The average temperature for the given period.
 - `climate.avg_gradients`: The average gradient for the given period.
-- `climate.climate_step["prcp"]`: The cumulative precipitation for the given period.
-- `climate.climate_step["temp"]`: The cumulative temperature for the given period.
-- `climate.climate_step["gradient"]`: The cumulative gradient for the given period.
-- `climate.climate_step["avg_temp"]`: The average temperature for the given period.
-- `climate.climate_step["avg_gradient"]`: The average gradient for the given period.
-- `climate.climate_step["ref_hgt"]`: The reference height from the metadata of the raw climate data.
+- `climate.climate_step.prcp`: The cumulative precipitation for the given period.
+- `climate.climate_step.temp`: The cumulative temperature for the given period.
+- `climate.climate_step.gradient`: The cumulative gradient for the given period.
+- `climate.climate_step.avg_temp`: The average temperature for the given period.
+- `climate.climate_step.avg_gradient`: The average gradient for the given period.
+- `climate.climate_step.ref_hgt`: The reference height from the raw climate data.
 """
-function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
+function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.003])
     climate.climate_raw_step = climate.raw_climate[At(period)]
     climate.avg_temps = mean(climate.climate_raw_step.temp)
 
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
-    climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp, 0.0) # get PDDs
+    climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp.data, 0.0) # get PDDs
     climate.climate_raw_step.gradient.data .= clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate.climate_step["prcp"] = sum(climate.climate_raw_step.prcp)
-    climate.climate_step["temp"] = sum(climate.climate_raw_step.temp)
-    climate.climate_step["gradient"] = sum(climate.climate_raw_step.gradient)
-    climate.climate_step["avg_temp"] = climate.avg_temps
-    climate.climate_step["avg_gradient"] = climate.avg_gradients
-    climate.climate_step["ref_hgt"] = metadata(climate.climate_raw_step)["ref_hgt"]
+    climate.climate_step.prcp = sum(climate.climate_raw_step.prcp)
+    climate.climate_step.temp = sum(climate.climate_raw_step.temp)
+    climate.climate_step.gradient = sum(climate.climate_raw_step.gradient)
+    climate.climate_step.avg_temp = climate.avg_temps
+    climate.climate_step.avg_gradient = climate.avg_gradients
+    climate.climate_step.ref_hgt = climate.ref_hgt
 end
 
 """
-    get_cumulative_climate(climate; gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
+    get_cumulative_climate(
+        climate::RasterStack,
+        gradient_bounds::Vector{Float64}=[-0.009, -0.003],
+    )
 
 Calculate cumulative climate statistics from the given climate data.
 
 # Keyword arguments
-- `climate::Climate`: A climate object containing temperature, precipitation, and gradient data.
+- `climate::RasterStack`: A `RasterStack` object containing temperature, precipitation, and gradient data.
 - `gradient_bounds::Vector{Float64}`: A two-element vector specifying the lower and upper bounds for the gradient values. Defaults to `[-0.009, -0.003]`.
-- `default_grad::Float64`: The default gradient value to use. Defaults to `-0.0065`.
 
 # Returns
-- `climate_sum::Dict{String, Any}`: A dictionary containing the following keys:
+- `climate_sum::ClimateStep`: A struct containing the following fields:
   - `"temp"`: The sum of positive degree days (PDDs) from the temperature data.
   - `"prcp"`: The sum of precipitation data.
   - `"gradient"`: The sum of gradient data, clipped within the specified bounds.
@@ -166,18 +117,23 @@ Calculate cumulative climate statistics from the given climate data.
 - The temperature data is modified to only include positive degree-day values (PDDs).
 - The gradient data is clipped within the specified bounds to ensure plausible values.
 """
-function get_cumulative_climate(climate, gradient_bounds=[-0.009, -0.003], default_grad=-0.0065)
+function get_cumulative_climate(
+    climate::RasterStack,
+    gradient_bounds::Vector{Float64}=[-0.009, -0.003],
+)
     avg_temp = mean(climate.temp)
     avg_gradient = mean(climate.gradient)
     copy_climate = deepcopy(climate)
     copy_climate.temp.data .= max.(copy_climate.temp.data, 0.0) # get PDDs
     copy_climate.gradient.data .= clamp.(copy_climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate_sum = Dict("temp" => sum(copy_climate.temp),
-                       "prcp" => sum(climate.prcp),
-                       "gradient" => sum(copy_climate.gradient),
-                       "avg_temp" => avg_temp,
-                       "avg_gradient" => avg_gradient,
-                       "ref_hgt" => metadata(climate)["ref_hgt"])
+    climate_sum = ClimateStep(
+        temp = sum(copy_climate.temp),
+        prcp = sum(climate.prcp),
+        gradient = sum(copy_climate.gradient),
+        avg_temp = avg_temp,
+        avg_gradient = avg_gradient,
+        ref_hgt = Sleipnir.Float(metadata(climate)["ref_hgt"]),
+    )
     return climate_sum
 end
 
@@ -262,25 +218,25 @@ This function updates the 2D climate structure of the given glacier by:
 function downscale_2D_climate!(glacier::Glacier2D)
     # Update 2D climate structure
     climate = glacier.climate
-    climate.climate_2D_step.temp .= climate.climate_step["avg_temp"]
-    climate.climate_2D_step.PDD .= climate.climate_step["temp"]
-    climate.climate_2D_step.snow .= climate.climate_step["prcp"]
-    climate.climate_2D_step.rain .= climate.climate_step["prcp"]
+    climate.climate_2D_step.temp .= climate.climate_step.avg_temp
+    climate.climate_2D_step.PDD .= climate.climate_step.temp
+    climate.climate_2D_step.snow .= climate.climate_step.prcp
+    climate.climate_2D_step.rain .= climate.climate_step.prcp
     # Update gradients
-    climate.climate_2D_step.gradient = climate.climate_step["gradient"]
-    climate.climate_2D_step.avg_gradient = climate.climate_step["avg_gradient"]
+    climate.climate_2D_step.gradient = climate.climate_step.gradient
+    climate.climate_2D_step.avg_gradient = climate.climate_step.avg_gradient
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
     apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with the RasterStack structure
 end
 
 """
-    downscale_2D_climate(climate_step::Dict, S::Matrix{<: AbstractFloat}, Coords::Dict)
+    downscale_2D_climate(climate_step::ClimateStep, S::Matrix{<: AbstractFloat}, Coords::Dict)
 
 Downscales climate data to a 2D grid based on the provided matrix of surface elevation and coordinates.
 
 # Arguments
-- `climate_step::Dict`: A dictionary containing climate data for a specific time step. Expected keys are:
+- `climate_step::ClimateStep`: A struct containing climate data for a specific time step. Expected fields are:
   - `"avg_temp"`: Average temperature.
   - `"temp"`: Temperature.
   - `"prcp"`: Precipitation.
@@ -305,24 +261,24 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
 # Description
 This function creates dummy 2D arrays based on the provided surface elevation data and applies the climate step data to these arrays. It then constructs a `Climate2Dstep` object with the downscaled climate data and applies temperature gradients to compute the snow/rain fraction for the selected period.
 """
-function downscale_2D_climate(climate_step::Dict, S::Matrix{<: AbstractFloat}, Coords::Dict)
+function downscale_2D_climate(climate_step::ClimateStep, S::Matrix{<: AbstractFloat}, Coords::Dict)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     FT = typeof(S[1])
     dummy_grid = zeros(size(S))
-    temp_2D = climate_step["avg_temp"] .+ dummy_grid
-    PDD_2D = climate_step["temp"] .+ dummy_grid
-    snow_2D = climate_step["prcp"] .+ dummy_grid
-    rain_2D = climate_step["prcp"] .+ dummy_grid
-    climate_2D_step = Climate2Dstep(
+    temp_2D = climate_step.avg_temp .+ dummy_grid
+    PDD_2D = climate_step.temp .+ dummy_grid
+    snow_2D = climate_step.prcp .+ dummy_grid
+    rain_2D = climate_step.prcp .+ dummy_grid
+    climate_2D_step = Climate2Dstep{Sleipnir.Float}(
         temp=temp_2D,
         PDD=PDD_2D,
         snow=snow_2D,
         rain=rain_2D,
-        gradient=Float64(climate_step["gradient"]),
-        avg_gradient=Float64(climate_step["avg_gradient"]),
+        gradient=Float64(climate_step.gradient),
+        avg_gradient=Float64(climate_step.avg_gradient),
         x=Coords["lon"],
         y=Coords["lat"],
-        ref_hgt=Float64(climate_step["ref_hgt"])
+        ref_hgt=Float64(climate_step.ref_hgt),
     )
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
@@ -395,34 +351,6 @@ Calculate the partial year value based on the given floating-point number.
 partial_year(float) = partial_year(Day, float)
 
 """
-    get_longterm_temps(rgi_id::String, params::Parameters)
-
-Calculate the long-term average temperatures for a given glacier.
-
-# Arguments
-- `rgi_id::String`: The RGI (Randolph Glacier Inventory) identifier for the glacier.
-- `params::Parameters`: A `Parameters` object containing simulation parameters, including paths to necessary data files.
-
-# Returns
-- `longterm_temps`: A vector of long-term average temperatures for the glacier.
-
-# Description
-This function reads the gridded data and raw climate data for the specified glacier, applies a temperature gradient correction based on the glacier's topography, and then calculates the long-term average temperatures by grouping the temperature data by year.
-"""
-function get_longterm_temps(rgi_id::String, params::Parameters)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
-    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
-    climate = RasterStack(joinpath(rgi_path, "raw_climate_$(params.simulation.tspan).nc"))
-    if Sleipnir.doublePrec
-        glacier_gd = convertRasterStackToFloat64(glacier_gd)
-        climate = convertRasterStackToFloat64(climate)
-    end
-    apply_t_grad!(climate, glacier_gd.topo)
-    longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
-    return longterm_temps
-end
-
-"""
     get_longterm_temps(rgi_id::String, params::Parameters, climate::RasterStack) -> Array{Float64}
 
 Calculate the long-term average temperatures for a given glacier.
@@ -444,5 +372,3 @@ function get_longterm_temps(rgi_id::String, params::Parameters, climate::RasterS
     longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
     return longterm_temps
 end
-
-
