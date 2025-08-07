@@ -70,12 +70,7 @@ function Glacier1D(;
     nx::I = 0,
     ny::I = 0,
     ) where {F <: AbstractFloat, I <: Integer}
-
-    # Define default float and integer type for constructor
-    ft = Sleipnir.Float
-    it = Sleipnir.Int
-
-    return Glacier1D{ft,it}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀, λ, slope, dist_border, Coords, Δx, Δy, nx, ny)
+    return Glacier1D{Sleipnir.Float,Sleipnir.Int}(rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀, λ, slope, dist_border, Coords, Δx, Δy, nx, ny)
 end
 
 ###############################################

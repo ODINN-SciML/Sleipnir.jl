@@ -12,10 +12,7 @@ function ThicknessData(;
     t::Union{Vector{F}, Nothing} = nothing,
     H::Union{Vector{Matrix{F}}, Nothing} = nothing
     ) where {F <: AbstractFloat}
-
-    ft = Sleipnir.Float
-
-    return ThicknessData{ft}(t, H)
+    return ThicknessData{Sleipnir.Float}(t, H)
 end
 
 Base.:(==)(a::ThicknessData, b::ThicknessData) = a.t == b.t && a.H == b.H

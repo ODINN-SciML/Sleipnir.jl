@@ -1,7 +1,7 @@
 export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, AbstractEmptyParams
 
 """
-        AbstractParameters
+    AbstractParameters
 
 An abstract type that serves as a base for all parameter-related types in the ODINN ecosystem.
 """
@@ -10,15 +10,15 @@ abstract type AbstractParameters end
 """
         AbstractEmptyParams
 
-A type alias that represents a union of `AbstractParameters` and `Nothing`. 
-This can be used to indicate that a parameter can either be an instance of 
+A type alias that represents a union of `AbstractParameters` and `Nothing`.
+This can be used to indicate that a parameter can either be an instance of
 `AbstractParameters` or `nothing`.
 """
 const AbstractEmptyParams = Union{AbstractParameters,Nothing}
 
 """
-        mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
-                        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
+    mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
+        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
 
 A mutable struct that holds various parameter sets for different aspects of a simulation or model.
 
@@ -39,13 +39,13 @@ A mutable struct that holds various parameter sets for different aspects of a si
 - `PINV`: Type of the inversion parameters, must be a subtype of `AbstractEmptyParams`.
 """
 mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
-        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
-        physical::PPHY
-        simulation::PSIM
-        hyper::PHY
-        solver::PSOL
-        UDE::PUDE
-        inversion::PINV
+    PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
+    physical::PPHY
+    simulation::PSIM
+    hyper::PHY
+    solver::PSOL
+    UDE::PUDE
+    inversion::PINV
 end
 
 include("PhysicalParameters.jl")
@@ -53,7 +53,7 @@ include("SimulationParameters.jl")
 
 
 """
-        Parameters(; physical::PhysicalParameters = PhysicalParameters(), simulation::SimulationParameters = SimulationParameters())
+    Parameters(; physical::PhysicalParameters = PhysicalParameters(), simulation::SimulationParameters = SimulationParameters())
 
 Constructs a `Parameters` object with the given physical and simulation parameters.
 
@@ -68,21 +68,20 @@ Constructs a `Parameters` object with the given physical and simulation paramete
 - If `simulation.multiprocessing` is enabled, multiprocessing is configured with the specified number of workers.
 """
 function Parameters(;
-        physical::PhysicalParameters = PhysicalParameters(),
-        simulation::SimulationParameters = SimulationParameters()
-    ) 
+    physical::PhysicalParameters = PhysicalParameters(),
+    simulation::SimulationParameters = SimulationParameters()
+)
 
     # Build the parameters based on all the subtypes of parameters
-    parameters = Parameters(physical, simulation,
-                            nothing, nothing, nothing, nothing)
+    parameters = Parameters(
+        physical, simulation,
+        nothing, nothing, nothing, nothing)
 
-    if parameters.simulation.multiprocessing
-            enable_multiprocessing(parameters.simulation.workers)
-    end
-    
+    enable_multiprocessing(parameters.simulation.multiprocessing ? parameters.simulation.workers : 0)
+
     return parameters
 end
 
-Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation && 
-                                           a.solver == b.solver && a.hyper == b.hyper && 
-                                           a.UDE == b.UDE && a.inversion == b.inversion  
+Base.:(==)(a::Parameters, b::Parameters) = a.physical == b.physical && a.simulation == b.simulation &&
+                                           a.solver == b.solver && a.hyper == b.hyper &&
+                                           a.UDE == b.UDE && a.inversion == b.inversion

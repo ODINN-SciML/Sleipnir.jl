@@ -18,8 +18,8 @@ by providing `nothing` as the default value.
 - `vy_error::Union{Vector{F}, Nothing}`: Error in `vy`
 - `vabs_error::Union{Vector{F}, Nothing}`: Error in `vabs`.
 - `date::Union{Vector{DateTime}, Nothing}`: Date of observation (mean of `date1` and `date2`)
-- `date1::Union{Vector{DateTime}, Nothing}`: First date of adquisition.
-- `date2::Union{Vector{DateTime}, Nothing}`: Second date of adquisition.
+- `date1::Union{Vector{DateTime}, Nothing}`: First date of acquisition.
+- `date2::Union{Vector{DateTime}, Nothing}`: Second date of acquisition.
 - `date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}`: Error in `date`.
 - `isGridGlacierAligned::Bool`: Whether the data have been gridded to the glacier grid or not.
 """
@@ -93,9 +93,7 @@ function SurfaceVelocityData(;
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
     isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
-
-    ft = Sleipnir.Float
-    return SurfaceVelocityData{ft}(
+    return SurfaceVelocityData{Sleipnir.Float}(
         x, y, lat, lon,
         vx, vy, vabs, vx_error, vy_error, vabs_error,
         date, date1, date2, date_error, isGridGlacierAligned
