@@ -329,13 +329,14 @@ Calculate a partial year date based on a floating-point year value.
 # Returns
 - `Date`: The calculated date corresponding to the partial year.
 """
-function partial_year(period::Type{<:Period}, float)
+function partial_year(period::Type{<:Period}, float::AbstractFloat)
     _year, Δ = divrem(float, 1)
     year_start = Date(convert(Int,_year))
     year = period((year_start + Year(1)) - year_start)
     partial = period(round(Dates.value(year) * Δ))
     year_start + partial
 end
+partial_year(period::Type{<:Period}, floats::Vector{<:AbstractFloat}) = map(f -> partial_year(period, f), floats)
 
 """
     partial_year(float::Float64) -> Float64
