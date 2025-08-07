@@ -49,7 +49,7 @@ glaciers = initialize_glaciers(rgi_ids, params)
 function initialize_glaciers(
     rgi_ids::Vector{String},
     params::Parameters;
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
 
     # Generate missing glaciers file
@@ -123,7 +123,7 @@ function initialize_glacier(
     rgi_id::String,
     parameters::Parameters;
     smoothing=false,
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
     glacier = Glacier2D(rgi_id, parameters; smoothing=smoothing)
@@ -226,6 +226,8 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
         S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
         if params.simulation.gridScalingFactor > 1
             S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
+            longitudes = longitudes[begin:params.simulation.gridScalingFactor:end]
+            latitudes = latitudes[begin:params.simulation.gridScalingFactor:end]
         end
         B = S .- H₀ # bedrock
 
@@ -625,7 +627,8 @@ Arguments:
 function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
     B = convert.(F, (A .!= 0))
     for i in 1:distance
-        B .= min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
+        # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
+        B = min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
     end
     return B .> 0.001
 end
