@@ -60,7 +60,7 @@ Constructor for `SimulationParameters` type, including default values.
         tspan::Tuple{F, F} = (2010.0,2015.0),
         step::F = 1/12,
         multiprocessing::Bool = true,
-        workers::I = 4,
+        workers::I = 3,
         working_dir::String = "",
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
@@ -82,7 +82,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
 - `step::F`: Time step for the simulation (default: `1/12`).
 - `multiprocessing::Bool`: Whether to use multiprocessing (default: `true`).
-- `workers::I`: Number of workers for multiprocessing (default: `4`).
+- `workers::I`: Number of workers for multiprocessing (default: `3`).
 - `working_dir::String`: Working directory for the simulation (default: `""`).
 - `test_mode::Bool`: Whether to run in test mode (default: `false`).
 - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths (default: `Dict{String, String}()`).
@@ -115,7 +115,7 @@ function SimulationParameters(;
     tspan::Tuple{F, F} = (2010.0,2015.0),
     step::F = 1/12,
     multiprocessing::Bool = true,
-    workers::I = 4,
+    workers::I = 3,
     working_dir::String = "",
     test_mode::Bool = false,
     rgi_paths::Dict{String, String} = Dict{String, String}(),
