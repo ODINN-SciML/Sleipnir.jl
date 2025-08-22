@@ -137,8 +137,6 @@ function create_results(
         ny = glacier.ny,
         t = t,
         tspan = simulation.parameters.simulation.tspan,
-        θ = θ,
-        loss = loss
     )
 
     return results
