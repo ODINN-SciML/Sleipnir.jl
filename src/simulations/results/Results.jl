@@ -26,8 +26,6 @@ A mutable struct to store the results of simulations.
 - `nx::I`: Number of grid points in the x-direction.
 - `ny::I`: Number of grid points in the y-direction.
 - `tspan::Vector{F}`: Time span of the simulation.
-- `θ::Union{Nothing, ComponentArray{F}}`: Machine learning model parameters.
-- `loss::Union{Nothing, Vector{F}}` Vector with evolution of loss function.
 """
 mutable struct Results{F <: AbstractFloat, I <: Integer}
     rgi_id::String
@@ -55,20 +53,20 @@ mutable struct Results{F <: AbstractFloat, I <: Integer}
     ny::I
     t::Vector{F}
     tspan::Tuple{F, F}
-    θ::Union{Nothing, ComponentArray{F}}
-    loss::Union{Nothing, Vector{F}}
 end
 
-Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
-                                    a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
-                                    a.S == b.S && a.B == b.B && a.x == b.x && a.y == b.y &&
-                                    a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
-                                    a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
-                                    a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref && a.date2_Vref == b.date2_Vref &&
-                                    a.Δx == b.Δx && a.Δy == b.Δy &&
-                                    a.lon == b.lon && a.lat == b.lat &&
-                                    a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
-                                    isequal(a.tspan, b.tspan) && a.θ == b.θ && a.loss == b.loss
+Base.:(==)(a::Results, b::Results) = (
+    a.rgi_id == b.rgi_id && a.H == b.H &&
+    a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
+    a.S == b.S && a.B == b.B && a.x == b.x && a.y == b.y &&
+    a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
+    a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
+    a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref && a.date2_Vref == b.date2_Vref &&
+    a.Δx == b.Δx && a.Δy == b.Δy &&
+    a.lon == b.lon && a.lat == b.lat &&
+    a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
+    isequal(a.tspan, b.tspan)
+)
 
 """
     Results(glacier::G, ifm::IF;
@@ -95,8 +93,6 @@ Base.:(==)(a::Results, b::Results) = a.rgi_id == b.rgi_id && a.H == b.H &&
         ny::I = glacier.ny,
         t::Vector{F} = Vector{Sleipnir.Float}([]),
         tspan::Tuple{F, F} = (NaN, NaN),
-        θ::Union{Nothing,ComponentArray{F}} = nothing,
-        loss::Union{Nothing,Vector{F}} = nothing
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Integer}
 
 Construct a `Results` object for a glacier simulation.
@@ -156,20 +152,19 @@ function Results(glacier::G, ifm::IF;
         ny::I = glacier.ny,
         t::Vector{F} = Vector{Sleipnir.Float}([]),
         tspan::Tuple{F, F} = (NaN, NaN),
-        θ::Union{Nothing,ComponentArray{F}} = nothing,
-        loss::Union{Nothing,Vector{F}} = nothing
     ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Integer}
 
     x = glacier.Coords["lon"]
     y = glacier.Coords["lat"]
 
     # Build the results struct based on input values
-    results = Results{Sleipnir.Float, Sleipnir.Int}(rgi_id, H, H_glathida, H_ref, S, B,
-                      x, y,
-                      V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
-                      date_Vref, date1_Vref, date2_Vref,
-                      Δx, Δy,lon,lat, nx, ny, t, tspan,
-                      θ, loss)
+    results = Results{Sleipnir.Float, Sleipnir.Int}(
+        rgi_id, H, H_glathida, H_ref, S, B,
+        x, y,
+        V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
+        date_Vref, date1_Vref, date2_Vref,
+        Δx, Δy,lon,lat, nx, ny, t, tspan,
+    )
 
     return results
 end
