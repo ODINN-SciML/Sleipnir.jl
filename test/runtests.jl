@@ -51,6 +51,8 @@ end
 
 @testset "Misc" begin
     @testset "Helpers" helpers()
+    @testset "Simulation utils" simulation_utils()
+    @testset "Results utils" results_utils()
     @testset "Glacier grid downscaling" glacier_grid_downscaling()
     @testset "Operations on glacier mask" operations_glacier_mask()
 end
