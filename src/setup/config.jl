@@ -39,13 +39,6 @@ function __init__()
 
 end
 
-function clean()
-    atexit() do
-        run(`$(Base.julia_cmd())`)
-    end
-    exit()
-end
-
 function enable_multiprocessing(procs::Int)
     if procs > 0
         if nprocs() < procs
@@ -64,12 +57,6 @@ function enable_multiprocessing(procs::Int)
         end
     end
     return nworkers()
-end
-
-function filter_existing_paths(paths::Vector{String})
-    # Use `filter` to retain only the paths that exist
-    existing_paths = filter(ispath, paths)
-    return existing_paths
 end
 
 function get_rgi_paths()
