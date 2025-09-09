@@ -16,7 +16,6 @@ A structure representing physical parameters used in simulations.
 - `maxTlaw::F`: Maximum temperature according to some law.
 - `minTlaw::F`: Minimum temperature according to some law.
 - `noise_A_magnitude::F`: Magnitude of noise in A.
-- `topo_spatial_window::F`: Spatial window for processing topography in meters, used for computing roughness and other inputs.
 """
 struct PhysicalParameters{F <: AbstractFloat, I <: Integer} <: AbstractParameters
     ρ::F
@@ -30,7 +29,6 @@ struct PhysicalParameters{F <: AbstractFloat, I <: Integer} <: AbstractParameter
     maxTlaw::F
     minTlaw::F
     noise_A_magnitude::F
-    topo_spatial_window::F
     PDD_time_window::I
 end
 
@@ -49,7 +47,6 @@ Initialize the physical parameters of a model.
         maxTlaw::Float64 = 1.0,
         minTlaw::Float64 = -25.0,
         noise_A_magnitude::Float64 = 5e-18,
-        topo_spatial_window::Float64 = 200.0,
         PDD_time_window::Int64 = 7
         )
 
@@ -66,7 +63,6 @@ Keyword arguments
     - `maxTlaw`: Maximum value of Temperature used in simulations on fake law
     - `minTlaw`: Minimum value of Temperature used in simulations on fake law
     - `noise_A_magnitude`: Magnitude of noise added to A
-    - `topo_spatial_window`: Spatial window for processing topography in meters, used for computing roughness and other inputs.
     - `PDD_time_window`: Time window for positive degree days (PDD) in days, used to compute the CPDDs for inputs of laws.
 """
 function PhysicalParameters(;
@@ -81,7 +77,6 @@ function PhysicalParameters(;
             maxTlaw::F = 1.0,
             minTlaw::F = -25.0,
             noise_A_magnitude::F = 5e-18,
-            topo_spatial_window::F = 200.0,
             PDD_time_window::I = 7
             ) where {F <: AbstractFloat, I <: Integer}
     # Build PhysicalParameters based on values
@@ -92,7 +87,6 @@ function PhysicalParameters(;
                                             maxC, minC,
                                             maxTlaw, minTlaw,
                                             noise_A_magnitude,
-                                            topo_spatial_window,
                                             PDD_time_window)
 
     return physical_parameters
@@ -103,5 +97,5 @@ Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g =
                                       a.maxA == b.maxA && a.minA == b.minA && 
                                       a.minC == b.minC && a.maxC == b.maxC && 
                                       a.maxTlaw == b.maxTlaw &&
-                                      a.noise_A_magnitude == b.noise_A_magnitude && a.topo_spatial_window == b.topo_spatial_window && 
-                                      a.PDD_time_window == b.PDD_time_window 
+                                      a.noise_A_magnitude == b.noise_A_magnitude && 
+                                      a.PDD_time_window == b.PDD_time_window
