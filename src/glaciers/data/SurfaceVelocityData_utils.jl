@@ -20,7 +20,7 @@ Arguments:
 - `compute_vabs_error::Bool`: Whether to compute the absolute error uncertainty.
 """
 function initialize_surfacevelocitydata(
-    raster::Union{String, RasterStack};
+    raster::Union{String, <: RasterStack};
     glacier::Union{G, Nothing}=nothing,
     mapping::VM=MeanDateVelocityMapping(),
     compute_vabs_error::Bool=true
@@ -48,10 +48,8 @@ function initialize_surfacevelocitydata(
         date2 = mjd.(date2)
     else
         date_mean = dims(velRast, :mid_date).val.data
-        offset_date1 = Date(replace(metadata(velRast.date1)["units"], "days since " => ""), "yyyy-mm-dd HH:MM:SS")
-        offset_date2 = Date(replace(metadata(velRast.date2)["units"], "days since " => ""), "yyyy-mm-dd HH:MM:SS")
-        date1 = Day.(date1) + offset_date1
-        date2 = Day.(date2) + offset_date2
+        date1 = CFTime.timedecode(date1, metadata(velRast.date1)["units"])
+        date2 = CFTime.timedecode(date2, metadata(velRast.date2)["units"])
     end
     date1 = DateTime.(date1)
     date2 = DateTime.(date2)
@@ -262,7 +260,7 @@ function grid(
             vyG[ix,iy,begin:end] .= block_vy[indx[ix]+shiftx,indy[iy]+shifty,:]
         end
     else
-        @error "$(mapping.spatialInterp) spatial interpolation method is not implemented"
+        throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
     end
     return xG, yG, vxG, vyG
 end

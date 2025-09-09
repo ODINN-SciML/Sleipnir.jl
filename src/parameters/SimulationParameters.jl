@@ -10,7 +10,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `use_MB::Bool`: Flag to indicate whether mass balance should be used.
 - `use_iceflow::Bool`: Flag to indicate whether ice flow should be used.
 - `plots::Bool`: Flag to indicate whether plots should be generated.
-- `velocities::Bool`: Flag to indicate whether velocities should be calculated.
+- `use_velocities::Bool`: Flag to indicate whether velocities should be calculated.
 - `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
 - `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
 - `tspan::Tuple{F, F}`: Time span for the simulation.
@@ -30,7 +30,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     use_MB::Bool
     use_iceflow::Bool
     plots::Bool
-    velocities::Bool
+    use_velocities::Bool
     overwrite_climate::Bool
     use_glathida_data::Bool
     tspan::Tuple{F, F}
@@ -54,7 +54,7 @@ Constructor for `SimulationParameters` type, including default values.
         use_MB::Bool = true,
         use_iceflow::Bool = true,
         plots::Bool = true,
-        velocities::Bool = true,
+        use_velocities::Bool = true,
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
         tspan::Tuple{F, F} = (2010.0,2015.0),
@@ -74,7 +74,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `use_MB::Bool`: Whether to use mass balance (default: `true`).
 - `use_iceflow::Bool`: Whether to use ice flow (default: `true`).
 - `plots::Bool`: Whether to generate plots (default: `true`).
-- `velocities::Bool`: Whether to calculate velocities (default: `true`).
+- `use_velocities::Bool`: Whether to calculate velocities (default: `true`).
 - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
 - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
 - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
@@ -109,7 +109,7 @@ function SimulationParameters(;
     use_MB::Bool = true,
     use_iceflow::Bool = true,
     plots::Bool = true,
-    velocities::Bool = true,
+    use_velocities::Bool = true,
     overwrite_climate::Bool = false,
     use_glathida_data::Bool = false,
     tspan::Tuple{F, F} = (2010.0,2015.0),
@@ -126,7 +126,7 @@ function SimulationParameters(;
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
 
-    simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, velocities,
+    simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, use_velocities,
                                                 overwrite_climate, use_glathida_data,
                                                 Sleipnir.Float.(tspan), Sleipnir.Float(step),
                                                 multiprocessing, Sleipnir.Int(workers), working_dir,
@@ -141,7 +141,7 @@ function SimulationParameters(;
 end
 
 Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots &&
-                                      a.velocities == b.velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
+                                      a.use_velocities == b.use_velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
                                       a.tspan == b.tspan && a.step == b.step && a.multiprocessing == b.multiprocessing &&
                                       a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
                                       a.ice_thickness_source == b.ice_thickness_source && a.mapping == b.mapping &&

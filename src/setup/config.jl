@@ -10,8 +10,8 @@ function __init__()
     existsAndRedownload = false
     if isdir(prepro_dir)
         daysSinceLastDownload = (Dates.now() - Dates.unix2datetime(mtime(prepro_dir)))/Day(1)
-        if daysSinceLastDownload > 1
-            # Re-download data if older than one day
+        if daysSinceLastDownload > 7
+            # Re-download data if older than one week
             # This is useful especially when the data on the server have been
             # updated and the code needs the new version in order to run
             existsAndRedownload = true
@@ -19,7 +19,7 @@ function __init__()
     end
     if (!isdir(prepro_dir)) | existsAndRedownload
         @info "Downloading preprocessed data"
-        tarGzFile = Downloads.download("https://docs.google.com/uc?export=download&id=1d070a_YqN5aPAONpnzL9hfInv1DA8z3p")
+        tarGzFile = Downloads.download("https://drive.usercontent.google.com/download?id=1d070a_YqN5aPAONpnzL9hfInv1DA8z3p&export=download&authuser=1&confirm=t&at=AN8xHooaYmz09qhYCH--PX23RwmA:1753298453038&uuid=f6991b49-5132-4935-8281-5935306e0de1")
         tar_gz = open(tarGzFile)
         tar = GzipDecompressorStream(tar_gz)
         tempDir = Tar.extract(tar)
@@ -44,9 +44,9 @@ function clean()
         run(`$(Base.julia_cmd())`)
     end
     exit()
- end
+end
 
- function enable_multiprocessing(procs::Int)
+function enable_multiprocessing(procs::Int)
     if procs > 0
         if nprocs() < procs
             @eval begin
