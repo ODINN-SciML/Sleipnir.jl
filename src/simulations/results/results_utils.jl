@@ -1,3 +1,13 @@
+function datetime_to_floatyear(dt::DateTime)
+    y = Dates.year(dt)
+    start_of_year = DateTime(y, 1, 1)
+    start_next_year = DateTime(y + 1, 1, 1)
+    # Compute total seconds in the year and seconds since start of year
+    seconds_in_year = convert(Int, Dates.value(Day((start_next_year - start_of_year)))) * 24 * 60 * 60
+    seconds_since_start = convert(Int, floor((dt - start_of_year)/Day(1))) * 24 * 60 * 60 + Dates.value(Hour(dt)) * 3600 + Dates.value(Minute(dt)) * 60 + Dates.value(Second(dt))
+    return y + seconds_since_start / seconds_in_year
+end
+
 """
     create_results(
         simulation::SIM,
@@ -42,7 +52,11 @@ function create_results(
         t₁ = simulation.parameters.simulation.tspan[2]
         Δt = simulation.parameters.simulation.step
         nSteps = (t₁-t₀) / Δt
-        timeSteps = t₀ .+ collect(0:nSteps) .* Δt
+        # timeSteps = t₀ .+ collect(0:nSteps) .* Δt
+        timeSteps = range(t₀, t₁, step = Δt)
+        if timeSteps[end] !== t₁
+            push!(timeSteps, t₁)
+        end
         ϵ = 1e-6 # Need this because of numerical rounding
         compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
         solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
@@ -58,8 +72,15 @@ function create_results(
     t = light ? Vector{eltype(solution.t)}([solution.t[begin],solution.t[end]]) : ts
     H = light ? [solution.u[begin],solution.u[end]] : us
 
+    iceflow_cache = simulation.cache.iceflow
+    if !isnothing(simulation.model.machine_learning)
+        θ = simulation.model.machine_learning.θ
+    else
+        θ = nothing
+    end
+
     if !isnothing(processVelocity)
-        velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti), H, t)
+        velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti, θ), H, t)
         Vx = [velocities[i][1] for i in range(1,length(velocities))]
         Vy = [velocities[i][2] for i in range(1,length(velocities))]
         V  = [velocities[i][3] for i in range(1,length(velocities))]
@@ -69,27 +90,27 @@ function create_results(
             Vx_ref = glacier.velocityData.vx
             Vy_ref = glacier.velocityData.vy
             V_ref = glacier.velocityData.vabs
+            date_Vref = datetime_to_floatyear.(glacier.velocityData.date)
+            date1_Vref = datetime_to_floatyear.(glacier.velocityData.date1)
+            date2_Vref = datetime_to_floatyear.(glacier.velocityData.date2)
         else
             Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
             Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
             V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            date_Vref = Vector{Sleipnir.Float}([])
+            date1_Vref = Vector{Sleipnir.Float}([])
+            date2_Vref = Vector{Sleipnir.Float}([])
         end
     else
         Vx = Vy = V = Vector{Matrix{Sleipnir.Float}}([[;;]])
         Vx_ref = Vy_ref = V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        date_Vref = date1_Vref = date2_Vref = Vector{Sleipnir.Float}([])
     end
 
     if !isnothing(glacier.thicknessData)
         H_ref = glacier.thicknessData.H
     else
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-    end
-
-    iceflow_cache = simulation.cache.iceflow
-    if !isnothing(simulation.model.machine_learning)
-        θ = simulation.model.machine_learning.θ
-    else
-        θ = nothing
     end
 
     results = Results(
@@ -105,6 +126,9 @@ function create_results(
         V_ref = V_ref,
         Vx_ref = Vx_ref,
         Vy_ref = Vy_ref,
+        date_Vref = date_Vref,
+        date1_Vref = date1_Vref,
+        date2_Vref = date2_Vref,
         Δx = glacier.Δx,
         Δy = glacier.Δy,
         lon = glacier.cenlon,
