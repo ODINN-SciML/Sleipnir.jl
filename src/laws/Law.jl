@@ -182,8 +182,7 @@ Law{T}(inputs, f, init_cache, callback_freq, max_value, min_value, name) where {
     Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, max_value, min_value, name)
 
 apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
-init_cache(law::Law, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
-init_cache(law::Law, simulation, glacier_idx, θ; scalar) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
+init_cache(law::Law, simulation, glacier_idx, θ; scalar=false) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
 cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 
 is_callback_law(::Law{<:Any, <:Any, <:Any, Nothing}) = false
@@ -211,7 +210,7 @@ The update function is a no-op, and only the `init_cache` function matters.
 
 # Type Parameters
 
-- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cache`.
+- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cac=falsehe`.
 
 # Examples
 
