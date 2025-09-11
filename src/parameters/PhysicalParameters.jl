@@ -29,7 +29,6 @@ struct PhysicalParameters{F <: AbstractFloat, I <: Integer} <: AbstractParameter
     maxTlaw::F
     minTlaw::F
     noise_A_magnitude::F
-    PDD_time_window::I
 end
 
 """
@@ -46,8 +45,7 @@ Initialize the physical parameters of a model.
         minC::Float64 = 8.5e-20,
         maxTlaw::Float64 = 1.0,
         minTlaw::Float64 = -25.0,
-        noise_A_magnitude::Float64 = 5e-18,
-        PDD_time_window::Int64 = 7
+        noise_A_magnitude::Float64 = 5e-18
         )
 
 Keyword arguments
@@ -63,7 +61,6 @@ Keyword arguments
     - `maxTlaw`: Maximum value of Temperature used in simulations on fake law
     - `minTlaw`: Minimum value of Temperature used in simulations on fake law
     - `noise_A_magnitude`: Magnitude of noise added to A
-    - `PDD_time_window`: Time window for positive degree days (PDD) in days, used to compute the CPDDs for inputs of laws.
 """
 function PhysicalParameters(;
             ρ::F = 900.0,
@@ -83,11 +80,10 @@ function PhysicalParameters(;
     ft = typeof(g)
     it = typeof(PDD_time_window)
     physical_parameters = PhysicalParameters{ft, it}(ρ, g, ϵ, η₀,
-                                            maxA, minA,
-                                            maxC, minC,
-                                            maxTlaw, minTlaw,
-                                            noise_A_magnitude,
-                                            PDD_time_window)
+                                                maxA, minA,
+                                                maxC, minC,
+                                                maxTlaw, minTlaw,
+                                                noise_A_magnitude)
 
     return physical_parameters
 end
@@ -97,5 +93,4 @@ Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g =
                                       a.maxA == b.maxA && a.minA == b.minA && 
                                       a.minC == b.minC && a.maxC == b.maxC && 
                                       a.maxTlaw == b.maxTlaw &&
-                                      a.noise_A_magnitude == b.noise_A_magnitude && 
-                                      a.PDD_time_window == b.PDD_time_window
+                                      a.noise_A_magnitude == b.noise_A_magnitude
