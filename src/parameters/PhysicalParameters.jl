@@ -53,7 +53,7 @@ Keyword arguments
     - `ρ`: Ice density
     - `g`: Gravitational constant
     - `ϵ`: Small number
-    - `η₀`:  
+    - `η₀`: Factor to cap surface elevation differences with the upstream ice thickness to impose boundary condition in the iceflow equation
     - `maxA`: Maximum value for `A` (Glen's coefficient)
     - `minA`: Minimum value for `A` (Glen's coefficient)
     - `maxC`: Maximum value of sliding coefficient `C`
