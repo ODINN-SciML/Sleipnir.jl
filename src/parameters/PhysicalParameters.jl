@@ -17,7 +17,7 @@ A structure representing physical parameters used in simulations.
 - `minTlaw::F`: Minimum temperature according to some law.
 - `noise_A_magnitude::F`: Magnitude of noise in A.
 """
-struct PhysicalParameters{F <: AbstractFloat, I <: Integer} <: AbstractParameters
+struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     ρ::F
     g::F
     ϵ::F
