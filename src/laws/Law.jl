@@ -210,7 +210,7 @@ The update function is a no-op, and only the `init_cache` function matters.
 
 # Type Parameters
 
-- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cac=falsehe`.
+- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cache=false`.
 
 # Examples
 
