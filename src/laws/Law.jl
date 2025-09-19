@@ -172,12 +172,13 @@ struct Law{CACHE_TYPE, F, INIT, FREQ, MAX, MIN, NAME} <: AbstractLaw
 end
 
 # Outer constructor with default values for max_value and min_value
-Law{CACHE_TYPE}(f, init_cache, callback_freq; max_value = NaN, min_value = NaN, name) where {CACHE_TYPE} =
-    Law{CACHE_TYPE}(f, init_cache, callback_freq, max_value, min_value, name)
+Law{T}(f, init_cache, callback_freq; max_value = NaN, min_value = NaN, name) where {T} =
+    Law{T}(f, init_cache, callback_freq, max_value, min_value, name)
 
 Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, NaN, NaN, :unknown)
 Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq, NaN, NaN, :unknown)
-Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, max_value = NaN, min_value = NaN, name) where{T} = Law{T}(inputs, f!, init_cache, callback_freq, max_value, min_value, name)
+Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, max_value = NaN, min_value = NaN, name = :unknown) where{T} = 
+    Law{T}(inputs, f!, init_cache, callback_freq, max_value, min_value, name)
 Law{T}(inputs, f, init_cache, callback_freq, max_value, min_value, name) where {T} =
     Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, max_value, min_value, name)
 

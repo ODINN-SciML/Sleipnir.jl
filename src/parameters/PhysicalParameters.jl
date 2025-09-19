@@ -78,8 +78,7 @@ function PhysicalParameters(;
             ) where {F <: AbstractFloat, I <: Integer}
     # Build PhysicalParameters based on values
     ft = typeof(g)
-    it = typeof(PDD_time_window)
-    physical_parameters = PhysicalParameters{ft, it}(ρ, g, ϵ, η₀,
+    physical_parameters = PhysicalParameters{ft}(ρ, g, ϵ, η₀,
                                                 maxA, minA,
                                                 maxC, minC,
                                                 maxTlaw, minTlaw,
