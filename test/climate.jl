@@ -22,7 +22,7 @@ function climate_downscale()
         climate_step = get_cumulative_climate(glacier.climate.raw_climate)
     end
     @testset "get_cumulative_climate!" begin
-        get_cumulative_climate!(glacier.climate, period)
+        get_cumulative_climate!(glacier.climate, t, step)
     end
     @testset "downscale_2D_climate" begin
         climate_2D_step = downscale_2D_climate(glacier.climate.climate_step, glacier.S, glacier.Coords)
