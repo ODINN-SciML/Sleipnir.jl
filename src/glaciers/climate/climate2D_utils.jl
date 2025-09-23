@@ -37,33 +37,38 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         @error "RGI path not found for: $rgi_id"
     end
 
-    if !isfile(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"))
+    raw_climate_clipped_file = "raw_climate_$(simparams.tspan).nc"
+    if !isfile(joinpath(rgi_path, raw_climate_clipped_file))
         println("Getting raw climate data for: ", rgi_id)
         # Get raw climate data for gdir
         tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
         climate =  get_raw_climate_data(rgi_path)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
-        if any((dims(climate, Ti)[begin] <= period[begin]) & any(dims(climate, Ti)[end] >= period[end]))
+        climTstart = dims(climate, Ti)[begin]
+        climTend = dims(climate, Ti)[end]
+        if any((climTstart <= period[begin]) & any(climTend >= period[end]))
             climate = climate[At(period)] # Crop desired time period
         else
-            @warn "No overlapping period available between climate tspan!"
+            @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
         end
         # Save raw gdir climate on disk
-        write(joinpath(rgi_path, "raw_climate_$(simparams.tspan).nc"), climate)
+        write(joinpath(rgi_path, raw_climate_clipped_file), climate)
         GC.gc()
     end
 end
 
 
 """
-    get_cumulative_climate!(climate, period; gradient_bounds=[-0.009, -0.003])
+    get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
 
 Calculate and update the cumulative climate data for a given period.
+This period is defined through the end of the time period `t` and the time step `step`.
 
 # Keyword arguments
 - `climate::Climate`: The climate object containing raw climate data.
-- `period::Period`: The period for which to calculate the cumulative climate data.
+- `t::AbstractFloat`: Time at which the cumulative climate data should be computed.
+- `step::AbstractFloat`: Time step used to compute the cumulative climate data. Together with `t` they define a time period.
 - `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
 
 # Updates
@@ -77,8 +82,11 @@ Calculate and update the cumulative climate data for a given period.
 - `climate.climate_step.avg_gradient`: The average gradient for the given period.
 - `climate.climate_step.ref_hgt`: The reference height from the raw climate data.
 """
-function get_cumulative_climate!(climate, period, gradient_bounds=[-0.009, -0.003])
+function get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
+    # First we get the dates of the current time and the previous step
+    period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
     climate.climate_raw_step = climate.raw_climate[At(period)]
+
     climate.avg_temps = mean(climate.climate_raw_step.temp)
 
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
