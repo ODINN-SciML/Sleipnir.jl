@@ -31,6 +31,7 @@ using ImageInTerminal
 using ImageCore
 using Printf
 using CFTime
+using MLStyle
 
 ##############################################
 ############    PARAMETERS     ###############

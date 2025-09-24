@@ -122,11 +122,12 @@ Initialize a glacier with the given RGI ID and parameters.
 function initialize_glacier(
     rgi_id::String,
     parameters::Parameters;
-    smoothing=false,
+    smoothing::Bool = false,
+    masking::Union{Int, Nothing, Matrix} = 2,
     velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
-    glacier = Glacier2D(rgi_id, parameters; smoothing=smoothing)
+    glacier = Glacier2D(rgi_id, parameters; masking = masking, smoothing = smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
@@ -167,7 +168,13 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
+function Glacier2D(
+    rgi_id::String,
+    params::Parameters;
+    masking::Union{Int, Nothing, BitMatrix} = 2,
+    smoothing=false
+    )
+
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
@@ -199,6 +206,13 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
         if params.simulation.gridScalingFactor > 1
             # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
             dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
+        end
+
+        # Define mask where ice can exist (H > 0)
+        mask = @match masking begin
+            ::Nothing => trues(size(H₀)...)
+            ::Int => is_in_glacier(H₀, -masking)
+            ::BitMatrix => masking
         end
 
         # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
@@ -263,7 +277,7 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
             climate = climate,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
-            slope = slope, dist_border = dist_border,
+            slope = slope, dist_border = dist_border, mask = mask,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
             cenlon = cenlon, cenlat = cenlat,
             params_projection = params_projection
@@ -622,15 +636,31 @@ discarding the border pixels of a glacier.
 Arguments:
 - `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
 - `distance::I`: Distance to the border, computed as the number of pixels we need
-    to move to find a pixel with value zero.
+    to move from within the glacier to find a pixel with value zero.
 """
 function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
     B = convert.(F, (A .!= 0))
+    # Reverse values in case we want distance from outside the border
+    if distance < 0
+        distance = -distance
+        B .= 1.0 .- B
+    end
     for i in 1:distance
         # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
-        B = min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
+        B = min.(
+            B,
+            circshift(B, (1,0)),
+            circshift(B, (-1,0)),
+            circshift(B, (0,1)),
+            circshift(B, (0,-1))
+            )
     end
-    return B .> 0.001
+    B_bool = B .> 0.001
+    if distance >= 0
+        return B_bool
+    else
+        return .!B_bool
+    end
 end
 
 """
