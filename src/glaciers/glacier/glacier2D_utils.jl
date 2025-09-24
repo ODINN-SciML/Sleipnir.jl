@@ -77,7 +77,7 @@ function initialize_glaciers(
         rgi_ids
     )
 
-    if params.simulation.use_glathida_data == true
+    if params.simulation.use_glathida_data
 
         # Obtain H_glathida values for the valid RGI IDs
         H_glathida_values, valid_glaciers = get_glathida!(glaciers, params)

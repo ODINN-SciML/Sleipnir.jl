@@ -26,7 +26,7 @@ function glaciers2D_plots()
     # Test execution
     @testset "plot_glacier tests" begin
         @testset "Heatmaps" begin
-            plot_glacier(results, "heatmaps", [:H,:B])
+            plot_glacier(results, "heatmaps", [:H,:B]; plotContour=true)
         end
 
         @testset "Quivers" begin

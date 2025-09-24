@@ -57,6 +57,8 @@ Plot heatmaps for glacier variables.
 - `timeIdx::Union{Nothing,Int64}`:: Optional argument to select the index at which
     data should be plotted when dealing with vector of matrix. Default is nothing
     which selects the last element available.
+- `plotContour::Bool`: Whether to add a contour plot representing the glacier borders at
+    the beginning of the simulation on top of each of the figures. Default is false.
 
 # Returns
 - A plot of the glacier heatmaps.
@@ -66,7 +68,8 @@ function plot_glacier_heatmaps(
     variables::Vector{Symbol},
     title_mapping::Dict;
     scale_text_size::Union{Nothing,Float64}=nothing,
-    timeIdx::Union{Nothing,Int64}=nothing
+    timeIdx::Union{Nothing,Int64}=nothing,
+    plotContour::Bool=false,
 )
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
@@ -78,6 +81,9 @@ function plot_glacier_heatmaps(
     y = results.y
     rgi_id = results.rgi_id
     Δx = results.Δx
+    mask = results.H[begin] .> 0.0
+    nx, ny = size(results.H[begin])
+    ctr = plotContour ? Contour.contour(collect(1:nx),1+ny.-collect(1:ny),mask, 0.5) : nothing
 
     ice_thickness_vars = [:H, :H₀, :H_glathida, :H_ref] # Ice thickness variables
     velocity_vars = [:V, :Vx, :Vy, :V_ref] # Velocity variables, excluding V_diff
@@ -127,7 +133,7 @@ function plot_glacier_heatmaps(
         ax_row = div(i - 1, 2) + 1
         ax_col = 2 * (rem(i - 1, 2)) + 1
         ax = Axis(fig[ax_row, ax_col], aspect=DataAspect())
-        data = getfield(results, var)
+        data = deepcopy(getfield(results, var))
         title, unit = get(title_mapping, string(var), (string(var), ""))
 
         if typeof(data) <: Vector
@@ -138,6 +144,15 @@ function plot_glacier_heatmaps(
 
         nx, ny = size(data)
         colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
+
+        mask = results.H[begin] .> 0.0
+        if (var in ice_thickness_vars) || (var in velocity_vars)
+            data[.!mask] .= NaN
+        end
+        if var==:H_glathida
+            # For GlaThiDa variable, replace zeros by NaN
+            data[mask .& (data.==0)] .= NaN
+        end
 
         # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
         if var in ice_thickness_vars
@@ -150,6 +165,14 @@ function plot_glacier_heatmaps(
         cb = Colorbar(fig[ax_row, ax_col + 1], hm)
         Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
         Label(fig[ax_row, ax_col + 1], "$var ($unit)", fontsize=14, valign=:top, padding=(0, -25))
+
+        if plotContour
+            for curve in ctr.lines
+                xs = first.(curve.vertices)
+                ys = last.(curve.vertices)
+                lines!(ax, xs, ys, color=:black, linewidth=1)
+            end
+        end
 
         ax.title = "$title"
         ax.xlabel = "Longitude"
@@ -349,7 +372,9 @@ function plot_glacier_difference_evolution(
 
     # Print plot information
     variable_title = get(title_mapping, variables[1], variables[1])
-    data_diff = data[end] - data[1]
+    data_diff = data[end] - data[begin]
+    mask = results.H[begin] .> 0.0
+    data_diff[.!mask] .= NaN
 
     # Determine whether to create a single plot or a subplot
     if metrics == ["hist"]
@@ -379,14 +404,14 @@ function plot_glacier_difference_evolution(
     # Plot based on the metric
     for metric in metrics
         if metric == "hist"
-            hist!(ax, vec(data_diff), bins=50)
-            ax.limits[] = (minimum(data_diff), maximum(data_diff), nothing, nothing)
+            hist!(ax, vec(data_diff[mask]), bins=50)
+            ax.limits[] = (minimum(data_diff[mask]), maximum(data_diff[mask]), nothing, nothing)
         elseif metric == "difference"
 
             nx, ny = size(data_diff)
 
             # Calculate the symmetric color range
-            max_abs_value = max(abs(minimum(data_diff)), abs(maximum(data_diff)))
+            max_abs_value = max(abs(minimum(data_diff[mask])), abs(maximum(data_diff[mask])))
 
             hm_diff = heatmap!(ax_diff, reverseForHeatmap(data_diff, x, y), colormap=:redsblues, colorrange=(-max_abs_value, max_abs_value))
 
