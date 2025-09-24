@@ -1,4 +1,4 @@
-export initialize_surfacevelocitydata
+export initialize_surfacevelocitydata, random_spatially_coherent_mask
 
 """
     initialize_surfacevelocitydata(
@@ -263,4 +263,66 @@ function grid(
         throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
     end
     return xG, yG, vxG, vyG
+end
+
+"""
+    random_spatially_coherent_mask(h::Integer, w::Integer; sigma::Real=1.0, threshold::Real=0.0) -> BitMatrix
+    random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, threshold::Real=0.0) -> BitMatrix
+
+Generate a random binary mask with **spatially correlated patches** rather than pixel-wise independent noise.
+This is done by drawing white noise, applying a Gaussian low-pass filter in the frequency domain, and thresholding
+the result.
+
+# Arguments
+- `h::Integer`, `w::Integer`: Height and width of the mask.
+- `mask::BitMatrix`: An existing binary mask. The generated spatially coherent mask
+    will be applied elementwise (`.&`) to this mask.
+- `sigma::Real=1.0`: Controls the spatial correlation length. Larger values produce
+    smoother, larger patches.
+- `threshold::Real=0.0`: Threshold applied to the filtered noise. Higher values
+    result in sparser masks. Statistically, setting the threshold to zero results in
+    a mask with half pixels to true.
+
+# Returns
+A `BitMatrix` of size `(h, w)` containing `true` in patchy regions and `false` elsewhere.
+
+# Examples
+```julia
+# Generate a new 256×256 patchy mask
+mask = random_spatially_coherent_mask(256, 256; sigma=8.0, threshold=0.0)
+
+# Apply patchy masking to an existing mask
+base = trues(128, 128)
+patchy = random_spatially_coherent_mask(base; sigma=5.0, threshold=0.3)
+"""
+function random_spatially_coherent_mask(h::Integer, w::Integer; sigma::Real=1.0, threshold::Real=0.0)
+    # 1) white noise
+    noise = randn(h, w)
+
+    # 2) forward 2D rfft
+    f = fft(noise)   # size (h, w÷2 + 1)
+
+    # 3) build 2D frequency grid
+    kx = fftfreq(h)                  # length h
+    ky = fftfreq(w) # (0:(w÷2)) ./ w              # length w÷2 + 1 (since rfft2 keeps nonnegative y-freqs)
+
+    KX = reshape(kx, h, 1) .* ones(1, length(ky))  # h × (w÷2+1)
+    KY = ones(h, 1) .* reshape(ky, 1, length(ky))  # h × (w÷2+1)
+
+    # 4) Gaussian low-pass filter
+    power = exp.(- (KX.^2 .+ KY.^2) .* (2π*sigma)^2)
+
+    # 5) apply filter in frequency space
+    f_filtered = f .* power
+
+    # 6) invert back to real space
+    smooth = real(ifft(f_filtered))  # explicitly give original size
+
+    # 7) threshold for binary mask
+    return smooth .> threshold
+end
+function random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, threshold::Real=0.0)
+    h, w = size(mask)
+    random_mask = random_spatially_coherent_mask(h, w; sigma=sigma, threshold=threshold)
+    return mask .& random_mask
 end
