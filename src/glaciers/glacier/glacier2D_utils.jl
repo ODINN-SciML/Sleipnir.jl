@@ -18,7 +18,6 @@ Initialize glaciers based on provided RGI IDs and parameters.
 # Arguments
 - `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `test::Bool`: An optional boolean flag indicating whether to run in test mode. Default is `false`.
 - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
@@ -114,6 +113,7 @@ Initialize a glacier with the given RGI ID and parameters.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
 - `parameters::Parameters`: A struct containing various parameters required for initialization.
 - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
 - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
@@ -154,6 +154,7 @@ Build glacier object for a given RGI ID and parameters.
 # Arguments
 - `rgi_id::String`: The RGI ID of the glacier.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
+- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
 - `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
 - `test::Bool=false`: Optional; test flag. Default is `false`.
 
@@ -183,7 +184,6 @@ function Glacier2D(
         glacier_gd = convertRasterStackToFloat64(glacier_gd)
     end
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
-    # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
     if params.simulation.ice_thickness_source == "Millan22" && params.simulation.use_velocities
@@ -215,8 +215,6 @@ function Glacier2D(
             ::BitMatrix => masking
         end
 
-        # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
-        # H₀[H_mask] .= 0.0
         nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
 
         # Mercator Projection
@@ -632,6 +630,8 @@ end
 Return a matrix with booleans indicating if a given pixel is at distance at least
 `distance` in the set of non zero values of the matrix. This usually allows
 discarding the border pixels of a glacier.
+A positive value of `distance`` indicates a measurement from inside the glacier, while a
+negative `distance`` indicates one from outside.
 
 Arguments:
 - `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.

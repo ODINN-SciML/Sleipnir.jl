@@ -35,6 +35,7 @@ manually, but rather through the `initialize_glaciers` function.
 - `n::F`: Flow law exponent.
 - `slope::Matrix{F}`: Surface slope matrix.
 - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
+- `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
 - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
@@ -92,6 +93,7 @@ end
         n::F = 0.0,
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        mask::BitMatrix = BitMatrix([;;]),
         Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
         Δx::F = 0.0,
         Δy::F = 0.0,
@@ -127,6 +129,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `n::F`: Flow law exponent.
 - `slope::Matrix{F}`: Slope matrix.
 - `dist_border::Matrix{F}`: Distance to border matrix.
+- `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
 - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
 - `Δx::F`: Grid spacing in the x-direction.
 - `Δy::F`: Grid spacing in the y-direction.
