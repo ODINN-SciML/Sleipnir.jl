@@ -32,6 +32,7 @@ using ImageInTerminal
 using ImageCore
 using Printf
 using CFTime
+using MLStyle
 using FFTW
 
 ##############################################
