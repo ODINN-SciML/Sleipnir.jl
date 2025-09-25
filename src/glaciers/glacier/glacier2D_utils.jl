@@ -18,7 +18,6 @@ Initialize glaciers based on provided RGI IDs and parameters.
 # Arguments
 - `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `test::Bool`: An optional boolean flag indicating whether to run in test mode. Default is `false`.
 - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
@@ -77,7 +76,7 @@ function initialize_glaciers(
         rgi_ids
     )
 
-    if params.simulation.use_glathida_data == true
+    if params.simulation.use_glathida_data
 
         # Obtain H_glathida values for the valid RGI IDs
         H_glathida_values, valid_glaciers = get_glathida!(glaciers, params)
@@ -114,6 +113,7 @@ Initialize a glacier with the given RGI ID and parameters.
 - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
 - `parameters::Parameters`: A struct containing various parameters required for initialization.
 - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
 - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
@@ -122,11 +122,12 @@ Initialize a glacier with the given RGI ID and parameters.
 function initialize_glacier(
     rgi_id::String,
     parameters::Parameters;
-    smoothing=false,
+    smoothing::Bool = false,
+    masking::Union{Int, Nothing, Matrix} = 2,
     velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
 )
     # Build glacier and its associated climate
-    glacier = Glacier2D(rgi_id, parameters; smoothing=smoothing)
+    glacier = Glacier2D(rgi_id, parameters; masking = masking, smoothing = smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
@@ -153,6 +154,7 @@ Build glacier object for a given RGI ID and parameters.
 # Arguments
 - `rgi_id::String`: The RGI ID of the glacier.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
+- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
 - `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
 - `test::Bool=false`: Optional; test flag. Default is `false`.
 
@@ -167,7 +169,13 @@ This function loads and initializes the glacier data for a given RGI ID. It retr
 - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
 - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
-function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
+function Glacier2D(
+    rgi_id::String,
+    params::Parameters;
+    masking::Union{Int, Nothing, BitMatrix} = 2,
+    smoothing=false
+    )
+
     # Load glacier gridded data
     F = Sleipnir.Float
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
@@ -176,7 +184,6 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
         glacier_gd = convertRasterStackToFloat64(glacier_gd)
     end
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
-    # println("Using $ice_thickness_source for initial state")
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
     if params.simulation.ice_thickness_source == "Millan22" && params.simulation.use_velocities
@@ -201,8 +208,13 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
             dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
         end
 
-        # H_mask = (dist_border .< 20.0) .&& (S .> maximum(S)*0.7)
-        # H₀[H_mask] .= 0.0
+        # Define mask where ice can exist (H > 0)
+        mask = @match masking begin
+            ::Nothing => trues(size(H₀)...)
+            ::Int => is_in_glacier(H₀, -masking)
+            ::BitMatrix => masking
+        end
+
         nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
 
         # Mercator Projection
@@ -263,7 +275,7 @@ function Glacier2D(rgi_id::String, params::Parameters; smoothing=false)
             climate = climate,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
-            slope = slope, dist_border = dist_border,
+            slope = slope, dist_border = dist_border, mask = mask,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
             cenlon = cenlon, cenlat = cenlat,
             params_projection = params_projection
@@ -618,19 +630,37 @@ end
 Return a matrix with booleans indicating if a given pixel is at distance at least
 `distance` in the set of non zero values of the matrix. This usually allows
 discarding the border pixels of a glacier.
+A positive value of `distance`` indicates a measurement from inside the glacier, while a
+negative `distance`` indicates one from outside.
 
 Arguments:
 - `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
 - `distance::I`: Distance to the border, computed as the number of pixels we need
-    to move to find a pixel with value zero.
+    to move from within the glacier to find a pixel with value zero.
 """
 function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
     B = convert.(F, (A .!= 0))
+    # Reverse values in case we want distance from outside the border
+    if distance < 0
+        distance = -distance
+        B .= 1.0 .- B
+    end
     for i in 1:distance
         # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
-        B = min.(B, circshift(B, (1,0)), circshift(B, (-1,0)), circshift(B, (0,1)), circshift(B, (0,-1)))
+        B = min.(
+            B,
+            circshift(B, (1,0)),
+            circshift(B, (-1,0)),
+            circshift(B, (0,1)),
+            circshift(B, (0,-1))
+            )
     end
-    return B .> 0.001
+    B_bool = B .> 0.001
+    if distance >= 0
+        return B_bool
+    else
+        return .!B_bool
+    end
 end
 
 """

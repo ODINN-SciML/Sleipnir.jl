@@ -13,6 +13,7 @@ using Distributed
 using Statistics
 using CairoMakie
 using Observables
+import Contour
 using Downloads
 using HDF5
 using ComponentArrays
@@ -31,6 +32,8 @@ using ImageInTerminal
 using ImageCore
 using Printf
 using CFTime
+using MLStyle
+using FFTW
 
 ##############################################
 ############    PARAMETERS     ###############
