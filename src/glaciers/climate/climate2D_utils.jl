@@ -40,8 +40,9 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
     raw_climate_clipped_file = "raw_climate_$(simparams.tspan).nc"
     if !isfile(joinpath(rgi_path, raw_climate_clipped_file))
         println("Getting raw climate data for: ", rgi_id)
-        # Get raw climate data for gdir
-        tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
+        # Get raw climate data for gdir. We start a year before the simulation tspan to ensure we have enough data 
+        # for variables with a sliding time window
+        tspan_date = partial_year(Day, simparams.tspan[1]-1):Day(1):partial_year(Day, simparams.tspan[2])
         climate =  get_raw_climate_data(rgi_path)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
