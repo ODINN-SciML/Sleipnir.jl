@@ -151,6 +151,7 @@ struct Law{CACHE_TYPE, F, INIT, FREQ, MAX, MIN, NAME} <: AbstractLaw
     min_value::MIN
     name::NAME
 
+    # Single, unambiguous inner constructor
     function Law{CACHE_TYPE}(f, init_cache, callback_freq, max_value, min_value, name) where {CACHE_TYPE}
         new{
             CACHE_TYPE,
@@ -171,21 +172,35 @@ struct Law{CACHE_TYPE, F, INIT, FREQ, MAX, MIN, NAME} <: AbstractLaw
     end
 end
 
-# Outer constructor with default values for max_value and min_value
-Law{CACHE_TYPE}(f, init_cache, callback_freq; max_value = NaN, min_value = NaN, name) where {CACHE_TYPE} =
+# --- OUTER CONSTRUCTORS ---
+
+# 1. Outer constructor with default values for max_value, min_value, name
+Law{CACHE_TYPE}(f, init_cache, callback_freq; max_value = NaN, min_value = NaN, name = :unknown) where {CACHE_TYPE} =
     Law{CACHE_TYPE}(f, init_cache, callback_freq, max_value, min_value, name)
 
-Law{T}(inputs, f, init_cache, callback_freq) where {T} = Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, NaN, NaN, :unknown)
-Law{T}(::Nothing, f, init_cache, callback_freq) where{T} = Law{T}(f, init_cache, callback_freq, NaN, NaN, :unknown)
-Law{T}(;f!, inputs = nothing, callback_freq = nothing, init_cache, max_value = NaN, min_value = NaN, name) where{T} = Law{T}(inputs, f!, init_cache, callback_freq, max_value, min_value, name)
-Law{T}(inputs, f, init_cache, callback_freq, max_value, min_value, name) where {T} =
+# 2. Law with inputs (tuple or named tuple), positional
+Law{T}(inputs::Union{Tuple, NamedTuple}, f, init_cache, callback_freq, max_value, min_value, name=:unknown) where {T} =
     Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, max_value, min_value, name)
 
-apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
-init_cache(law::Law, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
-init_cache(law::Law, simulation, glacier_idx, θ; scalar) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
-cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
+# 3. Law with inputs (tuple or named tuple), minimal positional
+Law{T}(inputs::Union{Tuple, NamedTuple}, f, init_cache, callback_freq) where {T} =
+    Law{T}(GenInputsAndApply(inputs, f), init_cache, callback_freq, NaN, NaN, :unknown)
 
+# # 4. Law without inputs, minimal positional
+# Law{T}(f, init_cache, callback_freq) where {T} =
+#     Law{T}(f, init_cache, callback_freq, NaN, NaN, :unknown)
+
+# 5. Law with keyword arguments (with or without inputs)
+Law{T}(; f!, init_cache, callback_freq=nothing, inputs=nothing, max_value=NaN, min_value=NaN, name=:unknown) where {T} =
+    inputs === nothing ?
+        Law{T}(f!, init_cache, callback_freq, max_value, min_value, name) :
+        Law{T}(GenInputsAndApply(inputs, f!), init_cache, callback_freq, max_value, min_value, name)
+
+# --- END OF CONSTRUCTORS ---
+
+apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
+init_cache(law::Law, simulation, glacier_idx, θ; scalar=false) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
+cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_callback_law(::Law{<:Any, <:Any, <:Any, Nothing}) = false
 is_callback_law(::Law{<:Any, <:Any, <:Any, <:AbstractFloat}) = true
 
@@ -235,7 +250,7 @@ struct ConstantLaw{CACHE_TYPE, INIT} <: AbstractLaw
 end
 
 apply_law!(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
-init_cache(law::ConstantLaw, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
+init_cache(law::ConstantLaw, simulation, glacier_idx, θ; scalar=false) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_callback_law(::ConstantLaw) = false
 callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
