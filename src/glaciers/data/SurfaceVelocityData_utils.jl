@@ -72,19 +72,57 @@ function initialize_surfacevelocitydata(
     params_projection = parse_proj(metadata(velRast)["proj4"])
     hemisphere = (y[end]+y[begin])/2 >= 0 ? :north : :south
     transform(X,Y) = Sleipnir.UTMercator(X, Y; zone=Int(params_projection["zone"]), hemisphere=hemisphere)
-    latitudes = map(x -> x.lat.val, transform.(mean(x), y))
-    longitudes = map(x -> x.lon.val, transform.(x, mean(y)))
+    latitudes_vel = map(x -> x.lat.val, transform.(mean(x), y))
+    longitudes_vel = map(x -> x.lon.val, transform.(x, mean(y)))
+
+    # Also retrieve the regional coordinates of the glacier grid through x and y
+    latitudes_glacier = glacier.Coords["lat"]
+    longitudes_glacier = glacier.Coords["lon"]
+
+    # Define mask where there is velocity data
+    min_distance = 0.5 * (glacier.Δx^2 + glacier.Δy^2)^0.5
+    Latitudes_vel = latitudes_vel * ones(length(longitudes_vel))'
+    Longitudes_vel = ones(length(latitudes_vel)) * longitudes_vel'
+    mask_data = [
+        minimum(local_distance.(Latitudes_vel, Longitudes_vel, Ref(lat), Ref(lon))) .> min_distance
+        for lon in longitudes_glacier,
+        lat in latitudes_glacier
+        ]
+    # Define mask where there is ice
+    mask_ice = glacier.H₀ .== 0
+
+    # Test that at least part of the target glacier falls inside datacube
+    # velocity datacube corners
+    lat_v_begin, lat_v_end = minimum(latitudes_vel), maximum(latitudes_vel)
+    lon_v_begin, lon_v_end = minimum(longitudes_vel), maximum(longitudes_vel)
+    # glacier corners
+    is_icy = glacier.H₀ .> 0.0
+    icy_latitudes_glacier = latitudes_glacier[any.(eachcol(is_icy))]
+    icy_longitudes_glacier = longitudes_glacier[any.(eachrow(is_icy))]
+
+    lat_g_begin, lat_g_end = minimum(icy_latitudes_glacier), maximum(icy_latitudes_glacier)
+    lon_g_begin, lon_g_end = minimum(icy_longitudes_glacier), maximum(icy_longitudes_glacier)
+
+    # Overlapping occurs when one of the glacier corners is inside velocity datacube:
+    lw, up = (lat_v_begin, lon_v_begin), (lat_v_end, lon_v_end)
+    glacier_in_datacube = [
+        all(lw .<= [lat_g_begin, lon_g_begin] .<= up),
+        all(lw .<= [lat_g_begin, lon_g_end] .<= up),
+        all(lw .<= [lat_g_end, lon_g_begin] .<= up),
+        all(lw .<= [lat_g_end, lon_g_end] .<= up)
+    ]
+    @assert any(glacier_in_datacube) "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+    if any(.!glacier_in_datacube)
+        coverage = round(100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
+        @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+        @warn "Glacier is not enterely include in datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
+    end
 
     if mapToGlacierGrid
         # Here vx and vy are of type DiskArrays.BroadcastDiskArray
-        x, y, vx, vy = grid(glacier, latitudes, longitudes, vx, vy, mapping)
-        # Also retrieve the regional coordinates of the glacier grid through x and y
-        latitudes = glacier.Coords["lat"]
-        longitudes = glacier.Coords["lon"]
-        # Here vx and vy have been read from disk and they are arrays
-
+        x, y, vx, vy = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, mapping)
         # Set ice velocity to NaN outside of the glacier outlines
-        mask = glacier.H₀ .== 0
+        mask = mask_ice .|| mask_data
         for i in range(1, size(vx,3))
             vx[mask,i] .= missing
             vy[mask,i] .= missing
@@ -94,6 +132,10 @@ function initialize_surfacevelocitydata(
         vx = vx[:,:,:]
         vy = vy[:,:,:]
     end
+
+    # Define coordinates used for the velocity dataset
+    latitudes = mapToGlacierGrid ? latitudes_glacier : latitudes_vel
+    longitudes = mapToGlacierGrid ? longitudes_glacier : longitudes_vel
 
     # Compute absolute velocity
     vabs = (vx.^2 .+ vy.^2).^0.5
@@ -128,11 +170,12 @@ function initialize_surfacevelocitydata(
     end
 
     return SurfaceVelocityData(
-        x=x, y=y, lat=latitudes, lon=longitudes,
-        vx=vx, vy=vy, vabs=vabs,
-        vx_error=vx_error, vy_error=vy_error, vabs_error=vabs_error,
-        date=date_mean, date1=date1, date2=date2, date_error=date_error,
-        isGridGlacierAligned=mapToGlacierGrid
+        x = x, y = y,
+        lat = latitudes, lon = longitudes,
+        vx = vx, vy = vy, vabs = vabs,
+        vx_error = vx_error, vy_error = vy_error, vabs_error = vabs_error,
+        date = date_mean, date1 = date1, date2 = date2, date_error = date_error,
+        isGridGlacierAligned = mapToGlacierGrid
     )
 end
 
@@ -223,13 +266,17 @@ function grid(
         cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"],
         x0=params_projection["x_0"], y0=params_projection["y_0"]
     )
+    # Glacier coordinates in northing/easting coordinates
     xG = map(x -> x.x.val, transformReverse.(glacier.cenlat, glacier.Coords["lon"]))
     yG = map(x -> x.y.val, transformReverse.(glacier.Coords["lat"], glacier.cenlon))
+
+    # Velocity coordinates in northing/easting coordinates
     cenlatVel = (latitudes[end]+latitudes[begin])/2
     cenlonVel = (longitudes[end]+longitudes[begin])/2
     xV = map(x -> x.x.val, transformReverse.(cenlatVel, longitudes))
     yV = map(x -> x.y.val, transformReverse.(latitudes, cenlonVel))
 
+    # Velocity tensor in glacier grid
     velType = eltype(vx)
     vxG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
     vyG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
@@ -247,17 +294,28 @@ function grid(
         indy = Int.(round.((yG .- by)./ΔyV))
 
         # Lazy arrays need to be read by block, hence we read the smallest block of data that contains all the points we need
-        @assert size(vx,1)>=maximum(indx) "It looks like the datacube doesn't cover the whole glacier grid on the x-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-        @assert size(vx,2)>=maximum(indy) "It looks like the datacube doesn't cover the whole glacier grid on the y-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-        block_vx = vx[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
-        block_vy = vy[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
+        # @assert size(vx,1)>=maximum(indx) "It looks like the datacube doesn't cover the whole glacier grid on the x-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+        # @assert size(vx,2)>=maximum(indy) "It looks like the datacube doesn't cover the whole glacier grid on the y-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+        indx_lw = max(minimum(indx), 1)
+        indx_up = min(maximum(indx), size(vx, 1))
+        indy_lw = max(minimum(indy), 1)
+        indy_up = min(maximum(indy), size(vx, 1))
+        block_vx = vx[indx_lw:indx_up, indy_lw:indy_up,:]
+        block_vy = vy[indx_lw:indx_up, indy_lw:indy_up,:]
+        # block_vx = vx[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
+        # block_vy = vy[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
 
         # Assign to each point of the glacier grid the closest point on the grid of surface velocities
-        shiftx = -minimum(indx)+1
-        shifty = -minimum(indy)+1
-        for ix in range(1,length(glacier.Coords["lon"])), iy in range(1,length(glacier.Coords["lat"]))
-            vxG[ix,iy,begin:end] .= block_vx[indx[ix]+shiftx,indy[iy]+shifty,:]
-            vyG[ix,iy,begin:end] .= block_vy[indx[ix]+shiftx,indy[iy]+shifty,:]
+        shiftx = - indx_lw + 1
+        shifty = - indy_lw + 1
+        # shiftx = -minimum(indx)+1
+        # shifty = -minimum(indy)+1
+        for ix in range(1, length(glacier.Coords["lon"])), iy in range(1, length(glacier.Coords["lat"]))
+            ixv, iyv = indx[ix] + shiftx, indy[iy] + shifty
+            if checkbounds(Bool, block_vx, ixv, iyv, 1)
+                vxG[ix,iy,begin:end] .= block_vx[ixv, iyv, :]
+                vyG[ix,iy,begin:end] .= block_vy[ixv, iyv,:]
+            end
         end
     else
         throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
@@ -325,4 +383,21 @@ function random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, thresh
     h, w = size(mask)
     random_mask = random_spatially_coherent_mask(h, w; sigma=sigma, threshold=threshold)
     return mask .& random_mask
+end
+"""
+Compute distance between coordinates in meters
+"""
+function local_distance(lat1, lon1, lat2, lon2)
+    # average latitude for scaling longitude
+    φ = deg2rad((lat1 + lat2) / 2)
+    dx = (lon2 - lon1) * 111320 * cos(φ)  # meters in x (east-west)
+    dy = (lat2 - lat1) * 111320           # meters in y (north-south)
+    return sqrt(dx^2 + dy^2)
+end
+
+"""
+
+"""
+function combine_velocity_data(refVelocities)
+    return first(refVelocities)
 end
