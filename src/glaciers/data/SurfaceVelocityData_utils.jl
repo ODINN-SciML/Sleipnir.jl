@@ -396,8 +396,45 @@ function local_distance(lat1, lon1, lat2, lon2)
 end
 
 """
-
+Combine a list of velocity datasets into a single data velocity object
 """
 function combine_velocity_data(refVelocities)
-    return first(refVelocities)
+    # Check all surfaces are on the same grid as the glacier
+    isGridGlacierAligned = [refV.isGridGlacierAligned for refV in refVelocities]
+    @assert all(isGridGlacierAligned) "Different ice surface velocity datasets are not alligned"
+
+    # Shared features
+    x = refVelocities[begin].x
+    y = refVelocities[begin].y
+    lat = refVelocities[begin].lat
+    lon = refVelocities[begin].lon
+    # Concat features
+    vx = reduce(vcat, [refV.vx for refV in refVelocities])
+    vy = reduce(vcat, [refV.vy for refV in refVelocities])
+    vabs = reduce(vcat, [refV.vabs for refV in refVelocities])
+    vx_error = reduce(vcat, [refV.vx_error for refV in refVelocities])
+    vy_error = reduce(vcat, [refV.vy_error for refV in refVelocities])
+    vabs_error = reduce(vcat, [refV.vabs_error for refV in refVelocities])
+    date = reduce(vcat, [refV.date for refV in refVelocities])
+    date1 = reduce(vcat, [refV.date1 for refV in refVelocities])
+    date2 = reduce(vcat, [refV.date2 for refV in refVelocities])
+    date_error = reduce(vcat, [refV.date_error for refV in refVelocities])
+
+    return SurfaceVelocityData(
+        x = x,
+        y = y,
+        lat = lat,
+        lon = lon,
+        vx = vx,
+        vy = vy,
+        vabs = vabs,
+        vx_error = vx_error,
+        vy_error = vy_error,
+        vabs_error = vabs_error,
+        date = date,
+        date1 = date1,
+        date2 = date2,
+        date_error = date_error,
+        isGridGlacierAligned = all(isGridGlacierAligned)
+    )
 end
