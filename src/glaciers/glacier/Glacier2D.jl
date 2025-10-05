@@ -281,82 +281,78 @@ diffToDict(a::Glacier2D, b::Glacier2D) = Dict{Symbol, Bool}(
 )
 
 # Display setup
-function Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D)
-    Base.show(io, glacier)
-end
+Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D) = Base.show(io, glacier)
 function Base.show(io::IO, glacier::Glacier2D)
     if !isnothing(glacier.H₀)
         H=round.(255*glacier.H₀/maximum(glacier.H₀))
-        display(Gray.(Int.(H'[end:-1:1,1:end])/255))
+        display(Gray.(Int.(H')/255))
     end
 
-    print("Glacier2D ")
+    print(io, "Glacier2D ")
     strName = glacier.name=="" ? "" : " ($(glacier.name))"
-    printstyled("$(glacier.rgi_id)$(strName)";color=:yellow)
-    print(" with a ")
-    printstyled("$(glacier.nx)x$(glacier.ny)";color=:red)
-    print(" grid ")
-    printstyled("(Δx=$(glacier.Δx), Δy=$(glacier.Δy))";color=:red)
-    println("")
+    printstyled(io, "$(glacier.rgi_id)$(strName)";color=:yellow)
+    print(io, " with a ")
+    printstyled(io, "$(glacier.nx)x$(glacier.ny)";color=:red)
+    print(io, " grid ")
+    printstyled(io, "(Δx=$(glacier.Δx), Δy=$(glacier.Δy))";color=:red)
+    println(io, "")
     if !isnothing(glacier.cenlat) & !isnothing(glacier.cenlon)
-        print("at position ")
-        printstyled("($(round(glacier.cenlat;digits=6))°, $(round(glacier.cenlon;digits=6))°)";color=:green)
+        print(io, "at position ")
+        printstyled(io, "($(round(glacier.cenlat;digits=6))°, $(round(glacier.cenlon;digits=6))°)";color=:green)
     else
-        print("at undefined location")
+        print(io, "at undefined location")
     end
     if size(glacier.H_glathida) == (0, 0)
-        printstyled("   w/o";color=:red)
+        printstyled(io, "   w/o";color=:red)
     else
-        printstyled("   w/";color=:blue)
+        printstyled(io, "   w/";color=:blue)
     end
-    println(" glathida elevation")
+    println(io, " glathida elevation")
 
-    print("Min,mean,max bedrock elevation S : ")
-    printstyled("$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
-    print("Mean,max ice thickness H₀ : ")
-    printstyled("$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
+    print(io, "Min,mean,max bedrock elevation S : ")
+    printstyled(io, "$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";color=:blue)
+    print(io, "Mean,max ice thickness H₀ : ")
+    printstyled(io, "$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
 
-    print("A= ")
-    printstyled(@sprintf("%.3e", glacier.A); color=:blue)
-    print("  C= ")
-    printstyled(glacier.C; color=:blue)
-    print("  n= ")
-    printstyled(glacier.n; color=:blue)
+    print(io, "A= ")
+    printstyled(io, @sprintf("%.3e", glacier.A); color=:blue)
+    print(io, "  C= ")
+    printstyled(io, glacier.C; color=:blue)
+    print(io, "  n= ")
+    printstyled(io, glacier.n; color=:blue)
 
     if isnothing(glacier.thicknessData)
-        printstyled("\nw/o";color=:red)
+        printstyled(io, "\nw/o";color=:red)
     else
-        printstyled("\nw/";color=:blue)
+        printstyled(io, "\nw/";color=:blue)
     end
-    print(" thickness data  ")
+    print(io, " thickness data  ")
     if isnothing(glacier.velocityData)
-        printstyled("   w/o";color=:red)
+        printstyled(io, "   w/o";color=:red)
     else
-        printstyled("   w/";color=:blue)
+        printstyled(io, "   w/";color=:blue)
     end
-    print(" velocity data")
+    print(io, " velocity data")
 end
 
 # Vectorial form
 # If you don't understand what's going on below, refer to https://discourse.julialang.org/t/improving-doc-for-display-print-show-repr/69124/3
-function Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{G}) where {G <: AbstractGlacier}
-    Base.show(io, glaciers)
-end
-function Base.show(io::IO, glaciers::Vector{G}) where {G <: AbstractGlacier}
+Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{<: AbstractGlacier}) = Base.show(io, glaciers)
+function Base.show(io::IO, glaciers::Vector{<: AbstractGlacier})
     len = length(glaciers)
-    print("$(len)-element $(typeof(glaciers))")
+    print(io, "$(len)-element Vector{$(eltype(glaciers).name.wrapper)}")
     try
         regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1] for glacier in glaciers])
         regionsFormatted = ["$(k[1]) (x$(k[2]))" for k in regions]
-        println(" distributed over regions $(join(regionsFormatted, ", "))")
+        println(io, " distributed over regions $(join(regionsFormatted, ", "))")
     catch
-        println(" distributed over undefined regions")
+        println(io, " distributed over undefined regions")
     end
     if len>5
-        print(join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
-        print(" ... ")
-        println(join([glacier.rgi_id for glacier in glaciers[len-1:len]], " "))
+        print(io, join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
+        print(io, " ... ")
+        println(io, join([glacier.rgi_id for glacier in glaciers[len-1:len]], " "))
     else
-        println(join([glacier.rgi_id for glacier in glaciers], " "))
+        println(io, join([glacier.rgi_id for glacier in glaciers], " "))
     end
 end
