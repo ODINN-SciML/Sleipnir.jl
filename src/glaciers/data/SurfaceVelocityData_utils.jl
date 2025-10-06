@@ -75,50 +75,50 @@ function initialize_surfacevelocitydata(
     latitudes_vel = map(x -> x.lat.val, transform.(mean(x), y))
     longitudes_vel = map(x -> x.lon.val, transform.(x, mean(y)))
 
-    # Also retrieve the regional coordinates of the glacier grid through x and y
-    latitudes_glacier = glacier.Coords["lat"]
-    longitudes_glacier = glacier.Coords["lon"]
-
-    # Define mask where there is velocity data
-    min_distance = 0.5 * (glacier.Δx^2 + glacier.Δy^2)^0.5
-    Latitudes_vel = latitudes_vel * ones(length(longitudes_vel))'
-    Longitudes_vel = ones(length(latitudes_vel)) * longitudes_vel'
-    mask_data = [
-        minimum(local_distance.(Latitudes_vel, Longitudes_vel, Ref(lat), Ref(lon))) .> min_distance
-        for lon in longitudes_glacier,
-        lat in latitudes_glacier
-        ]
-    # Define mask where there is ice
-    mask_ice = glacier.H₀ .== 0
-
-    # Test that at least part of the target glacier falls inside datacube
-    # velocity datacube corners
-    lat_v_begin, lat_v_end = minimum(latitudes_vel), maximum(latitudes_vel)
-    lon_v_begin, lon_v_end = minimum(longitudes_vel), maximum(longitudes_vel)
-    # glacier corners
-    is_icy = glacier.H₀ .> 0.0
-    icy_latitudes_glacier = latitudes_glacier[any.(eachcol(is_icy))]
-    icy_longitudes_glacier = longitudes_glacier[any.(eachrow(is_icy))]
-
-    lat_g_begin, lat_g_end = minimum(icy_latitudes_glacier), maximum(icy_latitudes_glacier)
-    lon_g_begin, lon_g_end = minimum(icy_longitudes_glacier), maximum(icy_longitudes_glacier)
-
-    # Overlapping occurs when one of the glacier corners is inside velocity datacube:
-    lw, up = (lat_v_begin, lon_v_begin), (lat_v_end, lon_v_end)
-    glacier_in_datacube = [
-        all(lw .<= [lat_g_begin, lon_g_begin] .<= up),
-        all(lw .<= [lat_g_begin, lon_g_end] .<= up),
-        all(lw .<= [lat_g_end, lon_g_begin] .<= up),
-        all(lw .<= [lat_g_end, lon_g_end] .<= up)
-    ]
-    @assert any(glacier_in_datacube) "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-    if any(.!glacier_in_datacube)
-        coverage = round(100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
-        @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-        @warn "Glacier is not enterely include in datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
-    end
-
     if mapToGlacierGrid
+        # Also retrieve the regional coordinates of the glacier grid through x and y
+        latitudes_glacier = glacier.Coords["lat"]
+        longitudes_glacier = glacier.Coords["lon"]
+
+        # Define mask where there is velocity data
+        min_distance = 0.5 * (glacier.Δx^2 + glacier.Δy^2)^0.5
+        Latitudes_vel = latitudes_vel * ones(length(longitudes_vel))'
+        Longitudes_vel = ones(length(latitudes_vel)) * longitudes_vel'
+        mask_data = [
+            minimum(local_distance.(Latitudes_vel, Longitudes_vel, Ref(lat), Ref(lon))) .> min_distance
+            for lon in longitudes_glacier,
+            lat in latitudes_glacier
+            ]
+        # Define mask where there is ice
+        mask_ice = glacier.H₀ .== 0
+
+        # Test that at least part of the target glacier falls inside datacube
+        # velocity datacube corners
+        lat_v_begin, lat_v_end = minimum(latitudes_vel), maximum(latitudes_vel)
+        lon_v_begin, lon_v_end = minimum(longitudes_vel), maximum(longitudes_vel)
+        # glacier corners
+        is_icy = glacier.H₀ .> 0.0
+        icy_latitudes_glacier = latitudes_glacier[any.(eachcol(is_icy))]
+        icy_longitudes_glacier = longitudes_glacier[any.(eachrow(is_icy))]
+
+        lat_g_begin, lat_g_end = minimum(icy_latitudes_glacier), maximum(icy_latitudes_glacier)
+        lon_g_begin, lon_g_end = minimum(icy_longitudes_glacier), maximum(icy_longitudes_glacier)
+
+        # Overlapping occurs when one of the glacier corners is inside velocity datacube:
+        lw, up = (lat_v_begin, lon_v_begin), (lat_v_end, lon_v_end)
+        glacier_in_datacube = [
+            all(lw .<= [lat_g_begin, lon_g_begin] .<= up),
+            all(lw .<= [lat_g_begin, lon_g_end] .<= up),
+            all(lw .<= [lat_g_end, lon_g_begin] .<= up),
+            all(lw .<= [lat_g_end, lon_g_end] .<= up)
+        ]
+        @assert any(glacier_in_datacube) "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+        if any(.!glacier_in_datacube)
+            coverage = round(100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
+            @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+            @warn "Glacier is not enterely include in datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
+        end
+
         # Here vx and vy are of type DiskArrays.BroadcastDiskArray
         x, y, vx, vy = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, mapping)
         # Set ice velocity to NaN outside of the glacier outlines
