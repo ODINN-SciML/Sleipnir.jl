@@ -78,6 +78,7 @@ include("models/Model.jl")
 include("simulations/Simulation.jl")
 # Law interface and utils
 include("laws/Law.jl")
+include("laws/Cache.jl")
 
 # Fake data used in the tests
 include("data/surface_velocity.jl")

@@ -36,6 +36,7 @@ function make_thickness_video(
         maxH = maximum(maximum.(H_plot))
         colorrange = (0.0, maxH)
     end
+    # TODO: correct video by flipping
 
     hm = CairoMakie.heatmap!(
         ax,
