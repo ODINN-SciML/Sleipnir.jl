@@ -395,9 +395,23 @@ function local_distance(lat1, lon1, lat2, lon2)
     dy = (lat2 - lat1) * 111320           # meters in y (north-south)
     return sqrt(dx^2 + dy^2)
 end
-
 """
-Combine a list of velocity datasets into a single data velocity object
+    combine_velocity_data(refVelocities; merge=false)
+
+Combine multiple ice surface velocity datasets into a single `SurfaceVelocityData` object.
+
+# Arguments
+- `refVelocities::Vector{SurfaceVelocityData}`: A vector of ice surface velocity datasets to combine. Each element must have the same grid alignment (`isGridGlacierAligned` must be `true` for all).
+- `merge::Bool=false`: If `true`, velocities with the same `date` are averaged, and corresponding date ranges (`date1`, `date2`) are reduced to their min/max. If `false`, data are simply concatenated.
+
+# Returns
+- `SurfaceVelocityData`: A single object containing the combined velocity data, including `vx`, `vy`, `vabs` and their associated errors, as well as coordinate (`x`, `y`, `lat`, `lon`) and date information. The `isGridGlacierAligned` field reflects whether all input datasets were aligned.
+
+# Notes
+- The function asserts that all input datasets are aligned on the same grid.
+- When `merge=true`, velocities and errors are averaged over datasets sharing the same `date`.
+- Uses `nanmean` for averaging to handle missing data.
+- `date_error` is set to `nothing` when merging.
 """
 function combine_velocity_data(refVelocities; merge = false)
     # Check all surfaces are on the same grid as the glacier
@@ -423,6 +437,8 @@ function combine_velocity_data(refVelocities; merge = false)
 
     if merge
         date_unique = sort(unique(date))
+        date1_unique = similar(date1, length(date_unique))
+        date2_unique = similar(date2, length(date_unique))
         vx_unique = similar(vx, length(date_unique))
         vy_unique = similar(vy, length(date_unique))
         vabs_unique = similar(vabs, length(date_unique))
@@ -462,6 +478,16 @@ function combine_velocity_data(refVelocities; merge = false)
                 cat(vabs_error[date .== dt]..., dims = 3);
                 dims = 3
                 ) |> only
+            date1_unique[i] = mapslices(
+                minimum,
+                cat(date1[date .== dt]..., dims = 3);
+                dims = 3
+                ) |> only
+            date2_unique[i] = mapslices(
+                maximum,
+                cat(date2[date .== dt]..., dims = 3);
+                dims = 3
+                ) |> only
         end
         return SurfaceVelocityData(
             x = x,
@@ -475,8 +501,8 @@ function combine_velocity_data(refVelocities; merge = false)
             vy_error = vy_error_unique,
             vabs_error = vabs_error_unique,
             date = date_unique,
-            date1 = nothing,
-            date2 = nothing,
+            date1 = date1_unique,
+            date2 = date2_unique,
             date_error = nothing,
             isGridGlacierAligned = all(isGridGlacierAligned)
         )
