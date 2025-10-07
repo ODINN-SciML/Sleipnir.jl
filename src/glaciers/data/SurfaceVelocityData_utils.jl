@@ -60,8 +60,11 @@ function initialize_surfacevelocitydata(
     x = dims(velRast, :X).val.data
     y = dims(velRast, :Y).val.data
 
-    # Velocity in the x direction (m/yr)
+    # Velocity in the x / longiudinal direction (m/yr)
+    # Positive values correspond to W-E orientation
     vx = velRast.vx.data
+    # Velocity in the y / latitudinal direction (m/yr)
+    # Positive values correspond to S-N orientation
     vy = velRast.vy.data
 
     # Run some basic tests
