@@ -10,7 +10,7 @@ using Infiltrator
 import Pkg
 using JLD2
 using Distributed
-using Statistics
+using Statistics, NaNStatistics
 using CairoMakie
 using Observables
 import Contour
