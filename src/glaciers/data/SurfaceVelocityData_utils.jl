@@ -33,6 +33,7 @@ function initialize_surfacevelocitydata(
 
     mapToGlacierGrid = !isnothing(glacier)
 
+    # Dates in the dataset are integers representing a single day (no hour or minutes information)
     # Date of first adquisition
     date1 = velRast.date1.data[:]
     # Date of second adquisition
@@ -398,7 +399,7 @@ end
 """
 Combine a list of velocity datasets into a single data velocity object
 """
-function combine_velocity_data(refVelocities)
+function combine_velocity_data(refVelocities; merge = false)
     # Check all surfaces are on the same grid as the glacier
     isGridGlacierAligned = [refV.isGridGlacierAligned for refV in refVelocities]
     @assert all(isGridGlacierAligned) "Different ice surface velocity datasets are not alligned"
@@ -420,21 +421,82 @@ function combine_velocity_data(refVelocities)
     date2 = reduce(vcat, [refV.date2 for refV in refVelocities])
     date_error = reduce(vcat, [refV.date_error for refV in refVelocities])
 
-    return SurfaceVelocityData(
-        x = x,
-        y = y,
-        lat = lat,
-        lon = lon,
-        vx = vx,
-        vy = vy,
-        vabs = vabs,
-        vx_error = vx_error,
-        vy_error = vy_error,
-        vabs_error = vabs_error,
-        date = date,
-        date1 = date1,
-        date2 = date2,
-        date_error = date_error,
-        isGridGlacierAligned = all(isGridGlacierAligned)
-    )
+    if merge
+        date_unique = sort(unique(date))
+        vx_unique = similar(vx, length(date_unique))
+        vy_unique = similar(vy, length(date_unique))
+        vabs_unique = similar(vabs, length(date_unique))
+        vx_error_unique = similar(vx_error, length(date_unique))
+        vy_error_unique = similar(vy_error, length(date_unique))
+        vabs_error_unique = similar(vabs_error, length(date_unique))
+
+        for (i, dt) in enumerate(date_unique)
+            # Reduce datasets for unique datetime
+            vx_unique[i] = mapslices(
+                nanmean,
+                cat(vx[date .== dt]..., dims = 3);
+                dims = 3
+                )[:, :, 1]
+            vy_unique[i] = mapslices(
+                nanmean,
+                cat(vy[date .== dt]..., dims = 3);
+                dims = 3
+                )[:, :, 1]
+            vabs_unique[i] = mapslices(
+                nanmean,
+                cat(vabs[date .== dt]..., dims = 3);
+                dims = 3
+                )[:, :, 1]
+            vx_error_unique[i] = mapslices(
+                nanmean,
+                cat(vx_error[date .== dt]..., dims = 3);
+                dims = 3
+                ) |> only
+            vy_error_unique[i] = mapslices(
+                nanmean,
+                cat(vy_error[date .== dt]..., dims = 3);
+                dims = 3
+                ) |> only
+            vabs_error_unique[i] = mapslices(
+                nanmean,
+                cat(vabs_error[date .== dt]..., dims = 3);
+                dims = 3
+                ) |> only
+        end
+        return SurfaceVelocityData(
+            x = x,
+            y = y,
+            lat = lat,
+            lon = lon,
+            vx = vx_unique,
+            vy = vy_unique,
+            vabs = vabs_unique,
+            vx_error = vx_error_unique,
+            vy_error = vy_error_unique,
+            vabs_error = vabs_error_unique,
+            date = date_unique,
+            date1 = nothing,
+            date2 = nothing,
+            date_error = nothing,
+            isGridGlacierAligned = all(isGridGlacierAligned)
+        )
+    else
+        return SurfaceVelocityData(
+            x = x,
+            y = y,
+            lat = lat,
+            lon = lon,
+            vx = vx,
+            vy = vy,
+            vabs = vabs,
+            vx_error = vx_error,
+            vy_error = vy_error,
+            vabs_error = vabs_error,
+            date = date,
+            date1 = date1,
+            date2 = date2,
+            date_error = date_error,
+            isGridGlacierAligned = all(isGridGlacierAligned)
+        )
+    end
 end

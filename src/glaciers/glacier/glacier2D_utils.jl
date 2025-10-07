@@ -142,7 +142,8 @@ function initialize_glacier(
             push!(refVelocities, _refVelocity)
         end
         # Rebuild glacier since we cannot change type of `glacier.velocityData`
-        refVelocity = combine_velocity_data(refVelocities)
+        # Combine velocity data with unique datetime
+        refVelocity = combine_velocity_data(refVelocities; merge = true)
         glacier = Glacier2D(
             glacier,
             velocityData = refVelocity
