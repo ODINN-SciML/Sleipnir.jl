@@ -128,18 +128,25 @@ function initialize_surfacevelocitydata(
         # Set ice velocity to NaN outside of the glacier outlines
         mask = mask_ice .|| mask_data
         for i in range(1, size(vx,3))
-            vx[mask,i] .= missing
-            vy[mask,i] .= missing
+            vx[mask, i] .= missing
+            vy[mask, i] .= missing
         end
     else
         # Access elements by converting a DiskArrays.BroadcastDiskArray to a real array
-        vx = vx[:,:,:]
-        vy = vy[:,:,:]
+        vx = vx[:, :, :]
+        vy = vy[:, :, :]
     end
 
     # Define coordinates used for the velocity dataset
     latitudes = mapToGlacierGrid ? latitudes_glacier : latitudes_vel
     longitudes = mapToGlacierGrid ? longitudes_glacier : longitudes_vel
+
+    # Align ice surface velocity vector with glacier convention of easting and northing
+    # Glacier convention follows matrix index notation: first index is latitude (northing), second index is longitude (easting)
+    # The ice surface velocity product reports velocities vx and vy in east-west and south-north orientations, respectivelly
+    # To check for the right orientation of the velocity vectors, we see how coordinates are encoded in each data object
+    vx = all(diff(latitudes) .> 0.0) ? vx : .- vx
+    vy = all(diff(longitudes) .> 0.0) ? vy : .- vy
 
     # Compute absolute velocity
     vabs = (vx.^2 .+ vy.^2).^0.5
@@ -149,9 +156,9 @@ function initialize_surfacevelocitydata(
 
     # The replace function promotes Float32 to Float64. We convert
     # manually to keep consistency
-    vx = [eltype(x).(replace(vx[:,:,i], missing => NaN)) for i in 1:size(vx, 3)]
-    vy = [eltype(x).(replace(vy[:,:,i], missing => NaN)) for i in 1:size(vy, 3)]
-    vabs = [eltype(x).(replace(vabs[:,:,i], missing => NaN)) for i in 1:size(vabs, 3)]
+    vx = [eltype(x).(replace(vx[:, :, i], missing => NaN)) for i in 1:size(vx, 3)]
+    vy = [eltype(x).(replace(vy[:, :, i], missing => NaN)) for i in 1:size(vy, 3)]
+    vabs = [eltype(x).(replace(vabs[:, :, i], missing => NaN)) for i in 1:size(vabs, 3)]
 
     # Error is reported once per timespan, so upper bounds are given by absolute error
     if !interp
@@ -160,8 +167,8 @@ function initialize_surfacevelocitydata(
         vy_error = eltype(x).(replace(velRast.error_vy.data[:], missing => NaN))
         # Absolute error uncertainty using propagation of uncertanties
         if compute_vabs_error
-            vx_ratio_max = map(i -> ratio_max(vx[i], vabs[i]), 1:size(vx,1))
-            vy_ratio_max = map(i -> ratio_max(vy[i], vabs[i]), 1:size(vy,1))
+            vx_ratio_max = map(i -> ratio_max(vx[i], vabs[i]), 1:size(vx, 1))
+            vy_ratio_max = map(i -> ratio_max(vy[i], vabs[i]), 1:size(vy, 1))
             vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
             vabs_error = convert(typeof(vx_error[:]), vabs_error[:])
         else
@@ -176,7 +183,8 @@ function initialize_surfacevelocitydata(
     return SurfaceVelocityData(
         x = x, y = y,
         lat = latitudes, lon = longitudes,
-        vx = vx, vy = vy, vabs = vabs,
+        vx = vx, vy = vy,
+        vabs = vabs,
         vx_error = vx_error, vy_error = vy_error, vabs_error = vabs_error,
         date = date_mean, date1 = date1, date2 = date2, date_error = date_error,
         isGridGlacierAligned = mapToGlacierGrid
@@ -290,35 +298,29 @@ function grid(
         # While this is an approximation since the coordinates do not truly live on a grid because of the projection, this error does not exceed one meter for most glaciers. This allows us to avoid having to compute an argmin.
         ΔxV = mean(diff(xV))
         ΔyV = mean(diff(yV))
-        bx = xV[1]-ΔxV
-        by = yV[1]-ΔyV
+        bx = xV[1] - ΔxV
+        by = yV[1] - ΔyV
         ix = collect(1:length(longitudes))
         iy = collect(1:length(latitudes))
         indx = Int.(round.((xG .- bx)./ΔxV))
         indy = Int.(round.((yG .- by)./ΔyV))
 
         # Lazy arrays need to be read by block, hence we read the smallest block of data that contains all the points we need
-        # @assert size(vx,1)>=maximum(indx) "It looks like the datacube doesn't cover the whole glacier grid on the x-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-        # @assert size(vx,2)>=maximum(indy) "It looks like the datacube doesn't cover the whole glacier grid on the y-axis, please check that you use the right datacube for glacier $(glacier.rgi_id)."
         indx_lw = max(minimum(indx), 1)
         indx_up = min(maximum(indx), size(vx, 1))
         indy_lw = max(minimum(indy), 1)
         indy_up = min(maximum(indy), size(vx, 1))
-        block_vx = vx[indx_lw:indx_up, indy_lw:indy_up,:]
-        block_vy = vy[indx_lw:indx_up, indy_lw:indy_up,:]
-        # block_vx = vx[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
-        # block_vy = vy[minimum(indx):maximum(indx),minimum(indy):maximum(indy),:]
+        block_vx = vx[indx_lw:indx_up, indy_lw:indy_up, :]
+        block_vy = vy[indx_lw:indx_up, indy_lw:indy_up, :]
 
         # Assign to each point of the glacier grid the closest point on the grid of surface velocities
         shiftx = - indx_lw + 1
         shifty = - indy_lw + 1
-        # shiftx = -minimum(indx)+1
-        # shifty = -minimum(indy)+1
         for ix in range(1, length(glacier.Coords["lon"])), iy in range(1, length(glacier.Coords["lat"]))
             ixv, iyv = indx[ix] + shiftx, indy[iy] + shifty
             if checkbounds(Bool, block_vx, ixv, iyv, 1)
                 vxG[ix,iy,begin:end] .= block_vx[ixv, iyv, :]
-                vyG[ix,iy,begin:end] .= block_vy[ixv, iyv,:]
+                vyG[ix,iy,begin:end] .= block_vy[ixv, iyv, :]
             end
         end
     else
