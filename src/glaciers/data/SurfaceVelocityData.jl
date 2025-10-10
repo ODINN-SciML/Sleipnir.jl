@@ -11,8 +11,8 @@ by providing `nothing` as the default value.
 - `y::Union{Vector{F}, Nothing}`: Northing of observation.
 - `lat::Union{Vector{F}, Nothing}`: Latitude of observation.
 - `lon::Union{Vector{F}, Nothing}`: Longitude of observation.
-- `vx::Union{Vector{Matrix{F}}, Nothing}`: x component of surface velocity.
-- `vy::Union{Vector{Matrix{F}}, Nothing}`: y component of surface velocity.
+- `vx::Union{Vector{Matrix{F}}, Nothing}`: x / longitudinal component of surface velocity. Positive velocities correspond to the direction of increasing index of the glacier x-coordinate.
+- `vy::Union{Vector{Matrix{F}}, Nothing}`: y / latitudinal component of surface velocity. Positive velocities correspond to the direction of increasing index of the glacier y-coordinate.
 - `vabs::Union{Vector{Matrix{F}}, Nothing}`: Absolute ice surface velocity.
 - `vx_error::Union{Vector{F}, Nothing}`: Error in `vx`
 - `vy_error::Union{Vector{F}, Nothing}`: Error in `vy`
@@ -67,6 +67,9 @@ Constructor for ice surface velocity data based on Rabatel et. al (2023).
 
 
 Important remarks:
+- Velocities values are reported in m/yr. Positive velocities correspond to the direction of increasing index of the glacier.
+When the glacier is oriented in east-west and south-north (see latitude and coordinate ordering), positive velocities of the ice
+surface velocity correspond to positive east-west and south-north velocity component.
 - The error in velocity is unique per timestamp, rather than being pixel distributed.
 - The error in the absolute velocities `vabs_error` is overestimated.
 
