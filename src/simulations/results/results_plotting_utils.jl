@@ -44,7 +44,9 @@ end
         variables::Vector{Symbol},
         title_mapping::Dict;
         scale_text_size::Union{Nothing,Float64}=nothing,
-        timeIdx::Union{Nothing,Int64}=nothing
+        timeIdx::Union{Nothing,Int64}=nothing,
+        figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
+        plotContour::Bool=false,
     ) -> Figure
 
 Plot heatmaps for glacier variables.
@@ -57,6 +59,7 @@ Plot heatmaps for glacier variables.
 - `timeIdx::Union{Nothing,Int64}`:: Optional argument to select the index at which
     data should be plotted when dealing with vector of matrix. Default is nothing
     which selects the last element available.
+- `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 - `plotContour::Bool`: Whether to add a contour plot representing the glacier borders at
     the beginning of the simulation on top of each of the figures. Default is false.
 
@@ -69,8 +72,11 @@ function plot_glacier_heatmaps(
     title_mapping::Dict;
     scale_text_size::Union{Nothing,Float64}=nothing,
     timeIdx::Union{Nothing,Int64}=nothing,
+    figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
     plotContour::Bool=false,
 )
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
     # Dictionary of variable-specific colormaps
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
@@ -128,7 +134,8 @@ function plot_glacier_heatmaps(
         error("Unsupported number of variables.")
     end
 
-    fig = Figure(layout=GridLayout(rows, cols))
+    figKwargs[:layout] = GridLayout(rows, cols)
+    fig = Figure(; figKwargs...)
     for (i, var) in enumerate(variables)
         ax_row = div(i - 1, 2) + 1
         ax_col = 2 * (rem(i - 1, 2)) + 1
