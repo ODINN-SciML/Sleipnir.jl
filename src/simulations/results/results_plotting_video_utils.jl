@@ -1,15 +1,16 @@
 export plot_glacier_vid
 
 function make_thickness_video(
-    H_plot::Vector{Matrix{Float64}},
+    results::Results,
     glacier::Glacier2D,
     simuparams::SimulationParameters,
     pathVideo::String;
     colormap::Symbol = :viridis,
     colorrange::Union{Tuple, Nothing} = nothing,
     framerate::Int = 24,
-    baseTitle::String = ""
-    )
+    baseTitle::String = "",
+)
+    H_plot = results.H
 
     if length(glacier.Coords["lat"]) > 0
         lat = glacier.Coords["lat"]
@@ -19,6 +20,8 @@ function make_thickness_video(
         lon = glacier.Δx .* collect(1:1:glacier.nx)
     end
     X, Y = GR.meshgrid(lon,lat)
+    x = results.x
+    y = results.y
 
     H = [ifelse.(h .== 0.0, NaN, h) for h in H_plot]
 
@@ -36,7 +39,6 @@ function make_thickness_video(
         maxH = maximum(maximum.(H_plot))
         colorrange = (0.0, maxH)
     end
-    # TODO: correct video by flipping
 
     hm = CairoMakie.heatmap!(
         ax,
@@ -55,7 +57,7 @@ function make_thickness_video(
     function _update_heatmap(frame_nb)
         hm[1] = reshape(X, :)
         hm[2] = reshape(Y, :)
-        hm[3] = reshape(H[frame_nb], :)
+        hm[3] = reshape(reverseForHeatmap(H[frame_nb], x, y), :)
         year = Int(floor(years[frame_nb]))
         ax.title = baseTitle*" (t = $year)"
     end
@@ -70,7 +72,7 @@ end
 """
     plot_glacier_vid(
         plot_type::String,
-        H::Vector{Matrix{Float64}},
+        results::Results,
         glacier::Glacier2D,
         simuparams::SimulationParameters,
         pathVideo::String;
@@ -83,9 +85,8 @@ Generate various types of videos for glacier data. For now only the evolution of
 # Arguments
 - `plot_type`: Type of plot to generate. Options are:
   * "thickness": Heatmap of the glacier thickness.
-- `H`: A vector of matrices containing the ice thickness over time. This should be
-    replaced by a Results instance in the future once Results no longer depends on
-    an iceflow model.
+- `results`: A result object containing the simulation results including ice
+    thickness over time.
 - `glacier`: A glacier instance.
 - `simuparams`: The simulation parameters.
 - `pathVideo`: Path of the mp4 file to generate.
@@ -97,16 +98,16 @@ Generate various types of videos for glacier data. For now only the evolution of
 """
 function plot_glacier_vid(
         plot_type::String,
-        H::Vector{Matrix{Float64}},
+        results::Results,
         glacier::Glacier2D,
         simuparams::SimulationParameters,
         pathVideo::String;
         framerate::Int=24,
-        baseTitle::String=""
+        baseTitle::String="",
     )
 
     if plot_type == "thickness"
-        make_thickness_video(H, glacier, simuparams, pathVideo; framerate=framerate, baseTitle=baseTitle)
+        make_thickness_video(results, glacier, simuparams, pathVideo; framerate=framerate, baseTitle=baseTitle)
     else
         error("Invalid plot_type: $plot_type")
     end
