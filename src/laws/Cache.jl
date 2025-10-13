@@ -1,5 +1,5 @@
 import Base.similar, Base.size, Base.fill
-export FloatCacheNoVJP, MatrixCache, FloatCache
+export MatrixCacheNoVJP, FloatCacheNoVJP, MatrixCache, FloatCache
 
 """
     MatrixCacheNoVJP

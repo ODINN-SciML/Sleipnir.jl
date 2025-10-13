@@ -47,6 +47,7 @@ function test_law(;
     expected_cache,
     inputs_defined,
     expected_inputs,
+    expected_apply_law_in_model,
 )
     @test cache_type(law) == expected_cache_type
     JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
@@ -103,6 +104,9 @@ function test_law(;
         # Check that it fails
         @test_throws "Inputs are not defined." inputs(law)
     end
+
+    # Test whether to apply the law inside the model
+    @test apply_law_in_model(law) == expected_apply_law_in_model
 end
 
 apply_law_testset() = @testset "Law" begin
@@ -134,6 +138,7 @@ apply_law_testset() = @testset "Law" begin
             expected_cache_type = Matrix{Float64},
             inputs_defined = true,
             expected_inputs = (;),
+            expected_apply_law_in_model = false,
         )
 
         # fake simulation
@@ -160,6 +165,7 @@ apply_law_testset() = @testset "Law" begin
             expected_cache_type = Float64,
             inputs_defined = true,
             expected_inputs = (;),
+            expected_apply_law_in_model = false,
         )
     end
 
@@ -192,6 +198,7 @@ apply_law_testset() = @testset "Law" begin
             expected_cache_type = Matrix{Float64},
             inputs_defined = false,
             expected_inputs = (;),
+            expected_apply_law_in_model = true,
         )
     end
 
@@ -225,6 +232,7 @@ apply_law_testset() = @testset "Law" begin
             expected_cache_type = Matrix{Float64},
             inputs_defined = true,
             expected_inputs = (a=A(), b=B(), c=C()),
+            expected_apply_law_in_model = true,
         )
 
         # fake simulation
@@ -256,6 +264,7 @@ apply_law_testset() = @testset "Law" begin
             expected_cache_type = Matrix{Float64},
             inputs_defined = true,
             expected_inputs = (x = A(), y = B(), z = C()),
+            expected_apply_law_in_model = true,
         )
     end
 end

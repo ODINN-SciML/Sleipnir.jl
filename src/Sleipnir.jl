@@ -77,8 +77,8 @@ include("models/Model.jl")
 # Everything related to running simulations in ODINN
 include("simulations/Simulation.jl")
 # Law interface and utils
-include("laws/Law.jl")
 include("laws/Cache.jl")
+include("laws/Law.jl")
 
 # Fake data used in the tests
 include("data/surface_velocity.jl")

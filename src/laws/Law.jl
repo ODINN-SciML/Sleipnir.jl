@@ -1,7 +1,7 @@
 export NullLaw, AbstractLaw, Law, ConstantLaw
-export init_cache, cache_type, is_callback_law, callback_freq, build_affect, apply_law!, apply_all_non_callback_laws!
-export AbstractInput, get_input, inputs
-export law_VJP_input, law_VJP_θ, precompute_law_VJP, is_precomputable_law_VJP
+export init_cache, cache_type, is_callback_law, callback_freq, build_affect, apply_law!, apply_law_in_model, apply_all_non_callback_laws!, precompute_all_VJPs_laws!
+export AbstractInput, get_input, inputs, generate_inputs, default_name
+export law_VJP_input, law_VJP_θ, prepare_vjp_law, precompute_law_VJP, is_precomputable_law_VJP
 export CustomVJP, DIVJP
 
 """
@@ -88,10 +88,6 @@ function build_affect(law::AbstractLaw, cache, glacier_idx, θ)
     end
 end
 
-#################################
-# mutable struct
-#################################
-
 """
     emptyVJP(cache, simulation, glacier_idx, t, θ)
     emptyVJPWithInputs(cache, inputs, θ)
@@ -103,6 +99,14 @@ It is for internal use only and it isn't exposed to the user.
 """
 emptyVJP(cache, simulation, glacier_idx, t, θ) = throw("This VJP has not been defined.")
 emptyVJPWithInputs(cache, inputs, θ) = throw("This VJP has not been defined.")
+
+"""
+    prepare_vjp_law(simulation, law::AbstractLaw, law_cache, θ, glacier_idx)
+
+Function used to prepare the VJPs at the initialization of the model cache.
+It is used for example to compile VJPs of the laws to be differentiated using DifferentiationInterface.jl.
+"""
+prepare_vjp_law(simulation, law::AbstractLaw, law_cache, θ, glacier_idx) = throw("This prepare function has not been defined.")
 
 """
     VJPType
@@ -223,7 +227,7 @@ struct Law{
 end
 
 
-# Declaration of the law with semantic inputs (cf AbstractInput)
+### Declaration of the law with semantic inputs (cf AbstractInput) ###
 Law{T}( # No custom VJP
     inputs::Union{<: NamedTuple, <: Tuple}, f::Function, init_cache, callback_freq
 ) where {T} = Law{T}(
@@ -238,7 +242,6 @@ Law{T}( # With VJP computed on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
     init_cache, callback_freq,
-    # p_VJP::Nothing,
 ) where {T} = Law{T}(
     GenInputsAndApply(inputs, f),
     GenInputsAndApply(inputs, f_VJP_input),
@@ -260,23 +263,21 @@ Law{T}( # With precomputed VJP
     GenInputsAndApply(inputs, p_VJP),
     CustomVJP(),
 )
-################
-Law{T}( # No custom VJP -> binding
+Law{T}( # Binding for the case with no custom VJP
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
     init_cache, callback_freq,
     p_VJP::Nothing,
 ) where {T} = Law{T}(inputs, f, init_cache, callback_freq)
-Law{T}( # With VJP computed on-the-fly -> binding
+Law{T}( # Binding for the case with VJP computed on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
     init_cache, callback_freq,
     p_VJP::Nothing,
 ) where {T} = Law{T}(inputs, f, f_VJP_input, f_VJP_θ, init_cache, callback_freq)
-################
 
 
-# Declaration of the law with an affect that directly retrieves the inputs
+### Declaration of the law with an affect that directly retrieves the inputs ###
 Law{T}( # No custom VJP
     ::Nothing, f::Function, init_cache, callback_freq
 ) where{T} = Law{T}(
@@ -306,24 +307,22 @@ Law{T}( # With precomputed VJP
     p_VJP,
     CustomVJP(),
 )
-################
-Law{T}( # No custom VJP -> binding
+Law{T}( # Binding for the case with no custom VJP
     ::Nothing,
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
     init_cache, callback_freq,
     p_VJP::Nothing,
 ) where {T} = Law{T}(nothing, f, init_cache, callback_freq)
-Law{T}( # With VJP computed on-the-fly -> binding
+Law{T}( # Binding for the case with VJP computed on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
     init_cache, callback_freq,
     p_VJP::Nothing,
 ) where {T} = Law{T}(f, f_VJP_input, f_VJP_θ, init_cache, callback_freq)
-################
 
 
-# Wrapper that calls the declaration of the law with semantic inputs (useful to use default arguments)
-Law{T}(;
+### Wrapper that calls the declaration of the law with semantic inputs (useful to use default arguments) ###
+Law{T}(; # This definition relies on the bindings above
     f!, f_VJP_input! = nothing, f_VJP_θ! = nothing,
     inputs = nothing, callback_freq = nothing,
     init_cache,
@@ -356,6 +355,7 @@ callback_freq(law::Law{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractFloat, <:Any
 # Define whether inputs are provided or not through GenInputsAndApply
 inputs(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = law.f.inputs
 inputs(law::Law) = throw("Inputs are not defined.")
+apply_law_in_model(law::Law) = !is_callback_law(law)
 
 
 """
@@ -405,6 +405,7 @@ is_callback_law(::ConstantLaw) = false
 is_precomputable_law_VJP(law::ConstantLaw) = false
 callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
 inputs(law::ConstantLaw) = (;)
+apply_law_in_model(law::ConstantLaw) = false
 
 
 """
@@ -418,15 +419,17 @@ apply_law!(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
 law_VJP_input(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
 law_VJP_θ(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
 precompute_law_VJP(law::NullLaw, cache, simulation, glacier_idx, t, θ) = nothing
-init_cache(law::NullLaw, simulation, glacier_idx, θ) = zeros(Sleipnir.Float)
-cache_type(law::NullLaw) = Array{Sleipnir.Float, 0}
+init_cache(law::NullLaw, simulation, glacier_idx, θ) = FloatCacheNoVJP(zeros(Sleipnir.Float))
+cache_type(law::NullLaw) = FloatCacheNoVJP
 is_callback_law(::NullLaw) = false
 is_precomputable_law_VJP(law::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
 inputs(law::NullLaw) = (;)
+apply_law_in_model(law::NullLaw) = false
 
 
 apply_all_non_callback_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement apply_all_non_callback_laws! for your own model.")
+precompute_all_VJPs_laws!(::AbstractModel, cache, simulation, glacier_idx, t, θ) = throw("This function should not be called. Implement precompute_all_VJPs_laws! for your own model.")
 
 
 # Display setup
