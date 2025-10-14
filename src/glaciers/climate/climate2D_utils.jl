@@ -61,46 +61,19 @@ end
 
 """
     get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
-
-    Wrapper function to calculate and update the cumulative climate data for a given period.
-    This period is defined through the end of the time period `t` and the time step `step`.
-
-    # Keyword arguments
-    - `climate::Climate`: The climate object containing raw climate data.
-    - `t::AbstractFloat`: Time at which the cumulative climate data should be computed.
-    - `step::AbstractFloat`: Time step used to compute the cumulative climate data. Together with
-    `t` they define a time period.
-    - `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp
-    the gradient values. Default is `[-0.009, -0.003]`.
-
-    # Updates
-    - `climate.climate_raw_step`: The raw climate data for the given period.
-    - `climate.avg_temps`: The average temperature for the given period.
-    - `climate.avg_gradients`: The average gradient for the given period.
-    - `climate.climate_step.prcp`: The cumulative precipitation for the given period.
-    - `climate.climate_step.temp`: The cumulative temperature for the given period.
-    - `climate.climate_step.gradient`: The cumulative gradient for the given period.
-    - `climate.climate_step.avg_temp`: The average temperature for the given period.
-    - `climate.climate_step.avg_gradient`: The average gradient for the given period.
-    - `climate.climate_step.ref_hgt`: The reference height from the raw climate data
-"""
-function get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
-    # First we get the dates of the current time and the previous step
-    period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
-    get_cumulative_climate!(climate, period, gradient_bounds)
-end
-
-"""
-    get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
+    get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient_bounds=[-0.009, -0.003])
 
 Calculate and update the cumulative climate data for a given period.
-This period is defined through the end of the time period `t` and the time step `step`.
+The user can choose between providing a specific time `t` and a time step `step`, or a time period defined by `period`.
 
 # Keyword arguments
 - `climate::Climate`: The climate object containing raw climate data.
+- `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
+Optional parameters to specify the time period:
 - `t::AbstractFloat`: Time at which the cumulative climate data should be computed.
 - `step::AbstractFloat`: Time step used to compute the cumulative climate data. Together with `t` they define a time period.
-- `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
+or
+- `period::StepRange{Date, Day}`: The time period for which to compute the cumulative climate data.
 
 # Updates
 - `climate.climate_raw_step`: The raw climate data for the given period.
@@ -113,6 +86,12 @@ This period is defined through the end of the time period `t` and the time step 
 - `climate.climate_step.avg_gradient`: The average gradient for the given period.
 - `climate.climate_step.ref_hgt`: The reference height from the raw climate data.
 """
+function get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
+    # First we get the dates of the current time and the previous step
+    period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
+    get_cumulative_climate!(climate, period, gradient_bounds)
+end
+
 function get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient_bounds=[-0.009, -0.003])
     climate.climate_raw_step = climate.raw_climate[At(period)]
 

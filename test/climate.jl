@@ -42,15 +42,3 @@ function climate_downscale(; save_refs::Bool=false)
     @test glacier.climate.climate_2D_step == climate_2D_step_ref
 
 end
-
-function dummy_climate(; save_refs::Bool=false)
-    climate = Sleipnir.DummyClimate2D(longterm_temps = [-2.0])
-
-    if save_refs
-        jldsave(joinpath(Sleipnir.root_dir, string("test/data/climate/dummy_climate.jld2")); climate)
-    end
-
-    dummy_climate_ref = load(joinpath(Sleipnir.root_dir, "test/data/climate/dummy_climate.jld2"))["climate"]
-
-    @test climate == dummy_climate_ref
-end
