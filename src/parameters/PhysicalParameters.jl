@@ -51,8 +51,8 @@ Initialize the physical parameters of a model.
 Keyword arguments
 =================
     - `ρ`: Ice density
-    - `g`: Gravitational constant
-    - `ϵ`: Small number
+    - `g`: Gravitational acceleration.
+    - `ϵ`: Regularization used in the square root of norms for AD numerical stability.
     - `η₀`: Factor to cap surface elevation differences with the upstream ice thickness to impose boundary condition in the iceflow equation
     - `maxA`: Maximum value for `A` (Glen's coefficient)
     - `minA`: Minimum value for `A` (Glen's coefficient)

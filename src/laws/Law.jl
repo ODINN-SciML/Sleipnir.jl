@@ -213,9 +213,9 @@ inputs(law::Law) = throw("Inputs are not defined.")
 
 
 """
-    ConstantLaw{T}(init_cache)
+    ConstantLaw{CACHE_TYPE}(init_cache)
 
-Creates a constant law of type `Law{T}` that holds a fixed value for the entire simulation.
+Creates a constant law of type `ConstantLaw{CACHE_TYPE}` that holds a fixed value for the entire simulation.
 
 This is useful to inject glacier-specific or global constants into the simulation without modifying them over time.
 The update function is a no-op, and only the `init_cache` function matters.
@@ -226,7 +226,7 @@ The update function is a no-op, and only the `init_cache` function matters.
 
 # Type Parameters
 
-- `T`: The type of the internal state. Must be specified manually and should match the return type of `init_cache=false`.
+- `CACHE_TYPE`: The type of the cache. Must be specified manually and should match the return type of `init_cache`.
 
 # Examples
 
