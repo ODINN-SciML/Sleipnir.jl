@@ -4,6 +4,7 @@ export AbstractInput, get_input, inputs, generate_inputs, default_name
 export law_VJP_input, law_VJP_θ, prepare_vjp_law, precompute_law_VJP, is_precomputable_law_VJP
 export CustomVJP, DIVJP
 export AbstractPrepVJP
+export Container
 
 """
     AbstractInput
@@ -85,11 +86,48 @@ Currently it's only used for testing by making easier to create dumb laws, but i
 
 Concrete subtypes must implement:
 - `apply_law!(::ConcreteLaw, state, simulation, glacier_idx, t, θ)`
-- `init_cache(::ConcreteLaw, glacier, glacier_idx)::`
+- `init_cache(::ConcreteLaw, glacier, glacier_idx)`
+- `law_VJP_input(::ConcreteLaw, cache, simulation, glacier_idx, t, θ)`
+- `law_VJP_θ(::ConcreteLaw, cache, simulation, glacier_idx, t, θ)`
+- `precompute_law_VJP(::ConcreteLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ)`
+- `cache_type(::ConcreteLaw)`
+- `is_callback_law(::ConcreteLaw)`
+- `is_precomputable_law_VJP(::ConcreteLaw)`
+- `callback_freq(::ConcreteLaw)`
+- `inputs(::ConcreteLaw)`
+- `apply_law_in_model(::ConcreteLaw)`
 """
 abstract type AbstractLaw end
 apply_law!(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law!. Please provide an implementation for $(typeof(inp))."))
 init_cache(inp::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(inp))."))
+law_VJP_input(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_input. Please provide an implementation for $(typeof(inp))."))
+law_VJP_θ(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_θ. Please provide an implementation for $(typeof(inp))."))
+precompute_law_VJP(inp::AbstractLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(inp))."))
+cache_type(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement cache_type. Please provide an implementation for $(typeof(inp))."))
+is_callback_law(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_callback_law. Please provide an implementation for $(typeof(inp))."))
+is_precomputable_law_VJP(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_precomputable_law_VJP. Please provide an implementation for $(typeof(inp))."))
+callback_freq(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement callback_freq. Please provide an implementation for $(typeof(inp))."))
+inputs(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement inputs. Please provide an implementation for $(typeof(inp))."))
+apply_law_in_model(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law_in_model. Please provide an implementation for $(typeof(inp))."))
+
+"""
+    Container
+
+Abstract type that defines a container to be used in the PDE solver.
+It is useful to retrieve the `simulation` object when applying callback laws.
+"""
+abstract type Container end
+
+"""
+    retrieve_simulation(p)
+    retrieve_simulation(p::Container)
+
+Function that retrieves the `simulation` object from `integrator.p` when called from a callback.
+If `p` is a subtype of `Container`, then `p.simulation` is returned, otherwise it returns `p`.
+It is for internal use only and it isn't exposed to the user.
+"""
+retrieve_simulation(p) = p
+retrieve_simulation(p::Container) = p.simulation
 
 """
     build_affect(law::AbstractLaw, cache, glacier_idx, θ)
@@ -101,7 +139,7 @@ function build_affect(law::AbstractLaw, cache, glacier_idx, θ)
     # The let block make sure that every variable are type stable
     return let law = law, cache = cache, glacier_idx = glacier_idx, θ = θ
         function affect!(integrator)
-            simulation = integrator.p
+            simulation = retrieve_simulation(integrator.p)
             t = integrator.t
 
             apply_law!(law, cache, simulation, glacier_idx, t, θ)
@@ -279,7 +317,7 @@ end
 
 ### Declaration of the law with semantic inputs (cf AbstractInput) ###
 Law{T}( # No custom VJP
-    inputs::Union{<: NamedTuple, <: Tuple}, f::Function, init_cache, callback_freq
+    inputs::Union{<: NamedTuple, <: Tuple}, f::Function, init_cache, callback_freq::Union{Nothing, Real}
 ) where {T} = Law{T}(
     GenInputsAndApply(inputs, f),
     GenInputsAndApply(inputs, emptyVJPWithInputs),
@@ -291,7 +329,7 @@ Law{T}( # No custom VJP
 Law{T}( # With VJP computed on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
 ) where {T} = Law{T}(
     GenInputsAndApply(inputs, f),
     GenInputsAndApply(inputs, f_VJP_input),
@@ -303,7 +341,7 @@ Law{T}( # With VJP computed on-the-fly
 Law{T}( # With precomputed VJP and VJP interpolated on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Union{Function, DIVJP},
 ) where {T} = Law{T}(
     GenInputsAndApply(inputs, f),
@@ -316,7 +354,7 @@ Law{T}( # With precomputed VJP and VJP interpolated on-the-fly
 Law{T}( # With precomputed VJP and no VJP interpolation on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Union{Function, DIVJP},
 ) where {T} = Law{T}(
     GenInputsAndApply(inputs, f),
@@ -329,20 +367,20 @@ Law{T}( # With precomputed VJP and no VJP interpolation on-the-fly
 Law{T}( # Binding for the case with no custom VJP
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Nothing,
 ) where {T} = Law{T}(inputs, f, init_cache, callback_freq)
 Law{T}( # Binding for the case with VJP computed on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Nothing,
 ) where {T} = Law{T}(inputs, f, f_VJP_input, f_VJP_θ, init_cache, callback_freq)
 
 
 ### Declaration of the law with an affect that directly retrieves the inputs ###
 Law{T}( # No custom VJP
-    ::Nothing, f::Function, init_cache, callback_freq
+    ::Nothing, f::Function, init_cache, callback_freq::Union{Nothing, Real}
 ) where{T} = Law{T}(
     f, emptyVJP, emptyVJP,
     init_cache, callback_freq,
@@ -352,7 +390,7 @@ Law{T}( # No custom VJP
 Law{T}( # With VJP computed on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
 ) where{T} = Law{T}(
     f, f_VJP_input, f_VJP_θ,
     init_cache, callback_freq,
@@ -362,7 +400,7 @@ Law{T}( # With VJP computed on-the-fly
 Law{T}( # With precomputed VJP and VJP interpolated on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Function,
 ) where{T} = Law{T}(
     f, f_VJP_input, f_VJP_θ,
@@ -373,7 +411,7 @@ Law{T}( # With precomputed VJP and VJP interpolated on-the-fly
 Law{T}( # With precomputed VJP and no VJP interpolation on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Function,
 ) where{T} = Law{T}(
     f, emptyVJP, emptyVJP,
@@ -384,13 +422,13 @@ Law{T}( # With precomputed VJP and no VJP interpolation on-the-fly
 Law{T}( # Binding for the case with no custom VJP
     ::Nothing,
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Nothing,
 ) where {T} = Law{T}(nothing, f, init_cache, callback_freq)
 Law{T}( # Binding for the case with VJP computed on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq,
+    init_cache, callback_freq::Union{Nothing, Real},
     p_VJP::Nothing,
 ) where {T} = Law{T}(f, f_VJP_input, f_VJP_θ, init_cache, callback_freq)
 
