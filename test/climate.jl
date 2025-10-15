@@ -38,6 +38,7 @@ function climate_downscale(; save_refs::Bool=false)
     climate_2D_step_ref = load(joinpath(Sleipnir.root_dir, "test/data/climate/climate_2D_step.jld2"))["climate_2D_step"]
 
     @test climate_step == climate_step_ref
+    @test glacier.climate.climate_step == climate_step_ref
     @test climate_2D_step == climate_2D_step_ref
     @test glacier.climate.climate_2D_step == climate_2D_step_ref
 
