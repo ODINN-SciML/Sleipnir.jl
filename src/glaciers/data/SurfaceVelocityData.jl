@@ -38,6 +38,7 @@ mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
     date1::Union{Vector{DateTime}, Nothing}
     date2::Union{Vector{DateTime}, Nothing}
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}
+    flag::Union{BitMatrix, Nothing}
     isGridGlacierAligned::Bool
 end
 
@@ -94,12 +95,13 @@ function SurfaceVelocityData(;
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
+    flag::Union{BitMatrix, Nothing} = nothing,
     isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
     return SurfaceVelocityData{Sleipnir.Float}(
         x, y, lat, lon,
         vx, vy, vabs, vx_error, vy_error, vabs_error,
-        date, date1, date2, date_error, isGridGlacierAligned
+        date, date1, date2, date_error, flag, isGridGlacierAligned
     )
 end
 
@@ -109,6 +111,7 @@ Base.:(==)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
     a.vx == b.vx && a.vy == b.vy && a.vabs == b.vabs &&
     a.vx_error == b.vx_error && a.vy_error == b.vy_error && a.vabs_error == b.vabs_error &&
     a.date == b.date && a.date1 == b.date1 && a.date2 == b.date2 && a.date_error == b.date_error &&
+    a.flag == b.flag &&
     a.isGridGlacierAligned == b.isGridGlacierAligned
 
 
@@ -117,4 +120,5 @@ Base.:(≈)(a::SurfaceVelocityData, b::SurfaceVelocityData) =
     safe_approx(a.vx, b.vx) && safe_approx(a.vy, b.vy) && safe_approx(a.vabs, b.vabs) &&
     safe_approx(a.vx_error, b.vx_error) && safe_approx(a.vy_error, b.vy_error) && safe_approx(a.vabs_error, b.vabs_error) &&
     safe_approx(a.date, b.date) && safe_approx(a.date1, b.date1) && safe_approx(a.date2, b.date2) && safe_approx(a.date_error, b.date_error) &&
+    a.flag == b.flag &&
     a.isGridGlacierAligned == b.isGridGlacierAligned
