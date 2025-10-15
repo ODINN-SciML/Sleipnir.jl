@@ -16,6 +16,11 @@ module MockTestInputs
     get_input(::C, simulation, glacier_idx, t) = t
 end
 
+module MockVjpsPrepLaw
+    import Sleipnir: AbstractPrepVJP
+    struct FakeVjpsPrepLaw <: AbstractPrepVJP end
+end
+
 using Sleipnir: _normalize_law_inputs, generate_inputs
 
 generate_inputs_testset() = @testset "generate_inputs" begin
@@ -292,7 +297,9 @@ function test_law_vjp(;
 
     @test is_precomputable_law_VJP(law) == precomputed_vjp
     if precomputed_vjp
-        precompute_law_VJP(law, cache, simulation, glacier_idx, t, θ)
+        (; FakeVjpsPrepLaw) = MockVjpsPrepLaw
+        vjpsPrepLaw = FakeVjpsPrepLaw()
+        precompute_law_VJP(law, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)
     end
     law_VJP_input(law, cache, simulation, glacier_idx, t, θ)
     law_VJP_θ(law, cache, simulation, glacier_idx, t, θ)
@@ -324,11 +331,9 @@ apply_vjp_law_testset() = @testset "Law VJPs" begin
             end,
         )
         cache = init_cache(law, simulation, glacier_idx, θ)
-
-        # Test that applying the VJP raises an error
-        @test_throws "This VJP has not been defined." law_VJP_input(law, cache, simulation, glacier_idx, t, θ)
-        @test_throws "This VJP has not been defined." law_VJP_θ(law, cache, simulation, glacier_idx, t, θ)
-        @test_throws "This VJP has not been defined." precompute_law_VJP(law, cache, simulation, glacier_idx, t, θ)
+        @test !is_precomputable_law_VJP(law)
+        @test law_VJP_input(law, cache, simulation, glacier_idx, t, θ) === nothing
+        @test law_VJP_θ(law, cache, simulation, glacier_idx, t, θ) === nothing
     end
 
     @testset "Law with custom VJP" begin
@@ -394,7 +399,7 @@ apply_vjp_law_testset() = @testset "Law VJPs" begin
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(1))
             end,
-            p_VJP! = function (cache, inputs, θ)
+            p_VJP! = function (cache, vjpsPrepLaw, inputs, θ)
                 @. cache.vjp_inp = θ.a
                 @. cache.vjp_θ = sum(inputs.c)
             end,
@@ -437,7 +442,7 @@ apply_vjp_law_testset() = @testset "Law VJPs" begin
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(0))
             end,
-            p_VJP! = function (cache, inputs, θ)
+            p_VJP! = function (cache, vjpsPrepLaw, inputs, θ)
                 @. cache.vjp_inp = 1.0
             end,
         )
@@ -451,6 +456,45 @@ apply_vjp_law_testset() = @testset "Law VJPs" begin
             θ = (;),
             t = 2.0,
             expected_cache = MatrixCache(ones(nx, ny)*2, zeros(nx, ny), zeros(0)),
+            expected_cache_type = MatrixCache,
+            expected_inputs = (a=A(), b=B(), c=C()),
+            precomputed_vjp = true,
+        )
+    end
+
+    @testset "Law with VJP precomputation w/o f_VJP_*!" begin
+        # fake simulation
+        simulation = (;
+            glaciers = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),
+            ]
+        )
+
+        law = Law{MatrixCache}(;
+            inputs = (A(), B(), C()),
+            f! = function (cache, inputs, θ)
+                @. cache.value = θ.a * inputs.c
+            end,
+            init_cache = function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glaciers[glacier_idx]
+                MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(1))
+            end,
+            p_VJP! = function (cache, vjpsPrepLaw, inputs, θ)
+                @. cache.vjp_inp = θ.a
+                @. cache.vjp_θ = sum(inputs.c)
+            end,
+        )
+
+        glacier_idx = 2
+        (; nx, ny) = simulation.glaciers[glacier_idx]
+        test_law_vjp(;
+            law,
+            simulation,
+            glacier_idx = glacier_idx,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = MatrixCache(ones(nx, ny)*6, zeros(nx, ny), zeros(1)),
             expected_cache_type = MatrixCache,
             expected_inputs = (a=A(), b=B(), c=C()),
             precomputed_vjp = true,
