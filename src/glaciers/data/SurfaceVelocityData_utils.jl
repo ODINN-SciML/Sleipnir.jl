@@ -23,7 +23,8 @@ function initialize_surfacevelocitydata(
     raster::Union{String, <: RasterStack};
     glacier::Union{G, Nothing}=nothing,
     mapping::VM=MeanDateVelocityMapping(),
-    compute_vabs_error::Bool=true
+    compute_vabs_error::Bool=true,
+    flag::Union{String, <: RasterStack, Nothing} = nothing
 ) where {G <: AbstractGlacier, VM <: VelocityMapping}
 
     velRast = isa(raster, String) ? RasterStack(raster, lazy=true) : raster
@@ -79,6 +80,9 @@ function initialize_surfacevelocitydata(
     latitudes_vel = map(x -> x.lat.val, transform.(mean(x), y))
     longitudes_vel = map(x -> x.lon.val, transform.(x, mean(y)))
 
+    # Ice velocity mask product
+    vflag = isnothing(flag) ? nothing : initialize_surfacevelocitydata_mask(velRast, flag)
+
     if mapToGlacierGrid
         # Also retrieve the regional coordinates of the glacier grid through x and y
         latitudes_glacier = glacier.Coords["lat"]
@@ -124,7 +128,7 @@ function initialize_surfacevelocitydata(
         end
 
         # Here vx and vy are of type DiskArrays.BroadcastDiskArray
-        x, y, vx, vy = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, mapping)
+        x, y, vx, vy, vflag = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, vflag, mapping)
         # Set ice velocity to NaN outside of the glacier outlines
         mask = mask_ice .|| mask_data
         for i in range(1, size(vx,3))
@@ -187,8 +191,40 @@ function initialize_surfacevelocitydata(
         vabs = vabs,
         vx_error = vx_error, vy_error = vy_error, vabs_error = vabs_error,
         date = date_mean, date1 = date1, date2 = date2, date_error = date_error,
+        flag = vflag,
         isGridGlacierAligned = mapToGlacierGrid
     )
+end
+
+function initialize_surfacevelocitydata_mask(
+    data::RasterStack,
+    flag::Union{String, <: RasterStack, Nothing} = nothing
+)
+    flagRast = isa(flag, String) ? RasterStack(flag, lazy = true) : flag
+
+    # Subset mask based on glacier datacube
+    # Flag is centered in the middle pixel, so we shift It
+    Δ = 26.0
+    Xs = dims(data, :X).val.data
+    X_begin, X_end = minimum(Xs) - Δ, maximum(Xs) + Δ
+    Ys = dims(data, :Y).val.data
+    Y_begin, Y_end = minimum(Ys) - Δ, maximum(Ys) + Δ
+
+    flagRast_subset = flagRast[X(X_begin..X_end), Y(Y_begin..Y_end)]
+
+    # We align the axes of the glacier subset with the flag
+    X_glacier_increasing = first(Xs) < last(Xs)
+    Y_glacier_increasing = first(Ys) < last(Ys)
+    X_flag_increasing = first(dims(flagRast_subset, :X).val.data) < last(dims(flagRast_subset, :X).val.data)
+    Y_flag_increasing = first(dims(flagRast_subset, :Y).val.data) < last(dims(flagRast_subset, :Y).val.data) 
+
+    X_reverse = xor(X_glacier_increasing, X_flag_increasing)
+    Y_reverse = xor(Y_glacier_increasing, Y_flag_increasing)
+    flagRast_subset = X_reverse ? reverse(flagRast_subset, dims = X) : flagRast_subset
+    flagRast_subset = Y_reverse ? reverse(flagRast_subset, dims = Y) : flagRast_subset
+
+    # Flag is activated when entry is equal to the integer 1
+    return flagRast_subset.layer1.data .== 1
 end
 
 """
@@ -264,6 +300,7 @@ function grid(
     longitudes::Vector{F},
     vx::Union{FileArray, Array{Union{Missing, F}, 3}},
     vy::Union{FileArray, Array{Union{Missing, F}, 3}},
+    vflag::Union{BitMatrix, Nothing},
     mapping::VM
 ) where {
     G <: AbstractGlacier,
@@ -292,6 +329,7 @@ function grid(
     velType = eltype(vx)
     vxG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
     vyG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
+    flagG = isnothing(vflag) ? nothing : BitMatrix(falses(glacier.nx, glacier.ny))
 
     if mapping.spatialInterp == :nearest
         # We express each of the coordinates of the velocity grid as (ΔxV*ix+bx, ΔyV*iy+by)
@@ -312,6 +350,7 @@ function grid(
         indy_up = min(maximum(indy), size(vx, 1))
         block_vx = vx[indx_lw:indx_up, indy_lw:indy_up, :]
         block_vy = vy[indx_lw:indx_up, indy_lw:indy_up, :]
+        block_flag = isnothing(vflag) ? nothing : vflag[indx_lw:indx_up, indy_lw:indy_up]
 
         # Assign to each point of the glacier grid the closest point on the grid of surface velocities
         shiftx = - indx_lw + 1
@@ -321,12 +360,15 @@ function grid(
             if checkbounds(Bool, block_vx, ixv, iyv, 1)
                 vxG[ix,iy,begin:end] .= block_vx[ixv, iyv, :]
                 vyG[ix,iy,begin:end] .= block_vy[ixv, iyv, :]
+                if !isnothing(vflag)
+                    flagG[ix, iy] = block_flag[ixv, iyv]
+                end
             end
         end
     else
         throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
     end
-    return xG, yG, vxG, vyG
+    return xG, yG, vxG, vyG, flagG
 end
 
 """
@@ -439,6 +481,8 @@ function combine_velocity_data(refVelocities; merge = false)
     date1 = reduce(vcat, [refV.date1 for refV in refVelocities])
     date2 = reduce(vcat, [refV.date2 for refV in refVelocities])
     date_error = reduce(vcat, [refV.date_error for refV in refVelocities])
+    # We defined the combined mask based if the flag is activated in one of the datacubes
+    flag = reduce(.|, [refV.flag for refV in refVelocities])
 
     if merge
         date_unique = sort(unique(date))
@@ -509,6 +553,7 @@ function combine_velocity_data(refVelocities; merge = false)
             date1 = date1_unique,
             date2 = date2_unique,
             date_error = nothing,
+            flag = flag,
             isGridGlacierAligned = all(isGridGlacierAligned)
         )
     else
@@ -527,6 +572,7 @@ function combine_velocity_data(refVelocities; merge = false)
             date1 = date1,
             date2 = date2,
             date_error = date_error,
+            flag = flag,
             isGridGlacierAligned = all(isGridGlacierAligned)
         )
     end

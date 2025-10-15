@@ -54,6 +54,7 @@ function initialize_glaciers(
         Dict{String, <:RasterStack},
         Dict{String, Vector{<:RasterStack}}
         } = Dict{String,String}(),
+    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
 
     # Generate missing glaciers file
@@ -77,7 +78,12 @@ function initialize_glaciers(
     end
 
     glaciers = pmap(
-        (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
+        (rgi_id) -> initialize_glacier(
+            rgi_id,
+            params;
+            velocityDatacubes = velocityDatacubes,
+            velocityFlag = velocityFlag
+            ),
         rgi_ids
     )
 
@@ -135,6 +141,7 @@ function initialize_glacier(
         Dict{String, <: RasterStack},
         Dict{String, Vector{<:RasterStack}}
         } = Dict{String,String}(),
+    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
     # Build glacier and its associated climate
     glacier = Glacier2D(rgi_id, parameters; masking = masking, smoothing = smoothing)
@@ -147,7 +154,8 @@ function initialize_glacier(
                 datacube -> initialize_surfacevelocitydata(
                     datacube;
                     glacier = glacier,
-                    mapping = mapping
+                    mapping = mapping,
+                    flag = velocityFlag
                     ),
                     datacubes
                 )
@@ -158,7 +166,8 @@ function initialize_glacier(
             initialize_surfacevelocitydata(
                 datacubes;
                 glacier = glacier,
-                mapping = mapping
+                mapping = mapping,
+                flag = velocityFlag
                 )
         end
         # Rebuild glacier since we cannot change type of `glacier.velocityData`
