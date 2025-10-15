@@ -93,7 +93,7 @@ function initialize_surfacevelocitydata(
             for lon in longitudes_glacier,
             lat in latitudes_glacier
             ]
-        # Define mask where there is ice
+        # Define mask where there is no ice
         mask_ice = glacier.H₀ .== 0
 
         # Test that at least part of the target glacier falls inside datacube
@@ -120,7 +120,7 @@ function initialize_surfacevelocitydata(
         if any(.!glacier_in_datacube)
             coverage = round(100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
             @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
-            @warn "Glacier is not enterely include in datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
+            @warn "Glacier is not enterely included in the datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
         end
 
         # Here vx and vy are of type DiskArrays.BroadcastDiskArray
