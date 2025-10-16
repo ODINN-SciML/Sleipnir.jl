@@ -45,8 +45,8 @@ ENV["GKSwstype"]="nul"
 end
 
 @testset "Climate operations" begin
+    @testset "Climate downscale" climate_downscale(save_refs=false)
     @testset "Dummy climate" dummy_climate()
-    @testset "Climate downscale" climate_downscale()
 end
 
 @testset "Misc" begin
