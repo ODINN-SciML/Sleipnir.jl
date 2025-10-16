@@ -46,6 +46,7 @@ end
 
 @testset "Climate operations" begin
     @testset "Climate downscale" climate_downscale(save_refs=false)
+    @testset "Dummy climate" dummy_climate()
 end
 
 @testset "Misc" begin

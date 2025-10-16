@@ -46,3 +46,7 @@ function climate_downscale(; save_refs::Bool=false)
     @test glacier.climate.climate_2D_step == climate_2D_step_ref
 
 end
+
+function dummy_climate()
+    climate = Sleipnir.DummyClimate2D(longterm_temps = [-2.0])
+end
