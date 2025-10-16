@@ -49,11 +49,11 @@ function test_law(;
     expected_inputs,
 )
     @test cache_type(law) == expected_cache_type
-    JET.@test_opt init_cache(law, simulation, glacier_idx, θ)
+    JET.@test_opt init_cache(law, simulation, glacier_idx, θ; scalar=false)
 
     # test apply_law!
     let
-        cache = init_cache(law, simulation, glacier_idx, θ)
+        cache = init_cache(law, simulation, glacier_idx, θ; scalar=false)
 
         apply_law!(law, cache, simulation, glacier_idx, t, θ)
         @test cache == expected_cache
@@ -61,7 +61,7 @@ function test_law(;
 
     # test apply_law! stability
     let
-        cache = init_cache(law, simulation, glacier_idx, θ)
+        cache = init_cache(law, simulation, glacier_idx, θ; scalar=false)
 
         JET.@test_opt apply_law!(law, cache, simulation, glacier_idx, t, θ)
     end
@@ -74,7 +74,7 @@ function test_law(;
             t = t,
         )
 
-        cache = init_cache(law, simulation, glacier_idx, θ)
+        cache = init_cache(law, simulation, glacier_idx, θ; scalar=false)
         affect! = build_affect(law, cache, glacier_idx, θ)
 
         affect!(integrator)
@@ -89,7 +89,7 @@ function test_law(;
             t = t,
         )
 
-        cache = init_cache(law, simulation, glacier_idx, θ)
+        cache = init_cache(law, simulation, glacier_idx, θ; scalar=false)
         affect! = build_affect(law, cache, glacier_idx, θ)
 
         JET.@test_opt affect!(integrator)
@@ -176,7 +176,7 @@ apply_law_testset() = @testset "Law" begin
             f! = function (cache, simulation, glacier_idx, t, θ)
                 @. cache = θ.a * t
             end,
-            init_cache = function (simulation, glacier_idx, θ)
+            init_cache = function (simulation, glacier_idx, θ; scalar=false)
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
@@ -209,7 +209,7 @@ apply_law_testset() = @testset "Law" begin
             f! = function (cache, inputs, θ)
                 @. cache = θ.a * inputs.c
             end,
-            init_cache = function (simulation, glacier_idx, θ)
+            init_cache = function (simulation, glacier_idx, θ; scalar=false)
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
@@ -240,7 +240,7 @@ apply_law_testset() = @testset "Law" begin
             f! = function (cache, inputs, θ)
                 @. cache = θ.a * inputs.z
             end,
-            init_cache = function (simulation, glacier_idx, θ)
+            init_cache = function (simulation, glacier_idx, θ; scalar=false)
                 (; nx, ny) = simulation.glaciers[glacier_idx]
                 zeros(nx, ny)
             end,
