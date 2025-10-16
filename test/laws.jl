@@ -336,6 +336,44 @@ apply_vjp_law_testset() = @testset "Law VJPs" begin
         @test law_VJP_θ(law, cache, simulation, glacier_idx, t, θ) === nothing
     end
 
+    @testset "Law with automatic VJPs" begin
+        # fake simulation
+        simulation = (;
+            glaciers = [
+                (; nx=5, ny=4),
+                (; nx=2, ny=3),
+            ]
+        )
+        glacier_idx = 2
+        θ = (;a = 3.0)
+        t = 2.0
+
+        law = Law{MatrixCache}(;
+            inputs = (A(), B(), C()),
+            f! = function (cache, inputs, θ)
+                @. cache.value = θ.a * inputs.c
+            end,
+            init_cache = function (simulation, glacier_idx, θ)
+                (; nx, ny) = simulation.glaciers[glacier_idx]
+                MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(1))
+            end,
+        )
+
+        glacier_idx = 2
+        (; nx, ny) = simulation.glaciers[glacier_idx]
+        test_law_vjp(;
+            law,
+            simulation,
+            glacier_idx = glacier_idx,
+            θ = (;a = 3.0),
+            t = 2.0,
+            expected_cache = MatrixCache(ones(nx, ny)*6, zeros(nx, ny), zeros(1)),
+            expected_cache_type = MatrixCache,
+            expected_inputs = (a=A(), b=B(), c=C()),
+            precomputed_vjp = false,
+        )
+    end
+
     @testset "Law with custom VJP" begin
         # fake simulation
         simulation = (;

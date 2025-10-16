@@ -98,17 +98,17 @@ Concrete subtypes must implement:
 - `apply_law_in_model(::ConcreteLaw)`
 """
 abstract type AbstractLaw end
-apply_law!(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law!. Please provide an implementation for $(typeof(inp))."))
-init_cache(inp::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(inp))."))
-law_VJP_input(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_input. Please provide an implementation for $(typeof(inp))."))
-law_VJP_θ(inp::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_θ. Please provide an implementation for $(typeof(inp))."))
-precompute_law_VJP(inp::AbstractLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(inp))."))
-cache_type(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement cache_type. Please provide an implementation for $(typeof(inp))."))
-is_callback_law(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_callback_law. Please provide an implementation for $(typeof(inp))."))
-is_precomputable_law_VJP(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_precomputable_law_VJP. Please provide an implementation for $(typeof(inp))."))
-callback_freq(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement callback_freq. Please provide an implementation for $(typeof(inp))."))
-inputs(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement inputs. Please provide an implementation for $(typeof(inp))."))
-apply_law_in_model(inp::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law_in_model. Please provide an implementation for $(typeof(inp))."))
+apply_law!(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law!. Please provide an implementation for $(typeof(law))."))
+init_cache(law::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(law))."))
+law_VJP_input(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_input. Please provide an implementation for $(typeof(law))."))
+law_VJP_θ(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_θ. Please provide an implementation for $(typeof(law))."))
+precompute_law_VJP(law::AbstractLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(law))."))
+cache_type(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement cache_type. Please provide an implementation for $(typeof(law))."))
+is_callback_law(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_callback_law. Please provide an implementation for $(typeof(law))."))
+is_precomputable_law_VJP(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_precomputable_law_VJP. Please provide an implementation for $(typeof(law))."))
+callback_freq(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement callback_freq. Please provide an implementation for $(typeof(law))."))
+inputs(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement inputs. Please provide an implementation for $(typeof(law))."))
+apply_law_in_model(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law_in_model. Please provide an implementation for $(typeof(law))."))
 
 """
     Container
@@ -606,9 +606,41 @@ apply_all_callback_laws!(model::AbstractModel, cache, simulation, glacier_idx, t
 
 
 # Display setup
-repr(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = "$(keys(inputs(law))) -> $(cache_type(law))"
-repr(law::Law) = "(simulation, t) -> $(cache_type(law))"
-repr(law::ConstantLaw) = "ConstantLaw -> $(cache_type(law))"
+function repr_cache_type(cType)
+    # If cType <: Cache, retrieve the type of cType.value, otherwise use the simple cache type
+    if cType <: Cache
+        fieldtype(cType, :value)
+    else
+        cType
+    end
+end
+function repr_eval_law(law::AbstractLaw)
+    freq_repr = if apply_law_in_model(law)
+        "⟳ "
+    elseif callback_freq(law)>0
+        "↧$(callback_freq(law)) "
+    else
+        "↧@start "
+    end
+    cType = cache_type(law)
+    vjp_repr = if cType <: Cache && hasfield(cType, :vjp_inp) && hasfield(cType, :vjp_θ)
+        empty_VJP_input = isa(law.f_VJP_input, typeof(emptyVJP)) || isa(law.f_VJP_input.f, typeof(emptyVJPWithInputs))
+        empty_VJP_θ = isa(law.f_VJP_θ, typeof(emptyVJP)) || isa(law.f_VJP_θ.f, typeof(emptyVJPWithInputs))
+        empty_p_VJP = isa(law.p_VJP, typeof(emptyPrepVJP)) || isa(law.p_VJP.f, typeof(emptyPrepVJPWithInputs))
+        precomp_repr = is_precomputable_law_VJP(law) ? " ✅ precomputed" : " ❌ precomputed"
+        if empty_VJP_input && empty_VJP_θ && empty_p_VJP
+            "auto VJP $precomp_repr"
+        else
+            "custom VJP $precomp_repr"
+        end
+    else
+        ""
+    end
+    "($freq_repr $vjp_repr)"
+end
+repr(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = "$(keys(inputs(law))) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))"
+repr(law::Law) = "(simulation, t) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))"
+repr(law::ConstantLaw) = "ConstantLaw -> $(repr_cache_type(cache_type(law)))"
 repr(law::NullLaw) = "NullLaw"
 Base.show(io::IO, type::MIME"text/plain", law::AbstractLaw) = Base.show(io, law)
 function Base.show(io::IO, law::AbstractLaw)
