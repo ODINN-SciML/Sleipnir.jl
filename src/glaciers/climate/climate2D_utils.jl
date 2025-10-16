@@ -100,12 +100,12 @@ function get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
     climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp.data, 0.0) # get PDDs
     climate.climate_raw_step.gradient.data .= clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate.climate_step.prcp = sum(climate.climate_raw_step.prcp)
-    climate.climate_step.temp = sum(climate.climate_raw_step.temp)
-    climate.climate_step.gradient = sum(climate.climate_raw_step.gradient)
-    climate.climate_step.avg_temp = climate.avg_temps
-    climate.climate_step.avg_gradient = climate.avg_gradients
-    climate.climate_step.ref_hgt = climate.ref_hgt
+    climate.climate_step.prcp = round(sum(climate.climate_raw_step.prcp); digits=8)
+    climate.climate_step.temp = round(sum(climate.climate_raw_step.temp); digits=8)
+    climate.climate_step.gradient = round(sum(climate.climate_raw_step.gradient); digits=8)
+    climate.climate_step.avg_temp = round(climate.avg_temps; digits=8)
+    climate.climate_step.avg_gradient = round(climate.avg_gradients; digits=8)
+    climate.climate_step.ref_hgt = round(climate.ref_hgt; digits=8)
 end
 
 """
@@ -143,12 +143,12 @@ function get_cumulative_climate(
     copy_climate.temp.data .= max.(copy_climate.temp.data, 0.0) # get PDDs
     copy_climate.gradient.data .= clamp.(copy_climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
     climate_sum = ClimateStep(
-        temp = sum(copy_climate.temp),
-        prcp = sum(climate.prcp),
-        gradient = sum(copy_climate.gradient),
-        avg_temp = avg_temp,
-        avg_gradient = avg_gradient,
-        ref_hgt = Sleipnir.Float(metadata(climate)["ref_hgt"]),
+        temp = round(sum(copy_climate.temp); digits=8),
+        prcp = round(sum(climate.prcp); digits=8),
+        gradient = round(sum(copy_climate.gradient); digits=8),
+        avg_temp = round(avg_temp; digits=8),
+        avg_gradient = round(avg_gradient; digits=8),
+        ref_hgt = round(Sleipnir.Float(metadata(climate)["ref_hgt"]); digits=8),
     )
     return climate_sum
 end
