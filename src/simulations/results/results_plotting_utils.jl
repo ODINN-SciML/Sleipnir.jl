@@ -221,7 +221,7 @@ end
         timeIdx::Union{Nothing,Int64} = nothing,
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
         lengthscale::Float64 = 0.00001,
-        arrowsize::Float64 = 0.5,
+        tiplength::Float64 = 0.5,
     ) -> Figure
 
 Plot quivers for glacier variables.
@@ -235,7 +235,7 @@ Plot quivers for glacier variables.
     which selects the last element available.
 - `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
 - `lengthscale::Float64`: Lengthscale of the arrows in the quiver plot.
-- `arrowsize::Float64`: Arrow size in the quiver plot.
+- `tiplength::Float64`: Length of the arrow in the quiver plot.
 
 # Returns
 - A plot of the glacier quivers.
@@ -247,7 +247,7 @@ function plot_glacier_quivers(
     timeIdx::Union{Nothing,Int64} = nothing,
     figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
     lengthscale::Float64 = 0.00001,
-    arrowsize::Float64 = 0.5,
+    tiplength::Float64 = 0.5,
 )
     figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
 
@@ -304,7 +304,7 @@ function plot_glacier_quivers(
 
         positions = Point2f.(reshape(X,:), reshape(Y,:))
         directions = Vec2f.(dataVx, -dataVy)
-        arrows!(ax, positions, directions; arrowsize=arrowsize, lengthscale=lengthscale)
+        arrows2d!(ax, positions, directions; tiplength=tiplength, lengthscale=lengthscale)
 
         ax.title = "$title"
         ax.xlabel = "Longitude"

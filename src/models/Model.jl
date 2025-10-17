@@ -11,9 +11,19 @@ abstract type AbstractModel end
 const AbstractEmptyModel = Union{AbstractModel,Nothing}
 
 """
+    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+
 A mutable struct that represents a model with three components: iceflow, mass balance, and machine learning.
 
-    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+    Model(
+        iceflow::IFM,
+        mass_balance::MBM,
+        machine_learning::MLM,
+    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+
+    Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
+
+Initialize Model (no machine learning model).
 
 # Keyword arguments
 - `iceflow::IFM}`: Represents the iceflow component, which is an instance of `IFM`.
@@ -29,8 +39,16 @@ mutable struct Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <
     iceflow::IFM
     mass_balance::MBM
     machine_learning::MLM
-end
 
+    function Model(
+        iceflow::IFM,
+        mass_balance::MBM,
+        machine_learning::MLM,
+    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+        new{typeof(iceflow), typeof(mass_balance), typeof(machine_learning)}(
+            iceflow, mass_balance, machine_learning)
+    end
+end
 Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
 """
