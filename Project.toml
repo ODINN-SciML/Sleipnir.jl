@@ -1,7 +1,7 @@
 name = "Sleipnir"
 uuid = "f5e6c550-199f-11ee-3608-394420200519"
+version = "0.11.1"
 authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>", "Alban Gossard <alban.paul.gossard@gmail.com>", "Mathieu Le Séac'h"]
-version = "0.11.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
@@ -24,7 +24,6 @@ HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
 Infiltrator = "5903a43b-9cc3-4c30-8d17-598619ec4e9b"
-JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 MLStyle = "d8e11817-5142-5d16-987a-aa16d5891078"
@@ -43,7 +42,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 BenchmarkTools = "1"
 CFTime = "0.2.1"
 CSV = "0.10.15"
-CairoMakie = "0.12.18, 0.13"
+CairoMakie = "0.15"
 CodecZlib = "0.7.6"
 ComponentArrays = "0.15"
 Contour = "0.6"
@@ -58,7 +57,7 @@ HDF5 = "0.17"
 ImageCore = "0.10"
 ImageInTerminal = "0.5"
 Infiltrator = "1.8"
-JET = "0.9.18"
+JET = "0.9, 0.10"
 JLD2 = "0.4, 0.5, 0.6"
 JSON = "0.21.4"
 MLStyle = "0.4"
@@ -72,7 +71,8 @@ Unitful = "1"
 julia = "1.10"
 
 [extras]
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["JET", "Test"]
