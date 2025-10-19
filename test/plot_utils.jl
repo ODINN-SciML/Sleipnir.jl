@@ -20,7 +20,11 @@ function glaciers2D_plots()
     results = Results(
         glaciers[1],
         ifm;
-        H = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))]
+        H = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vx = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vy = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vx_ref = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vy_ref = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
     )
 
     # Test execution
