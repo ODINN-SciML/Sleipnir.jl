@@ -34,6 +34,7 @@ using Printf
 using CFTime
 using MLStyle
 using FFTW
+using Zygote # To skip some lines in Sleipnir/src/simulations/results/results_utils.jl that causes an error with SciMLSensitivity
 
 ##############################################
 ############    PARAMETERS     ###############
