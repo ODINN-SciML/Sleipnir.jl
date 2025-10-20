@@ -1,5 +1,5 @@
 
-export Model, AbstractModel
+export AbstractModel
 
 """
     AbstractModel
