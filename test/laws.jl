@@ -297,8 +297,9 @@ function test_law_vjp(;
 
     @test is_precomputable_law_VJP(law) == precomputed_vjp
     if precomputed_vjp
-        (; FakeVjpsPrepLaw) = MockVjpsPrepLaw
-        vjpsPrepLaw = FakeVjpsPrepLaw()
+        # (; FakeVjpsPrepLaw) = MockVjpsPrepLaw
+        # vjpsPrepLaw = FakeVjpsPrepLaw()
+        vjpsPrepLaw = nothing
         precompute_law_VJP(law, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)
     end
     law_VJP_input(law, cache, simulation, glacier_idx, t, θ)

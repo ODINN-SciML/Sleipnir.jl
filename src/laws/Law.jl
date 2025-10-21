@@ -67,12 +67,12 @@ It is for internal use only and not exposed to the user.
 """
 abstract type AbstractPrepVJP end
 
-function (with_input_f::GenInputsAndApply)(vjpPrep::AbstractPrepVJP, simulation, glacier_idx::Integer, t::Real, θ)
+function (with_input_f::GenInputsAndApply)(vjpPrep::Union{AbstractPrepVJP, Nothing}, simulation, glacier_idx::Integer, t::Real, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(vjpPrep, inputs, θ)
 end
 
-function (with_input_f::GenInputsAndApply)(cache, vjpPrep::AbstractPrepVJP, simulation, glacier_idx::Integer, t::Real, θ)
+function (with_input_f::GenInputsAndApply)(cache, vjpPrep::Union{AbstractPrepVJP, Nothing}, simulation, glacier_idx::Integer, t::Real, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, vjpPrep, inputs, θ)
 end
@@ -480,8 +480,9 @@ Law{T}(; # This definition relies on the bindings above
 apply_law!(law::Law, cache, simulation, glacier_idx, t, θ) = law.f(cache, simulation, glacier_idx, t, θ)
 law_VJP_input(law::Law, cache, simulation, glacier_idx, t, θ) = law.f_VJP_input(cache, simulation, glacier_idx, t, θ)
 law_VJP_θ(law::Law, cache, simulation, glacier_idx, t, θ) = law.f_VJP_θ(cache, simulation, glacier_idx, t, θ)
-precompute_law_VJP(law::Law, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = law.p_VJP(cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)
+precompute_law_VJP(law::Law, cache, vjpsPrepLaw::Nothing, simulation, glacier_idx, t, θ) = law.p_VJP(cache, vjpsPrepLaw, simulation, glacier_idx, t, θ) # Dispatch when p_VJP! is something else than DIVJP()
 function precompute_law_VJP(law::Law{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:GenInputsAndApply{<:Any, DIVJP}, <:Any}, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ)
+    # Dispatch when p_VJP!=DIVJP()
     backend = simulation.parameters.UDE.grad.VJP_method.regressorADBackend
     inputs = generate_inputs(law.p_VJP.inputs, simulation, glacier_idx, t)
     ∂θ = ∂law∂θ!(backend, vjpsPrepLaw, inputs, θ)
@@ -650,7 +651,7 @@ function repr_eval_law(law::AbstractLaw)
     freq_repr = if apply_law_in_model(law)
         "⟳ "
     elseif callback_freq(law)>0
-        "↧$(callback_freq(law)) "
+        "↧$(round(callback_freq(law); digits=3)) "
     else
         "↧@start "
     end
@@ -659,7 +660,8 @@ function repr_eval_law(law::AbstractLaw)
         empty_VJP_input = isa(law.f_VJP_input, typeof(emptyVJP)) || isa(law.f_VJP_input.f, typeof(emptyVJPWithInputs))
         empty_VJP_θ = isa(law.f_VJP_θ, typeof(emptyVJP)) || isa(law.f_VJP_θ.f, typeof(emptyVJPWithInputs))
         empty_p_VJP = isa(law.p_VJP, typeof(emptyPrepVJP)) || isa(law.p_VJP.f, typeof(emptyPrepVJPWithInputs))
-        precomp_repr = is_precomputable_law_VJP(law) ? " ✅ precomputed" : " ❌ precomputed"
+        precompDI_repr = (!isa(law.p_VJP, typeof(emptyPrepVJP))) && isa(law.p_VJP.f, DIVJP) ? " (DI)" : ""
+        precomp_repr = is_precomputable_law_VJP(law) ? " ✅ precomputed$(precompDI_repr)" : " ❌ precomputed"
         if empty_VJP_input && empty_VJP_θ && empty_p_VJP
             "auto VJP $precomp_repr"
         else
