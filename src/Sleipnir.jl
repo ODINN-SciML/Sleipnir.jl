@@ -10,14 +10,14 @@ using Infiltrator
 import Pkg
 using JLD2
 using Distributed
-using Statistics
+using Statistics, NaNStatistics
 using CairoMakie
 using Observables
 import Contour
 using Downloads
 using HDF5
 using ComponentArrays
-using Rasters
+using Rasters; import ArchGDAL
 using CSV
 using JSON
 using CodecZlib
