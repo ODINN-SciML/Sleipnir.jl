@@ -89,7 +89,7 @@ Concrete subtypes must implement:
 - `init_cache(::ConcreteLaw, glacier, glacier_idx)`
 - `law_VJP_input(::ConcreteLaw, cache, simulation, glacier_idx, t, θ)`
 - `law_VJP_θ(::ConcreteLaw, cache, simulation, glacier_idx, t, θ)`
-- `precompute_law_VJP(::ConcreteLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ)`
+- `precompute_law_VJP(::ConcreteLaw, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)`
 - `cache_type(::ConcreteLaw)`
 - `is_callback_law(::ConcreteLaw)`
 - `is_precomputable_law_VJP(::ConcreteLaw)`
@@ -102,7 +102,7 @@ apply_law!(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(erro
 init_cache(law::AbstractLaw, simulation, glacier_idx, θ) = throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(law))."))
 law_VJP_input(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_input. Please provide an implementation for $(typeof(law))."))
 law_VJP_θ(law::AbstractLaw, cache, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_θ. Please provide an implementation for $(typeof(law))."))
-precompute_law_VJP(law::AbstractLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(law))."))
+precompute_law_VJP(law::AbstractLaw, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ) = throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(law))."))
 cache_type(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement cache_type. Please provide an implementation for $(typeof(law))."))
 is_callback_law(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_callback_law. Please provide an implementation for $(typeof(law))."))
 is_precomputable_law_VJP(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_precomputable_law_VJP. Please provide an implementation for $(typeof(law))."))
@@ -491,7 +491,7 @@ function precompute_law_VJP(law::Law{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <
     cache.vjp_inp .= ∂inp
 end
 
-init_cache(law::Law, simulation, glacier_idx, θ; scalar=false) = law.init_cache(simulation, glacier_idx, θ; scalar=scalar)
+init_cache(law::Law, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::Law{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 
 is_callback_law(::Law{<:Any, <:Any, <:Any, <:Any, <:Any, Nothing, <:Any, <:Any}) = false
@@ -549,7 +549,7 @@ apply_law!(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
 law_VJP_input(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
 law_VJP_θ(law::ConstantLaw, cache, simulation, glacier_idx, t, θ) = nothing
 precompute_law_VJP(law::ConstantLaw, cache, vjpsPrepLaw::AbstractPrepVJP, simulation, glacier_idx, t, θ) = nothing
-init_cache(law::ConstantLaw, simulation, glacier_idx, θ; scalar=false) = law.init_cache(simulation, glacier_idx, θ)
+init_cache(law::ConstantLaw, simulation, glacier_idx, θ) = law.init_cache(simulation, glacier_idx, θ)
 cache_type(law::ConstantLaw{CACHE_TYPE}) where {CACHE_TYPE} = CACHE_TYPE
 is_callback_law(::ConstantLaw) = false
 is_precomputable_law_VJP(law::ConstantLaw) = false
