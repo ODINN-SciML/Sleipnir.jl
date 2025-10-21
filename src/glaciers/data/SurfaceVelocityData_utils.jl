@@ -223,8 +223,9 @@ function initialize_surfacevelocitydata_mask(
     flagRast_subset = X_reverse ? reverse(flagRast_subset, dims = X) : flagRast_subset
     flagRast_subset = Y_reverse ? reverse(flagRast_subset, dims = Y) : flagRast_subset
 
-    # Flag is activated when entry is equal to the integer 1
-    return flagRast_subset.layer1.data .== 1
+    # Unreliable pixels are indicated with 0
+    # Reliable pixels are indicared with 1
+    return flagRast_subset.layer1.data .== 0
 end
 
 """
