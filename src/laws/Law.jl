@@ -277,6 +277,8 @@ callback_freq(law::Law{<:Any, <:Any, <:Any, <:Any, <:Any, <:Real, <:Any}) = law.
 # Define whether inputs are provided or not through GenInputsAndApply
 inputs(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = law.f.inputs
 inputs(law::Law) = throw("Inputs are not defined.")
+inputs_defined(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = true
+inputs_defined(law::Law) = false
 apply_law_in_model(law::Law) = !is_callback_law(law)
 
 
@@ -327,6 +329,7 @@ is_callback_law(::ConstantLaw) = false
 is_precomputable_law_VJP(law::ConstantLaw) = false
 callback_freq(::ConstantLaw) = throw("ConstantLaw doesn't have callback")
 inputs(law::ConstantLaw) = (;)
+inputs_defined(law::ConstantLaw) = true
 apply_law_in_model(law::ConstantLaw) = false
 
 
@@ -347,6 +350,7 @@ is_callback_law(::NullLaw) = false
 is_precomputable_law_VJP(law::NullLaw) = false
 callback_freq(::NullLaw) = throw("NullLaw doesn't have callback")
 inputs(law::NullLaw) = (;)
+inputs_defined(law::NullLaw) = true
 apply_law_in_model(law::NullLaw) = false
 
 
@@ -384,11 +388,8 @@ function repr_eval_law(law::AbstractLaw)
     end
     "($freq_repr $vjp_repr)"
 end
-repr(law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = "$(keys(inputs(law))) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))"
-repr(law::Law) = "(simulation, t) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))"
-repr(law::ConstantLaw) = "ConstantLaw -> $(repr_cache_type(cache_type(law)))"
-repr(law::NullLaw) = "NullLaw"
+Base.show(io::IO, law::Law{CACHE_TYPE, <: GenInputsAndApply}) where {CACHE_TYPE} = println(io, "$(keys(inputs(law))) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))")
+Base.show(io::IO, law::Law) = println(io, "(simulation, t) -> $(repr_cache_type(cache_type(law)))   $(repr_eval_law(law))")
+Base.show(io::IO, law::ConstantLaw) = println(io, "ConstantLaw -> $(repr_cache_type(cache_type(law)))")
+Base.show(io::IO, law::NullLaw) = println(io, "NullLaw")
 Base.show(io::IO, type::MIME"text/plain", law::AbstractLaw) = Base.show(io, law)
-function Base.show(io::IO, law::AbstractLaw)
-    print(io, repr(law))
-end

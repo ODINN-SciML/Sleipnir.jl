@@ -1,5 +1,5 @@
 export AbstractLaw
-export apply_law!, init_cache, law_VJP_input, law_VJP_θ, precompute_law_VJP, cache_type, is_callback_law, is_precomputable_law_VJP, callback_freq, inputs, apply_law_in_model
+export apply_law!, init_cache, law_VJP_input, law_VJP_θ, precompute_law_VJP, cache_type, is_callback_law, is_precomputable_law_VJP, callback_freq, inputs, inputs_defined, apply_law_in_model
 export Container
 export build_affect
 
@@ -21,6 +21,7 @@ Concrete subtypes must implement:
 - `is_precomputable_law_VJP(::ConcreteLaw)`
 - `callback_freq(::ConcreteLaw)`
 - `inputs(::ConcreteLaw)`
+- `inputs_defined(::ConcreteLaw)`
 - `apply_law_in_model(::ConcreteLaw)`
 """
 abstract type AbstractLaw end
@@ -34,6 +35,7 @@ is_callback_law(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLa
 is_precomputable_law_VJP(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement is_precomputable_law_VJP. Please provide an implementation for $(typeof(law))."))
 callback_freq(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement callback_freq. Please provide an implementation for $(typeof(law))."))
 inputs(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement inputs. Please provide an implementation for $(typeof(law))."))
+inputs_defined(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement inputs_defined. Please provide an implementation for $(typeof(law))."))
 apply_law_in_model(law::AbstractLaw) = throw(error("Concrete subtypes of AbstractLaw must implement apply_law_in_model. Please provide an implementation for $(typeof(law))."))
 
 """
