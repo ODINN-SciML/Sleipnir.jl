@@ -5,6 +5,7 @@ if !parse(Bool, get(ENV, "CI", "false"))
     using Revise
 end
 using Sleipnir
+using Sleipnir: Parameters
 using Test
 using JLD2
 using Infiltrator
@@ -66,6 +67,7 @@ end
     generate_inputs_testset()
     normalize_law_inputs_testset()
     apply_law_testset()
+    apply_vjp_law_testset()
 end
 
 end
