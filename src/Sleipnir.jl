@@ -78,6 +78,10 @@ include("models/Model.jl")
 # Everything related to running simulations in ODINN
 include("simulations/Simulation.jl")
 # Law interface and utils
+include("laws/GenInput.jl")
+include("laws/Cache.jl")
+include("laws/AbstractLaw.jl")
+include("laws/VJP.jl")
 include("laws/Law.jl")
 
 # Fake data used in the tests
