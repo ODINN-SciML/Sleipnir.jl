@@ -71,3 +71,10 @@ function (with_input_f::GenInputsAndApply)(cache, vjpPrep::Union{AbstractPrepVJP
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, vjpPrep, inputs, θ)
 end
+
+function Base.show(io::IO, input::AbstractInput)
+    print(io, "$(default_name(input)): ")
+    # Call the *default* show method for AbstractInput
+    invoke(Base.show, Tuple{IO, Any}, io, input)
+end
+Base.show(io::IO, type::MIME"text/plain", input::AbstractInput) = Base.show(io, input)
