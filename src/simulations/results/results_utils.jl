@@ -8,6 +8,15 @@ function datetime_to_floatyear(dt::DateTime)
     return y + seconds_since_start / seconds_in_year
 end
 
+function yearfrac(p::Period)
+    # Convert the period to days
+    days = Dates.value(convert(Day, p))
+    return days / 365.25
+end
+function yearfrac(p::Month)
+    return Dates.value(p)/12
+end
+
 """
     create_results(
         simulation::SIM,

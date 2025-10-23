@@ -1,5 +1,10 @@
 export NullLaw, Law, ConstantLaw
 
+const CB_FREQ_TYPE = Union{Nothing, Real, Period, Month}
+
+convert_callbackfreq(callback_freq::Union{Nothing, Real}) = callback_freq
+convert_callbackfreq(callback_freq::Union{Period, Month}) = yearfrac(callback_freq)
+
 """
     Law{T}(;
         inputs = nothing,
@@ -34,9 +39,10 @@ Law{Array{Float64, 0}}(;
 - `f!::Function`: A function with signature `f!(cache::T, simulation, glacier_idx, t, θ)` that updates the internal state.
     If `inputs` are provided, the function instead takes the form `f!(cache::T, inputs, θ)`.
 - `init_cache::Function`: A function `init_cache(simulation, glacier_idx, θ)::T` that initializes the internal state for a given glacier.
-- `callback_freq::Union{Nothing, Real}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
+- `callback_freq::Union{Nothing, Real, Period, Month}`: Optional. If provided, the law is treated as a callback law and is only applied every `callback_freq` time units.
     If `callback_freq` is set to zero, then the law is applied only once at the beginning of the simulation.
     If `callback_freq` is set to `nothing` (default), then the law is applied at every iteration.
+    If `callback_freq` is provided as a `Period` or `Month`, it is converted to a float value in a yearly basis.
 - `f_VJP_input!`: A function with signature `(cache::T, simulation, glacier_idx, t, θ)` that updates `cache.vjp_inp` which is the VJP with respect to the inputs.
 - `f_VJP_θ!`: A function with signature `(cache::T, simulation, glacier_idx, t, θ)` that updates `cache.vjp_θ` which is the VJP with respect to the parameters θ.
 - `p_VJP!`: A function with signature `(cache::T, vjpsPrepLaw, simulation, glacier_idx, t, θ)` that performs the precomputation of the VJPs.
@@ -93,13 +99,14 @@ struct Law{
         f, f_VJP_input, f_VJP_θ, init_cache, callback_freq, p_VJP, vjpType,
         max_value, min_value, name
     ) where {CACHE_TYPE}
+        converted_callback_freq = convert_callbackfreq(callback_freq)
         new{
             CACHE_TYPE,
             typeof(f),
             typeof(f_VJP_input),
             typeof(f_VJP_θ),
             typeof(init_cache),
-            typeof(callback_freq),
+            typeof(converted_callback_freq),
             typeof(p_VJP),
             typeof(vjpType),
         }(
@@ -107,7 +114,7 @@ struct Law{
             f_VJP_input,
             f_VJP_θ,
             init_cache,
-            callback_freq,
+            converted_callback_freq,
             p_VJP,
             vjpType,
             max_value,
@@ -122,7 +129,7 @@ end
 Law{T}( # 1. No custom VJP
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Nothing,
     max_value::Real, min_value::Real, name::Symbol,
 ) where {T} = Law{T}(
@@ -137,7 +144,7 @@ Law{T}( # 1. No custom VJP
 Law{T}( # 2. With VJP computed on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Nothing,
     max_value::Real, min_value::Real, name::Symbol,
 ) where {T} = Law{T}(
@@ -152,7 +159,7 @@ Law{T}( # 2. With VJP computed on-the-fly
 Law{T}( # 3. With precomputed VJP and possibly some VJP computations on-the-fly
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Union{Function, DIVJP},
     max_value, min_value, name,
 ) where {T} = Law{T}(
@@ -167,7 +174,7 @@ Law{T}( # 3. With precomputed VJP and possibly some VJP computations on-the-fly
 Law{T}( # 4. With precomputed VJP and no on-the-fly VJP computation
     inputs::Union{<: NamedTuple, <: Tuple},
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Union{Function, DIVJP},
     max_value::Real, min_value::Real, name::Symbol,
 ) where {T} = Law{T}(
@@ -184,7 +191,7 @@ Law{T}( # 4. With precomputed VJP and no on-the-fly VJP computation
 Law{T}( # 1. No custom VJP
     ::Nothing,
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Nothing,
     max_value::Real, min_value::Real, name::Symbol,
 ) where{T} = Law{T}(
@@ -197,7 +204,7 @@ Law{T}( # 1. No custom VJP
 Law{T}( # 2. With VJP computed on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Nothing,
     max_value::Real, min_value::Real, name::Symbol,
 ) where{T} = Law{T}(
@@ -210,7 +217,7 @@ Law{T}( # 2. With VJP computed on-the-fly
 Law{T}( # 3. With precomputed VJP and possibly some VJP computations on-the-fly
     ::Nothing,
     f::Function, f_VJP_input::Function, f_VJP_θ::Function,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Function,
     max_value::Real, min_value::Real, name::Symbol,
 ) where{T} = Law{T}(
@@ -223,7 +230,7 @@ Law{T}( # 3. With precomputed VJP and possibly some VJP computations on-the-fly
 Law{T}( # 4. With precomputed VJP and no on-the-fly VJP computation
     ::Nothing,
     f::Function, f_VJP_input::Nothing, f_VJP_θ::Nothing,
-    init_cache, callback_freq::Union{Nothing, Real},
+    init_cache, callback_freq::CB_FREQ_TYPE,
     p_VJP::Function,
     max_value::Real, min_value::Real, name::Symbol,
 ) where{T} = Law{T}(
