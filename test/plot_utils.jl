@@ -20,7 +20,11 @@ function glaciers2D_plots()
     results = Results(
         glaciers[1],
         ifm;
-        H = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))]
+        H = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vx = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vy = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vx_ref = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
+        Vy_ref = [abs.(randn(size(glaciers[1].H₀)...)),abs.(randn(size(glaciers[1].H₀)...))],
     )
 
     # Test execution
@@ -52,6 +56,10 @@ function glaciers2D_plots()
 end
 
 
+# Fake iceflow model struct to test the plotting functions
+struct IceflowModelTest{F <: AbstractFloat} <: AbstractModel
+    S::Matrix{F}
+end
 function make_thickness_video_test()
     rgi_ids = ["RGI60-11.03646"]
     rgi_paths = get_rgi_paths()
@@ -80,5 +88,8 @@ function make_thickness_video_test()
 
     tempPath = mktempdir()*".mp4"
 
-    plot_glacier_vid("thickness", H, glaciers[1], params.simulation, tempPath; baseTitle="Bossons glacier")
+    ifm = IceflowModelTest{Float64}(glaciers[1].S)
+    results = Results(glaciers[1], ifm; H=H)
+
+    plot_glacier_vid("thickness", results, glaciers[1], params.simulation, tempPath; baseTitle="Bossons glacier")
 end

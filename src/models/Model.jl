@@ -1,5 +1,5 @@
 
-export Model, AbstractModel
+export AbstractModel
 
 """
     AbstractModel
@@ -11,9 +11,19 @@ abstract type AbstractModel end
 const AbstractEmptyModel = Union{AbstractModel,Nothing}
 
 """
+    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+
 A mutable struct that represents a model with three components: iceflow, mass balance, and machine learning.
 
-    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+    Model(
+        iceflow::IFM,
+        mass_balance::MBM,
+        machine_learning::MLM,
+    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+
+    Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
+
+Initialize Model (no machine learning model).
 
 # Keyword arguments
 - `iceflow::IFM}`: Represents the iceflow component, which is an instance of `IFM`.
@@ -29,8 +39,16 @@ mutable struct Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <
     iceflow::IFM
     mass_balance::MBM
     machine_learning::MLM
-end
 
+    function Model(
+        iceflow::IFM,
+        mass_balance::MBM,
+        machine_learning::MLM,
+    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+        new{typeof(iceflow), typeof(mass_balance), typeof(machine_learning)}(
+            iceflow, mass_balance, machine_learning)
+    end
+end
 Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
 """
@@ -68,18 +86,18 @@ cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
 
 # Display setup
 function Base.show(io::IO, type::MIME"text/plain", model::Model)
-    println("**** Model ****")
-    println()
+    println(io, "**** Model ****")
+    println(io)
     Base.show(io, type, model.iceflow)
-    println()
+    println(io)
     Base.show(io, type, model.mass_balance)
-    println()
+    println(io)
     if isnothing(model.machine_learning)
-        println("No learnable components")
+        println(io, "No learnable components")
     else
-        println("Learnable components")
+        println(io, "Learnable components")
         Base.show(io, type, model.machine_learning)
-        println()
+        println(io)
     end
-    print("***************")
+    print(io, "***************")
 end
