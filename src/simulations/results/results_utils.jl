@@ -8,6 +8,15 @@ function datetime_to_floatyear(dt::DateTime)
     return y + seconds_since_start / seconds_in_year
 end
 
+function yearfrac(p::Period)
+    # Convert the period to days
+    days = Dates.value(convert(Day, p))
+    return days / 365.25
+end
+function yearfrac(p::Month)
+    return Dates.value(p)/12
+end
+
 """
     create_results(
         simulation::SIM,
@@ -59,8 +68,8 @@ function create_results(
         end
         ϵ = 1e-6 # Need this because of numerical rounding
         compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
-        solStepIndices = [findlast(t->compfct(t,val), solution.t) for val in timeSteps]
-        ts = solution.t[solStepIndices]
+        solStepIndices = Zygote.@ignore_derivatives [findlast(t->compfct(t,val), solution.t) for val in timeSteps] # selectTimeIdx(solution, timeSteps)
+        ts = Zygote.@ignore_derivatives solution.t[solStepIndices]
         us = solution.u[solStepIndices]
     else
         ts = tstops
