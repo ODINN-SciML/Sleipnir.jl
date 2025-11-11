@@ -364,7 +364,7 @@ apply_law_in_model(law::NullLaw) = false
 # Display setup
 function repr_cache_type(cType)
     # If cType <: Cache, retrieve the type of cType.value, otherwise use the simple cache type
-    if cType <: Cache
+    if cType <: Cache && hasfield(cType, :value)
         fieldtype(cType, :value)
     else
         cType
