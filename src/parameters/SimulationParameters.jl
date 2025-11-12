@@ -14,7 +14,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
 - `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
 - `tspan::Tuple{F, F}`: Time span for the simulation.
-- `step::F`: Time step for the simulation.
+- `step::F`: Time step for the MB simulation.
 - `multiprocessing::Bool`: Flag to indicate whether multiprocessing should be used.
 - `workers::I`: Number of workers for multiprocessing.
 - `working_dir::String`: Directory for working files.
@@ -80,7 +80,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
 - `int_type::DataType`: Data type for integers (default: `Int64`).
 - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
-- `step::F`: Time step for the simulation (default: `1/12`).
+- `step::F`: Time step for the MB simulation (default: `1/12`).
 - `multiprocessing::Bool`: Whether to use multiprocessing (default: `true`).
 - `workers::I`: Number of workers for multiprocessing (default: `4`).
 - `working_dir::String`: Working directory for the simulation (default: `""`).

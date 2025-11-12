@@ -65,6 +65,7 @@ function make_thickness_video_test()
     rgi_paths = get_rgi_paths()
     working_dir = joinpath(Sleipnir.root_dir, "test/data")
 
+    δt = 1/12
     params = Parameters(
         simulation = SimulationParameters(
             use_MB = true,
@@ -72,6 +73,7 @@ function make_thickness_video_test()
             use_velocities = true,
             use_glathida_data = false,
             tspan = (2014.0, 2015.0),
+            step = δt,
             working_dir = working_dir,
             multiprocessing = true,
             workers = 1,
@@ -82,8 +84,8 @@ function make_thickness_video_test()
 
     glaciers = initialize_glaciers(rgi_ids, params)
 
-    nSteps = (params.simulation.tspan[2]-params.simulation.tspan[1])/params.simulation.step
-    timeSteps = params.simulation.tspan[1].+collect(0:nSteps).*params.simulation.step
+    nSteps = (params.simulation.tspan[2]-params.simulation.tspan[1])/δt
+    timeSteps = params.simulation.tspan[1].+collect(0:nSteps).*δt
     H = [rand(glaciers[1].nx, glaciers[1].ny) for t in timeSteps]
 
     tempPath = mktempdir()*".mp4"
@@ -91,5 +93,5 @@ function make_thickness_video_test()
     ifm = IceflowModelTest{Float64}(glaciers[1].S)
     results = Results(glaciers[1], ifm; H=H)
 
-    plot_glacier_vid("thickness", results, glaciers[1], params.simulation, tempPath; baseTitle="Bossons glacier")
+    plot_glacier_vid("thickness", results, glaciers[1], params.simulation.tspan, δt, tempPath; baseTitle="Bossons glacier")
 end
