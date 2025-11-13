@@ -73,7 +73,7 @@ function make_thickness_video_test()
             use_velocities = true,
             use_glathida_data = false,
             tspan = (2014.0, 2015.0),
-            step = δt,
+            step_MB = δt,
             working_dir = working_dir,
             multiprocessing = true,
             workers = 1,
