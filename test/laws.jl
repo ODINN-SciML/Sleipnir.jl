@@ -14,6 +14,8 @@ module MockTestInputs
     struct C <: AbstractInput end
     default_name(::C) = :c
     get_input(::C, simulation, glacier_idx, t) = t
+
+    struct incompleteInp <: AbstractInput end
 end
 
 module MockVjpsPrepLaw
@@ -24,10 +26,19 @@ end
 using Sleipnir: _normalize_law_inputs, generate_inputs
 
 generate_inputs_testset() = @testset "generate_inputs" begin
-    (;A, B, C) = MockTestInputs
+    (;A, B, C, incompleteInp) = MockTestInputs
 
     @test generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.) == (a = ones(3), b = range(1, 3), c = 3.)
     @test generate_inputs((x = A(), y = B(), z = C()), nothing, nothing, 2.) == (x = ones(3), y = range(1, 3), z = 2.)
+
+    @test default_name(A()) == :a
+    @testset begin
+        println(A())
+    end
+
+    # Test default methods which are expected to throw an error
+    @test_throws "" default_name(incompleteInp())
+    @test_throws "" get_input(incompleteInp(), nothing, 1, 0.0)
 
     # type stability
     JET.@test_opt generate_inputs((a = A(), b = B(), c = C()), nothing, nothing, 3.)
@@ -40,6 +51,36 @@ normalize_law_inputs_testset() = @testset "_normalize_law_inputs" begin
     @test _normalize_law_inputs((A(), B(), C())) == (a = A(), b = B(), c = C())
     @test _normalize_law_inputs((a = A(), b = B(), c = C())) == (a = A(), b = B(), c = C())
     @test _normalize_law_inputs((x = A(), y = B(), z = C())) == (x = A(), y = B(), z = C())
+end
+
+cache_testset() = @testset "cache" begin
+    nx = 7
+    ny = 8
+    np = 10
+    @testset "MatrixCacheNoVJP" begin
+        c = MatrixCacheNoVJP(zeros(nx, ny))
+        @test size(c)==(nx, ny)
+        @test typeof(similar(c))==typeof(c)
+        @test c==MatrixCacheNoVJP(zeros(nx, ny))
+    end
+    @testset "ScalarCacheNoVJP" begin
+        c = ScalarCacheNoVJP(zeros())
+        @test size(c)==()
+        @test typeof(similar(c))==typeof(c)
+        @test c==ScalarCacheNoVJP(zeros())
+    end
+    @testset "MatrixCache" begin
+        c = MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(np))
+        @test size(c)==(nx, ny)
+        @test typeof(similar(c))==typeof(c)
+        @test c==MatrixCache(zeros(nx, ny), zeros(nx, ny), zeros(np))
+    end
+    @testset "ScalarCache" begin
+        c = ScalarCache(zeros(), zeros(), zeros(np))
+        @test size(c)==()
+        @test typeof(similar(c))==typeof(c)
+        @test c==ScalarCache(zeros(), zeros(), zeros(np))
+    end
 end
 
 function test_law(;
