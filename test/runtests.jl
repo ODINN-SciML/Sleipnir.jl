@@ -66,6 +66,7 @@ end
 @testset "Law" begin
     generate_inputs_testset()
     normalize_law_inputs_testset()
+    cache_testset()
     apply_law_testset()
     apply_vjp_law_testset()
 end

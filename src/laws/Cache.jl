@@ -1,4 +1,4 @@
-import Base.similar, Base.size, Base.fill
+import Base.similar, Base.size
 export Cache
 export MatrixCacheNoVJP, ScalarCacheNoVJP, MatrixCache, ScalarCache
 
@@ -47,7 +47,6 @@ end
 
 similar(c::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = typeof(c)(similar(c.value))
 size(c::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = size(c.value)
-fill(c::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}, s) = typeof(c)(fill(c.value, s))
 Base.:(==)(a::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}, b::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = a.value == b.value
 
 """
@@ -86,5 +85,4 @@ end
 
 similar(c::Union{ScalarCache, MatrixCache}) = typeof(c)(similar(c.value), similar(c.vjp_inp), similar(c.vjp_θ))
 size(c::Union{ScalarCache, MatrixCache}) = size(c.value)
-fill(c::Union{ScalarCache, MatrixCache}, s) = typeof(c)(fill(c.value, s), fill(c.vjp_inp, s), similar(c.vjp_θ))
 Base.:(==)(a::Union{ScalarCache, MatrixCache}, b::Union{ScalarCache, MatrixCache}) = a.value == b.value && a.vjp_inp == b.vjp_inp && a.vjp_θ == b.vjp_θ

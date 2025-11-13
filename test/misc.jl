@@ -30,6 +30,13 @@ function results_utils()
         t = Sleipnir.datetime_to_floatyear(dt)
         @assert t==y+0.5 "t=$(t) but dt=$(dt)"
     end
+
+    @testset "yearfrac" begin
+        @assert Sleipnir.yearfrac(Month(1))==1/12
+        @assert Sleipnir.yearfrac(Month(12))==1.0
+        @assert Sleipnir.yearfrac(Day(1))==1/(365.25)
+        @assert Sleipnir.yearfrac(Day(365))==(365)/(365.25)
+    end
 end
 
 function operations_glacier_mask()

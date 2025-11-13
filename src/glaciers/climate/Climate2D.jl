@@ -130,7 +130,7 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
         S::Matrix{<: AbstractFloat},
         Coords::Dict,
     )
-        dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step)
+        dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(Day, params.simulation.tspan[1] + params.simulation.step_MB)
         raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "raw_climate_$(params.simulation.tspan).nc"))
         if Sleipnir.doublePrec
             raw_climate = convertRasterStackToFloat64(raw_climate)
