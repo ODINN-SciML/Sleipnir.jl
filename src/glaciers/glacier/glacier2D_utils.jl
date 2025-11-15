@@ -263,6 +263,7 @@ function Glacier2D(
             Δx *= params.simulation.gridScalingFactor
             Δy *= params.simulation.gridScalingFactor
         end
+        # Local slope based on smoothed topography
         slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
         name = get(get_rgi_names(), rgi_id, "")
 
@@ -274,7 +275,8 @@ function Glacier2D(
             name = name,
             climate = climate,
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
-            A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0), n = Sleipnir.Float(3.0),
+            A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0),
+            n = Sleipnir.Float(3.0), p = Sleipnir.Float(3.0), q = Sleipnir.Float(2.0),
             slope = slope, dist_border = dist_border, mask = mask,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
             cenlon = cenlon, cenlat = cenlat,
