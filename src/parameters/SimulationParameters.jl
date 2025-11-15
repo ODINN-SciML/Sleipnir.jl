@@ -57,7 +57,7 @@ Constructor for `SimulationParameters` type, including default values.
         use_iceflow::Bool = true,
         plots::Bool = true,
         use_velocities::Bool = true,
-        f_surface_velocity_factor::F = 0.9,
+        f_surface_velocity_factor::F = 1.0,
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
         tspan::Tuple{F, F} = (2010.0, 2015.0),
@@ -78,7 +78,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `use_iceflow::Bool`: Whether to use ice flow (default: `true`).
 - `plots::Bool`: Whether to generate plots (default: `true`).
 - `use_velocities::Bool`: Whether to calculate velocities (default: `true`).
--  `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `0.9`).
+-  `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `1.0`).
 - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
 - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
 - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
@@ -114,7 +114,7 @@ function SimulationParameters(;
     use_iceflow::Bool = true,
     plots::Bool = true,
     use_velocities::Bool = true,
-    f_surface_velocity_factor::F = 0.9,
+    f_surface_velocity_factor::F = 1.0,
     overwrite_climate::Bool = false,
     use_glathida_data::Bool = false,
     tspan::Tuple{F, F} = (2010.0, 2015.0),
