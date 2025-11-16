@@ -147,14 +147,24 @@ function convertRasterStackToFloat64(rs::RasterStack)
 end
 
 """
-    Glacier2D(rgi_id::String, params::Parameters; smoothing=false, test=false)
+    Glacier2D(
+        rgi_id::String,
+        params::Parameters;
+        masking::Union{Int, Nothing, BitMatrix} = 2,
+        smoothing=false
+    )
 
 Build glacier object for a given RGI ID and parameters.
 
 # Arguments
 - `rgi_id::String`: The RGI ID of the glacier.
 - `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
+- `masking::Union{Int, Nothing, BitMatrix}`: Type of mask applied to the glacier to determine regions with no ice.
+    * When `masking` is an `Int`, the mask is based on the initial ice thickness `H₀` and it is set to true for
+      pixels outside at a distance of the glacier borders greater than the value of `masking`.
+    * When `masking` is set to `nothing`, the mask is set to a `BitMatrix` full of falses.
+    * When `masking` is a `BitMatrix`, this matrix is used for the mask.
+    Defaults to `2`.
 - `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
 - `test::Bool=false`: Optional; test flag. Default is `false`.
 
@@ -174,7 +184,7 @@ function Glacier2D(
     params::Parameters;
     masking::Union{Int, Nothing, BitMatrix} = 2,
     smoothing=false
-    )
+)
 
     # Load glacier gridded data
     F = Sleipnir.Float
@@ -208,9 +218,9 @@ function Glacier2D(
             dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
         end
 
-        # Define mask where ice can exist (H > 0)
+        # Define mask where ice is constrained to be zero
         mask = @match masking begin
-            ::Nothing => trues(size(H₀)...)
+            ::Nothing => falses(size(H₀)...)
             ::Int => is_in_glacier(H₀, -masking)
             ::BitMatrix => masking
         end
