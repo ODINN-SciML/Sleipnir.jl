@@ -1,4 +1,4 @@
-export Parameters, AbstractParameters, PhysicalParameters, SimulationParameters, AbstractEmptyParams
+export AbstractParameters, PhysicalParameters, SimulationParameters, AbstractEmptyParams
 
 """
     AbstractParameters
@@ -69,7 +69,7 @@ Constructs a `Parameters` object with the given physical and simulation paramete
 """
 function Parameters(;
     physical::PhysicalParameters = PhysicalParameters(),
-    simulation::SimulationParameters = SimulationParameters()
+    simulation::SimulationParameters = SimulationParameters(),
 )
 
     # Build the parameters based on all the subtypes of parameters

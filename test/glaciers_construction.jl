@@ -33,7 +33,8 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
     )
 
     glaciers = initialize_glaciers(rgi_ids, params)
-    JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+    # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+    JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params)
 
     # Test prints
     println(glaciers)
@@ -54,9 +55,6 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
             println("Glacier fields identical: ", Sleipnir.diffToDict(glaciers[i], glaciers_ref[i]))
             if !(glaciers[i].climate == glaciers_ref[i].climate)
                 println("Climate fields identical: = ", Sleipnir.diffToDict(glaciers[i].climate, glaciers_ref[i].climate))
-                if !(glaciers[i].climate.raw_climate == glaciers_ref[i].climate.raw_climate)
-                    println("Raw climate fields identical: = ", Sleipnir.diffToDict(glaciers[i].climate.raw_climate, glaciers_ref[i].climate.raw_climate))
-                end
             end
         end
     end
