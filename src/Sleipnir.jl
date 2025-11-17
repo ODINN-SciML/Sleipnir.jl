@@ -17,7 +17,7 @@ import Contour
 using Downloads
 using HDF5
 using ComponentArrays
-using Rasters; import ArchGDAL
+using Rasters
 using CSV
 using JSON
 using CodecZlib
