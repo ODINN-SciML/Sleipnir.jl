@@ -21,6 +21,7 @@ by providing `nothing` as the default value.
 - `date1::Union{Vector{DateTime}, Nothing}`: First date of acquisition.
 - `date2::Union{Vector{DateTime}, Nothing}`: Second date of acquisition.
 - `date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing}`: Error in `date`.
+- `flag::Union{BitMatrix, Nothing}`: Flag indicating whether a pixel is considered as reliable or not.
 - `isGridGlacierAligned::Bool`: Whether the data have been gridded to the glacier grid or not.
 """
 mutable struct SurfaceVelocityData{F <: AbstractFloat} <: AbstractData
@@ -61,6 +62,7 @@ function SurfaceVelocityData(;
     date1::Union{Vector{DateTime}, Nothing} = nothing,
     date2::Union{Vector{DateTime}, Nothing} = nothing,
     date_error::Union{Vector{Day}, Vector{Millisecond}, Nothing} = nothing,
+    flag::Union{BitMatrix, Nothing} = nothing,
     isGridGlacierAligned::Bool = false,
 ) where {F <: AbstractFloat}
 

@@ -2,10 +2,11 @@ export initialize_surfacevelocitydata, random_spatially_coherent_mask
 
 """
     initialize_surfacevelocitydata(
-        raster::Union{String, RasterStack};
+        raster::Union{String, <: RasterStack};
         glacier::Union{G, Nothing}=nothing,
         mapping::VM=MeanDateVelocityMapping(),
-        compute_vabs_error::Bool=true
+        compute_vabs_error::Bool=true,
+        flag::Union{String, <: RasterStack, Nothing} = nothing
     ) where {G <: AbstractGlacier, VM <: VelocityMapping}
 
 Initialize SurfaceVelocityData from Rabatel et. al (2023).
@@ -18,6 +19,9 @@ Arguments:
 - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
 - `compute_vabs_error::Bool`: Whether to compute the absolute error uncertainty.
+- `flag::Union{String, <: RasterStack, Nothing}`: Option to provide a `RasterStack`
+    containing a `fmask` raster and which provides an indicator of whether each pixel
+    of the ice surface velocity data is considered as reliable or not.
 """
 function initialize_surfacevelocitydata(
     raster::Union{String, <: RasterStack};
@@ -203,9 +207,9 @@ function initialize_surfacevelocitydata_mask(
     flagRast = isa(flag, String) ? RasterStack(flag, lazy = true) : flag
 
     # Subset mask based on glacier datacube
-    # Flag is centered in the middle pixel, so we shift It
-    Δ = 26.0
+    # Flag is centered in the middle pixel, so we shift it by Δ
     Xs = dims(data, :X).val.data
+    Δ = diff(Xs)[1] / 2 + 1
     X_begin, X_end = minimum(Xs) - Δ, maximum(Xs) + Δ
     Ys = dims(data, :Y).val.data
     Y_begin, Y_end = minimum(Ys) - Δ, maximum(Ys) + Δ
@@ -224,8 +228,8 @@ function initialize_surfacevelocitydata_mask(
     flagRast_subset = Y_reverse ? reverse(flagRast_subset, dims = Y) : flagRast_subset
 
     # Unreliable pixels are indicated with 0
-    # Reliable pixels are indicared with 1
-    return flagRast_subset.layer1.data .== 0
+    # Reliable pixels are indicated with 1
+    return flagRast_subset.fmask.data .== 1
 end
 
 """
