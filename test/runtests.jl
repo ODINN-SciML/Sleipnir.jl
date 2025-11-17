@@ -5,6 +5,7 @@ if !parse(Bool, get(ENV, "CI", "false"))
     using Revise
 end
 using Sleipnir
+using Sleipnir: Parameters
 using Test
 using JLD2
 using Infiltrator
@@ -45,8 +46,8 @@ ENV["GKSwstype"]="nul"
 end
 
 @testset "Climate operations" begin
+    @testset "Climate downscale" climate_downscale(save_refs=false)
     @testset "Dummy climate" dummy_climate()
-    @testset "Climate downscale" climate_downscale()
 end
 
 @testset "Misc" begin
@@ -66,6 +67,7 @@ end
     generate_inputs_testset()
     normalize_law_inputs_testset()
     apply_law_testset()
+    apply_vjp_law_testset()
 end
 
 end

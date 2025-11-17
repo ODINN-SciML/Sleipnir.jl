@@ -39,7 +39,8 @@ function surface_velocity_data()
         )
     )
     glaciers = initialize_glaciers(rgi_ids, params)
-    JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params) # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+    # For the moment this is not type stable because of the readings (type of CSV files and RasterStack cannot be determined at compilation time)
+    JET.@test_opt broken=true target_modules=(Sleipnir,) initialize_glaciers(rgi_ids, params)
 
     @testset "Fake interpolated datacube w glacier gridding" begin
         fakeRasterStack = Sleipnir.fake_interpolated_datacube()

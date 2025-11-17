@@ -40,8 +40,9 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
     raw_climate_clipped_file = "raw_climate_$(simparams.tspan).nc"
     if !isfile(joinpath(rgi_path, raw_climate_clipped_file))
         println("Getting raw climate data for: ", rgi_id)
-        # Get raw climate data for gdir
-        tspan_date = partial_year(Day, simparams.tspan[1]):Day(1):partial_year(Day, simparams.tspan[2])
+        # Get raw climate data for gdir. We start a year before the simulation tspan to ensure we have enough data 
+        # for variables with a sliding time window
+        tspan_date = partial_year(Day, simparams.tspan[1]-1):Day(1):partial_year(Day, simparams.tspan[2])
         climate =  get_raw_climate_data(rgi_path)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
@@ -58,18 +59,21 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
     end
 end
 
-
 """
     get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
+    get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient_bounds=[-0.009, -0.003])
 
 Calculate and update the cumulative climate data for a given period.
-This period is defined through the end of the time period `t` and the time step `step`.
+The user can choose between providing a specific time `t` and a time step `step`, or a time period defined by `period`.
 
 # Keyword arguments
 - `climate::Climate`: The climate object containing raw climate data.
+- `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
+Optional parameters to specify the time period:
 - `t::AbstractFloat`: Time at which the cumulative climate data should be computed.
 - `step::AbstractFloat`: Time step used to compute the cumulative climate data. Together with `t` they define a time period.
-- `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
+or
+- `period::StepRange{Date, Day}`: The time period for which to compute the cumulative climate data.
 
 # Updates
 - `climate.climate_raw_step`: The raw climate data for the given period.
@@ -85,6 +89,10 @@ This period is defined through the end of the time period `t` and the time step 
 function get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
     # First we get the dates of the current time and the previous step
     period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
+    get_cumulative_climate!(climate, period, gradient_bounds)
+end
+
+function get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient_bounds=[-0.009, -0.003])
     climate.climate_raw_step = climate.raw_climate[At(period)]
 
     climate.avg_temps = mean(climate.climate_raw_step.temp)
@@ -92,12 +100,12 @@ function get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat,
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
     climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp.data, 0.0) # get PDDs
     climate.climate_raw_step.gradient.data .= clamp.(climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
-    climate.climate_step.prcp = sum(climate.climate_raw_step.prcp)
-    climate.climate_step.temp = sum(climate.climate_raw_step.temp)
-    climate.climate_step.gradient = sum(climate.climate_raw_step.gradient)
-    climate.climate_step.avg_temp = climate.avg_temps
-    climate.climate_step.avg_gradient = climate.avg_gradients
-    climate.climate_step.ref_hgt = climate.ref_hgt
+    climate.climate_step.prcp = round(sum(climate.climate_raw_step.prcp); digits=8)
+    climate.climate_step.temp = round(sum(climate.climate_raw_step.temp); digits=8)
+    climate.climate_step.gradient = round(sum(climate.climate_raw_step.gradient); digits=8)
+    climate.climate_step.avg_temp = round(climate.avg_temps; digits=8)
+    climate.climate_step.avg_gradient = round(climate.avg_gradients; digits=8)
+    climate.climate_step.ref_hgt = round(climate.ref_hgt; digits=8)
 end
 
 """
@@ -135,12 +143,12 @@ function get_cumulative_climate(
     copy_climate.temp.data .= max.(copy_climate.temp.data, 0.0) # get PDDs
     copy_climate.gradient.data .= clamp.(copy_climate.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
     climate_sum = ClimateStep(
-        temp = sum(copy_climate.temp),
-        prcp = sum(climate.prcp),
-        gradient = sum(copy_climate.gradient),
-        avg_temp = avg_temp,
-        avg_gradient = avg_gradient,
-        ref_hgt = Sleipnir.Float(metadata(climate)["ref_hgt"]),
+        temp = round(sum(copy_climate.temp); digits=8),
+        prcp = round(sum(climate.prcp); digits=8),
+        gradient = round(sum(copy_climate.gradient); digits=8),
+        avg_temp = round(avg_temp; digits=8),
+        avg_gradient = round(avg_gradient; digits=8),
+        ref_hgt = round(Sleipnir.Float(metadata(climate)["ref_hgt"]); digits=8),
     )
     return climate_sum
 end
