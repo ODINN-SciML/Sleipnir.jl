@@ -33,19 +33,15 @@ function mapVelocity(
 )
     # TODO: precompute dates in float before simulation and store them in velocityData
     date_Vref = datetime_to_floatyear.(velocityData.date)
-    # date1_Vref = datetime_to_floatyear.(velocityData.date1)
-    # date2_Vref = datetime_to_floatyear.(velocityData.date2)
-    useVel = false
+    indVel = findfirst(==(t), date_Vref)
+    # Use available data only if the current time corresponds to the mean date
+    useVel = !isnothing(indVel)
     Vx_ref = Vy_ref = V_ref = Matrix{Sleipnir.Float}([;;])
-    if length(date_Vref)>0
-        errTime, indVel = findmin(abs.(date_Vref .- t))
-        if errTime <= velocityMapping.thresDate
-            # Use available data only if the mean date is close enough to the current time
-            Vx_ref = velocityData.vx[indVel]
-            Vy_ref = velocityData.vy[indVel]
-            V_ref = velocityData.vabs[indVel]
-            useVel = true
-        end
+    if useVel
+        Vx_ref = velocityData.vx[indVel]
+        Vy_ref = velocityData.vy[indVel]
+        V_ref = velocityData.vabs[indVel]
+        useVel = true
     end
     return Vx_ref, Vy_ref, V_ref, useVel
 end
