@@ -11,6 +11,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `use_iceflow::Bool`: Flag to indicate whether ice flow should be used.
 - `plots::Bool`: Flag to indicate whether plots should be generated.
 - `use_velocities::Bool`: Flag to indicate whether velocities should be calculated.
+- `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity.
 - `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
 - `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
 - `tspan::Tuple{F, F}`: Time span for the simulation.
@@ -31,6 +32,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     use_iceflow::Bool
     plots::Bool
     use_velocities::Bool
+    f_surface_velocity_factor::F
     overwrite_climate::Bool
     use_glathida_data::Bool
     tspan::Tuple{F, F}
@@ -55,9 +57,10 @@ Constructor for `SimulationParameters` type, including default values.
         use_iceflow::Bool = true,
         plots::Bool = true,
         use_velocities::Bool = true,
+        f_surface_velocity_factor::F = 1.0,
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
-        tspan::Tuple{F, F} = (2010.0,2015.0),
+        tspan::Tuple{F, F} = (2010.0, 2015.0),
         step_MB::F = 1/12,
         multiprocessing::Bool = true,
         workers::I = 4,
@@ -75,6 +78,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `use_iceflow::Bool`: Whether to use ice flow (default: `true`).
 - `plots::Bool`: Whether to generate plots (default: `true`).
 - `use_velocities::Bool`: Whether to calculate velocities (default: `true`).
+-  `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `1.0`).
 - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
 - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
 - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
@@ -110,9 +114,10 @@ function SimulationParameters(;
     use_iceflow::Bool = true,
     plots::Bool = true,
     use_velocities::Bool = true,
+    f_surface_velocity_factor::F = 1.0,
     overwrite_climate::Bool = false,
     use_glathida_data::Bool = false,
-    tspan::Tuple{F, F} = (2010.0,2015.0),
+    tspan::Tuple{F, F} = (2010.0, 2015.0),
     step_MB::F = 1/12,
     multiprocessing::Bool = true,
     workers::I = 4,
@@ -126,12 +131,15 @@ function SimulationParameters(;
 
     @assert ((ice_thickness_source == "Millan22") || (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
 
-    simulation_parameters = SimulationParameters(use_MB, use_iceflow, plots, use_velocities,
-                                                overwrite_climate, use_glathida_data,
-                                                Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
-                                                multiprocessing, Sleipnir.Int(workers), working_dir,
-                                                test_mode, rgi_paths, ice_thickness_source, mapping,
-                                                gridScalingFactor)
+    simulation_parameters = SimulationParameters(
+        use_MB, use_iceflow, plots,
+        use_velocities, f_surface_velocity_factor,
+        overwrite_climate, use_glathida_data,
+        Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
+        multiprocessing, Sleipnir.Int(workers), working_dir,
+        test_mode, rgi_paths, ice_thickness_source, mapping,
+        gridScalingFactor
+        )
 
     if !ispath(working_dir)
         mkpath(joinpath(working_dir, "data"))
@@ -140,9 +148,21 @@ function SimulationParameters(;
     return simulation_parameters
 end
 
-Base.:(==)(a::SimulationParameters, b::SimulationParameters) = a.use_MB == b.use_MB && a.use_iceflow == b.use_iceflow && a.plots == b.plots &&
-                                      a.use_velocities == b.use_velocities && a.overwrite_climate == b.overwrite_climate && a.use_glathida_data == b.use_glathida_data &&
-                                      a.tspan == b.tspan && a.step_MB == b.step_MB && a.multiprocessing == b.multiprocessing &&
-                                      a.workers == b.workers && a.working_dir == b.working_dir && a.test_mode == b.test_mode && a.rgi_paths == b.rgi_paths &&
-                                      a.ice_thickness_source == b.ice_thickness_source && a.mapping == b.mapping &&
-                                      a.gridScalingFactor == b.gridScalingFactor
+Base.:(==)(a::SimulationParameters, b::SimulationParameters) =
+    a.use_MB == b.use_MB &&
+    a.use_iceflow == b.use_iceflow &&
+    a.plots == b.plots &&
+    a.use_velocities == b.use_velocities &&
+    a.f_surface_velocity_factor == b.f_surface_velocity_factor &&
+    a.overwrite_climate == b.overwrite_climate &&
+    a.use_glathida_data == b.use_glathida_data &&
+    a.tspan == b.tspan &&
+    a.step_MB == b.step_MB &&
+    a.multiprocessing == b.multiprocessing &&
+    a.workers == b.workers &&
+    a.working_dir == b.working_dir &&
+    a.test_mode == b.test_mode &&
+    a.rgi_paths == b.rgi_paths &&
+    a.ice_thickness_source == b.ice_thickness_source &&
+    a.mapping == b.mapping &&
+    a.gridScalingFactor == b.gridScalingFactor
