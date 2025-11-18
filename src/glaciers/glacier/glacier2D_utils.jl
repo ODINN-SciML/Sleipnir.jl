@@ -48,7 +48,13 @@ glaciers = initialize_glaciers(rgi_ids, params)
 function initialize_glaciers(
     rgi_ids::Vector{String},
     params::Parameters;
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{
+        Dict{String, String},
+        Dict{String, Vector{String}},
+        Dict{String, <:RasterStack},
+        Dict{String, Vector{<:RasterStack}}
+        } = Dict{String,String}(),
+    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
 
     # Generate missing glaciers file
@@ -72,7 +78,12 @@ function initialize_glaciers(
     end
 
     glaciers = pmap(
-        (rgi_id) -> initialize_glacier(rgi_id, params; velocityDatacubes=velocityDatacubes),
+        (rgi_id) -> initialize_glacier(
+            rgi_id,
+            params;
+            velocityDatacubes = velocityDatacubes,
+            velocityFlag = velocityFlag
+            ),
         rgi_ids
     )
 
@@ -124,15 +135,46 @@ function initialize_glacier(
     parameters::Parameters;
     smoothing::Bool = false,
     masking::Union{Int, Nothing, Matrix} = 2,
-    velocityDatacubes::Union{Dict{String, String}, Dict{String, <: RasterStack}}=Dict{String,String}(),
+    velocityDatacubes::Union{
+        Dict{String, String},
+        Dict{String, Vector{String}},
+        Dict{String, <: RasterStack},
+        Dict{String, Vector{<:RasterStack}}
+        } = Dict{String,String}(),
+    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
     # Build glacier and its associated climate
     glacier = Glacier2D(rgi_id, parameters; masking = masking, smoothing = smoothing)
 
     if get(velocityDatacubes, glacier.rgi_id, "") != ""
         mapping = parameters.simulation.mapping
-        refVelocity = initialize_surfacevelocitydata(velocityDatacubes[glacier.rgi_id]; glacier=glacier, mapping=mapping)
-        glacier = Glacier2D(glacier, velocityData = refVelocity) # Rebuild glacier since we cannot change type of `glacier.velocityData`
+        datacubes = velocityDatacubes[glacier.rgi_id]
+        refVelocity = if typeof(datacubes) <: Vector
+            refVelocities = map(
+                datacube -> initialize_surfacevelocitydata(
+                    datacube;
+                    glacier = glacier,
+                    mapping = mapping,
+                    flag = velocityFlag
+                    ),
+                    datacubes
+                )
+                # Combine velocity data with unique datetime
+                combine_velocity_data(refVelocities; merge = true)
+        else
+            # Note: we don't merge data here based on unique date
+            initialize_surfacevelocitydata(
+                datacubes;
+                glacier = glacier,
+                mapping = mapping,
+                flag = velocityFlag
+                )
+        end
+        # Rebuild glacier since we cannot change type of `glacier.velocityData`
+        glacier = Glacier2D(
+            glacier,
+            velocityData = refVelocity
+            )
     end
 
     return glacier
@@ -263,6 +305,7 @@ function Glacier2D(
             Δx *= params.simulation.gridScalingFactor
             Δy *= params.simulation.gridScalingFactor
         end
+        # Local slope based on smoothed topography
         slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
         name = get(get_rgi_names(), rgi_id, "")
 
