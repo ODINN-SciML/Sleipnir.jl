@@ -204,6 +204,21 @@ function initialize_surfacevelocitydata(
     )
 end
 
+"""
+    initialize_surfacevelocitydata_mask(data::RasterStack, flag::Union{String, <:RasterStack, Nothing}=nothing)
+
+Create a mask for a glacier surface velocity dataset by subsetting and
+aligning a flag raster to the spatial domain of `data`.
+
+# Arguments
+- `data::RasterStack`: The glacier datacube or surface velocity dataset.
+- `flag::Union{String, RasterStack, Nothing}`: Type of flag to be applied
+
+# Description
+This function extracts the portion of the flag raster that spatially overlaps with
+the glacier domain defined by `data`. Because the flag raster is centered on pixel
+centers, its bounding box is shifted by half a grid step when subsetting.
+"""
 function initialize_surfacevelocitydata_mask(
     data::RasterStack,
     flag::Union{String, <: RasterStack, Nothing} = nothing
@@ -213,6 +228,7 @@ function initialize_surfacevelocitydata_mask(
     # Subset mask based on glacier datacube
     # Flag is centered in the middle pixel, so we shift it by Δ
     Xs = dims(data, :X).val.data
+    # We take half a pixel plus 1m on each side to be sure to include the margins
     Δ = diff(Xs)[1] / 2 + 1
     X_begin, X_end = minimum(Xs) - Δ, maximum(Xs) + Δ
     Ys = dims(data, :Y).val.data
@@ -224,7 +240,7 @@ function initialize_surfacevelocitydata_mask(
     X_glacier_increasing = first(Xs) < last(Xs)
     Y_glacier_increasing = first(Ys) < last(Ys)
     X_flag_increasing = first(dims(flagRast_subset, :X).val.data) < last(dims(flagRast_subset, :X).val.data)
-    Y_flag_increasing = first(dims(flagRast_subset, :Y).val.data) < last(dims(flagRast_subset, :Y).val.data) 
+    Y_flag_increasing = first(dims(flagRast_subset, :Y).val.data) < last(dims(flagRast_subset, :Y).val.data)
 
     X_reverse = xor(X_glacier_increasing, X_flag_increasing)
     Y_reverse = xor(Y_glacier_increasing, Y_flag_increasing)
@@ -246,6 +262,7 @@ function ratio_max(v, vabs)
     mask = replace(v, NaN => 0.0) .> 0.0
     return max_or_empty(abs.(v[mask]) ./ vabs[mask])
 end
+
 """
     max_or_empty(A::Array)
 
@@ -441,12 +458,14 @@ function random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, thresh
     random_mask = random_spatially_coherent_mask(h, w; sigma=sigma, threshold=threshold)
     return mask .& random_mask
 end
+
 """
 Compute distance between one point in the format of a `TransverseMercator` point and a set of points defined through the coordinates `x` and `y` in meters.
 """
 function local_distance(pt::TransverseMercator, x::Union{F,Vector{F},Matrix{F}}, y::Union{F,Vector{F},Matrix{F}}) where {F <: AbstractFloat}
     return ((pt.x.val .- x).^2 .+ (pt.y.val .- y).^2).^0.5
 end
+
 """
     combine_velocity_data(refVelocities; merge=false)
 
