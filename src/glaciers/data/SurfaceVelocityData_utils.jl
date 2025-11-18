@@ -94,13 +94,17 @@ function initialize_surfacevelocitydata(
 
         # Define mask where there is velocity data
         min_distance = 0.5 * (glacier.Δx^2 + glacier.Δy^2)^0.5
-        Latitudes_vel = latitudes_vel * ones(length(longitudes_vel))'
-        Longitudes_vel = ones(length(latitudes_vel)) * longitudes_vel'
+        yy = ones(length(x)) * y'
+        xx = x * ones(length(y))'
+
+        # Map glacier coordinates onto the local velocity product coordinates
+        transformReverse(lat,lon) = ReverseUTMercator(lat, lon; zone=Int(params_projection["zone"]), hemisphere=hemisphere)
         mask_data = [
-            minimum(local_distance.(Latitudes_vel, Longitudes_vel, Ref(lat), Ref(lon))) .> min_distance
+            minimum(local_distance(transformReverse(lat, lon), xx, yy)) .> min_distance
             for lon in longitudes_glacier,
             lat in latitudes_glacier
-            ]
+        ]
+
         # Define mask where there is no ice
         mask_ice = glacier.H₀ .== 0
 
@@ -438,14 +442,10 @@ function random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, thresh
     return mask .& random_mask
 end
 """
-Compute distance between coordinates in meters
+Compute distance between one point in the format of a `TransverseMercator` point and a set of points defined through the coordinates `x` and `y` in meters.
 """
-function local_distance(lat1, lon1, lat2, lon2)
-    # average latitude for scaling longitude
-    φ = deg2rad((lat1 + lat2) / 2)
-    dx = (lon2 - lon1) * 111320 * cos(φ)  # meters in x (east-west)
-    dy = (lat2 - lat1) * 111320           # meters in y (north-south)
-    return sqrt(dx^2 + dy^2)
+function local_distance(pt::TransverseMercator, x::Union{F,Vector{F},Matrix{F}}, y::Union{F,Vector{F},Matrix{F}}) where {F <: AbstractFloat}
+    return ((pt.x.val .- x).^2 .+ (pt.y.val .- y).^2).^0.5
 end
 """
     combine_velocity_data(refVelocities; merge=false)
