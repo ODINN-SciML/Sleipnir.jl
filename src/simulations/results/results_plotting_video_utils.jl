@@ -3,7 +3,8 @@ export plot_glacier_vid
 function make_thickness_video(
     results::Results,
     glacier::Glacier2D,
-    simuparams::SimulationParameters,
+    tspan,
+    step,
     pathVideo::String;
     colormap::Symbol = :viridis,
     colorrange::Union{Tuple, Nothing} = nothing,
@@ -51,7 +52,7 @@ function make_thickness_video(
         )
     CairoMakie.Colorbar(fig[1, 2], hm, label = "Thickness (m)")
 
-    years = simuparams.tspan[1] .+ simuparams.step * collect(1:size(H, 1))
+    years = tspan[1] .+ step * collect(1:size(H, 1))
 
     # Function to update the heatmap for each frame
     function _update_heatmap(frame_nb)
@@ -74,7 +75,8 @@ end
         plot_type::String,
         results::Results,
         glacier::Glacier2D,
-        simuparams::SimulationParameters,
+        tspan,
+        step,
         pathVideo::String;
         framerate::Int=24,
         baseTitle::String=""
@@ -88,7 +90,8 @@ Generate various types of videos for glacier data. For now only the evolution of
 - `results`: A result object containing the simulation results including ice
     thickness over time.
 - `glacier`: A glacier instance.
-- `simuparams`: The simulation parameters.
+- `tspan`: The simulation time span.
+- `step`: Time step to use to retrieve the results and generate the video.
 - `pathVideo`: Path of the mp4 file to generate.
 
 # Optional Keyword Arguments
@@ -100,14 +103,15 @@ function plot_glacier_vid(
         plot_type::String,
         results::Results,
         glacier::Glacier2D,
-        simuparams::SimulationParameters,
+        tspan,
+        step,
         pathVideo::String;
         framerate::Int=24,
         baseTitle::String="",
     )
 
     if plot_type == "thickness"
-        make_thickness_video(results, glacier, simuparams, pathVideo; framerate=framerate, baseTitle=baseTitle)
+        make_thickness_video(results, glacier, tspan, step, pathVideo; framerate=framerate, baseTitle=baseTitle)
     else
         error("Invalid plot_type: $plot_type")
     end
