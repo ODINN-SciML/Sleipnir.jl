@@ -15,7 +15,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 - `overwrite_climate::Bool`: Flag to indicate whether to overwrite climate data.
 - `use_glathida_data::Bool`: Flag to indicate whether to use GLATHIDA data.
 - `tspan::Tuple{F, F}`: Time span for the simulation.
-- `step::F`: Time step for the simulation.
+- `step_MB::F`: Time step for the MB simulation.
 - `multiprocessing::Bool`: Flag to indicate whether multiprocessing should be used.
 - `workers::I`: Number of workers for multiprocessing.
 - `working_dir::String`: Directory for working files.
@@ -36,7 +36,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     overwrite_climate::Bool
     use_glathida_data::Bool
     tspan::Tuple{F, F}
-    step::F
+    step_MB::F
     multiprocessing::Bool
     workers::I
     working_dir::String
@@ -61,7 +61,7 @@ Constructor for `SimulationParameters` type, including default values.
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
         tspan::Tuple{F, F} = (2010.0, 2015.0),
-        step::F = 1/12,
+        step_MB::F = 1/12,
         multiprocessing::Bool = true,
         workers::I = 4,
         working_dir::String = "",
@@ -84,7 +84,7 @@ Constructor for `SimulationParameters` type, including default values.
 - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
 - `int_type::DataType`: Data type for integers (default: `Int64`).
 - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
-- `step::F`: Time step for the simulation (default: `1/12`).
+- `step_MB::F`: Time step for the MB simulation (default: `1/12`).
 - `multiprocessing::Bool`: Whether to use multiprocessing (default: `true`).
 - `workers::I`: Number of workers for multiprocessing (default: `4`).
 - `working_dir::String`: Working directory for the simulation (default: `""`).
@@ -118,7 +118,7 @@ function SimulationParameters(;
     overwrite_climate::Bool = false,
     use_glathida_data::Bool = false,
     tspan::Tuple{F, F} = (2010.0, 2015.0),
-    step::F = 1/12,
+    step_MB::F = 1/12,
     multiprocessing::Bool = true,
     workers::I = 4,
     working_dir::String = "",
@@ -135,7 +135,7 @@ function SimulationParameters(;
         use_MB, use_iceflow, plots,
         use_velocities, f_surface_velocity_factor,
         overwrite_climate, use_glathida_data,
-        Sleipnir.Float.(tspan), Sleipnir.Float(step),
+        Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
         multiprocessing, Sleipnir.Int(workers), working_dir,
         test_mode, rgi_paths, ice_thickness_source, mapping,
         gridScalingFactor
@@ -156,7 +156,8 @@ Base.:(==)(a::SimulationParameters, b::SimulationParameters) =
     a.f_surface_velocity_factor == b.f_surface_velocity_factor &&
     a.overwrite_climate == b.overwrite_climate &&
     a.use_glathida_data == b.use_glathida_data &&
-    a.tspan == b.tspan && a.step == b.step &&
+    a.tspan == b.tspan &&
+    a.step_MB == b.step_MB &&
     a.multiprocessing == b.multiprocessing &&
     a.workers == b.workers &&
     a.working_dir == b.working_dir &&
