@@ -51,7 +51,7 @@ function create_results(
 
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    solStepIndices = Zygote.@ignore_derivatives [findlast(t->(t==val), solution.t) for val in tstops]
+    solStepIndices = Zygote.@ignore_derivatives [findlast(t->(t≈val), solution.t) for val in tstops] # We use ≈ because of potential numerical roundings
     t = Zygote.@ignore_derivatives solution.t[solStepIndices]
     H = solution.u[solStepIndices]
 
