@@ -22,9 +22,7 @@ end
         simulation::SIM,
         glacier_idx::I,
         solution,
-        loss = nothing;
-        light = false,
-        tstops::Union{Vector, Nothing} = nothing,
+        tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
     ) where {SIM <: Simulation, I <: Integer}
 
@@ -34,8 +32,7 @@ Create a `Results` object from a given simulation and solution.
 - `simulation::SIM`: The simulation object of type `Simulation`.
 - `glacier_idx::I`: The index of the glacier within the simulation.
 - `solution`: The solution object containing all the steps including intermediate ones.
-- `loss=nothing`: The loss value, default is `nothing`.
-- `light=false`: A boolean flag to indicate if only the first and last steps of the solution should be used.
+- `tstops::Vector{F}`: The list of time steps to use to construct the results.
 - `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
@@ -48,39 +45,23 @@ function create_results(
     simulation::SIM,
     glacier_idx::I,
     solution,
-    loss = nothing;
-    light = false,
-    tstops::Union{Vector, Nothing} = nothing,
+    tstops::Vector{F};
     processVelocity::Union{Nothing, Function} = nothing,
-) where {SIM <: Simulation, I <: Integer}
+) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
 
-    if isnothing(tstops)
-         # The solution contains all the steps including the intermediate ones
-        # This results in solution having multiple values for a given time step, we select the last one of each time step
-        t₀ = simulation.parameters.simulation.tspan[1]
-        t₁ = simulation.parameters.simulation.tspan[2]
-        Δt = simulation.parameters.simulation.step
-        nSteps = (t₁-t₀) / Δt
-        # timeSteps = t₀ .+ collect(0:nSteps) .* Δt
-        timeSteps = range(t₀, t₁, step = Δt)
-        if timeSteps[end] !== t₁
-            push!(timeSteps, t₁)
-        end
-        ϵ = 1e-6 # Need this because of numerical rounding
-        compfct(t,val) = (t<=val+ϵ) & (t>=val-ϵ)
-        solStepIndices = Zygote.@ignore_derivatives [findlast(t->compfct(t,val), solution.t) for val in timeSteps] # selectTimeIdx(solution, timeSteps)
-        ts = Zygote.@ignore_derivatives solution.t[solStepIndices]
-        us = solution.u[solStepIndices]
-    else
-        ts = tstops
-        us = solution(ts).u
-    end
+    tspan = simulation.parameters.simulation.tspan
+
+    # The solution contains all the steps including the intermediate ones
+    # This results in solution having multiple values for a given time step, we select the last one of each time step
+    solStepIndices = Zygote.@ignore_derivatives [
+            val==tspan[1] ?
+                findfirst(t->(isapprox(t, val, rtol=1e-7)), solution.t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
+                findlast(t->(isapprox(t, val, rtol=1e-7)), solution.t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
+        for val in tstops] # We use isapprox because of potential numerical roundings
+    t = Zygote.@ignore_derivatives solution.t[solStepIndices]
+    H = solution.u[solStepIndices]
 
     glacier = simulation.glaciers[glacier_idx]
-
-    t = light ? Vector{eltype(solution.t)}([solution.t[begin],solution.t[end]]) : ts
-    H = light ? [solution.u[begin],solution.u[end]] : us
-
     iceflow_cache = simulation.cache.iceflow
     if !isnothing(simulation.model.machine_learning)
         θ = simulation.model.machine_learning.θ
@@ -145,7 +126,7 @@ function create_results(
         nx = glacier.nx,
         ny = glacier.ny,
         t = t,
-        tspan = simulation.parameters.simulation.tspan,
+        tspan = tspan,
     )
 
     return results
