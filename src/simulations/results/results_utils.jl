@@ -49,9 +49,15 @@ function create_results(
     processVelocity::Union{Nothing, Function} = nothing,
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
 
+    tspan = simulation.parameters.simulation.tspan
+
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    solStepIndices = Zygote.@ignore_derivatives [findlast(t->(t≈val), solution.t) for val in tstops] # We use ≈ because of potential numerical roundings
+    solStepIndices = Zygote.@ignore_derivatives [
+            val==tspan[1] ?
+                findfirst(t->(isapprox(t, val, rtol=1e-7)), solution.t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
+                findlast(t->(isapprox(t, val, rtol=1e-7)), solution.t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
+        for val in tstops] # We use isapprox because of potential numerical roundings
     t = Zygote.@ignore_derivatives solution.t[solStepIndices]
     H = solution.u[solStepIndices]
 
@@ -120,7 +126,7 @@ function create_results(
         nx = glacier.nx,
         ny = glacier.ny,
         t = t,
-        tspan = simulation.parameters.simulation.tspan,
+        tspan = tspan,
     )
 
     return results
