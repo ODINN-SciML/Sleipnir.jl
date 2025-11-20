@@ -33,6 +33,8 @@ manually, but rather through the `initialize_glaciers` function.
 - `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
 - `n::F`: Flow law exponent.
+- `p::F`: Power law exponent associated to Weertman sliding law (Power associated to basal drag).
+- `q::F`: Power law exponent associated to Weertman sliding law (Power associated to normal pressure).
 - `slope::Matrix{F}`: Surface slope matrix.
 - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
 - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
@@ -93,6 +95,8 @@ end
         A::F = 0.0,
         C::F = 0.0,
         n::F = 0.0,
+        p::F = 0.0,
+        q::F = 0.0,
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         mask::BitMatrix = BitMatrix([;;]),
@@ -129,6 +133,8 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
 - `n::F`: Flow law exponent.
+- `p::F`: Power law exponent associated to Weertman sliding law (Power associated to basal drag).
+- `q::F`: Power law exponent associated to Weertman sliding law (Power associated to normal pressure).
 - `slope::Matrix{F}`: Slope matrix.
 - `dist_border::Matrix{F}`: Distance to border matrix.
 - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
