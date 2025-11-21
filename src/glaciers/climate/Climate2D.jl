@@ -119,13 +119,14 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
     climate_raw_step::CLIMRAWSTEP
     climate_step::CLIMSTEP
     climate_2D_step::CLIM2DSTEP
-    longterm_temps::Vector{F}
+    longterm_temps_scalar::Vector{F}
+    longterm_temps_gridded::Matrix{F}
     avg_temps::F
     avg_gradients::F
     ref_hgt::F
 
     function Climate2D(
-        rgi_id,
+        rgi_id::String,
         params::Parameters,
         S::Matrix{<: AbstractFloat},
         Coords::Dict,
@@ -137,7 +138,7 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
         end
         climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
         climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
-        longterm_temps = get_longterm_temps(rgi_id, params, raw_climate)
+        longterm_temps_scalar, longterm_temps_gridded = get_longterm_temps(rgi_id, params, raw_climate, S)
         climate_raw_step = raw_climate[At(dummy_period)]
         return new{
                 typeof(raw_climate),
@@ -150,7 +151,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
             climate_raw_step,
             climate_step,
             climate_2D_step,
-            longterm_temps,
+            longterm_temps_scalar,
+            longterm_temps_gridded,
             mean(climate_raw_step.temp),
             mean(climate_raw_step.gradient),
             metadata(raw_climate)["ref_hgt"],
@@ -161,7 +163,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
         climate_raw_step::RasterStack,
         climate_step::ClimateStep,
         climate_2D_step::Climate2Dstep,
-        longterm_temps::Vector{<: AbstractFloat},
+        longterm_temps_scalar::Vector{<: AbstractFloat},
+        longterm_temps_gridded::Matrix{<: AbstractFloat},
         avg_temps::AbstractFloat,
         avg_gradients::AbstractFloat,
         ref_hgt::AbstractFloat,
@@ -171,7 +174,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack, CLI
             climate_raw_step,
             climate_step,
             climate_2D_step,
-            longterm_temps,
+            longterm_temps_scalar,
+            longterm_temps_gridded,
             avg_temps,
             avg_gradients,
             ref_hgt,
@@ -181,7 +185,8 @@ end
 
 Base.:(==)(a::Climate2D, b::Climate2D) = a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
                                       a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
-                                      a.longterm_temps ≈ b.longterm_temps && a.avg_temps ≈ b.avg_temps &&
+                                      a.longterm_temps_scalar ≈ b.longterm_temps_scalar && a.longterm_temps_gridded ≈ b.longterm_temps_gridded && 
+                                      a.avg_temps ≈ b.avg_temps && 
                                       a.avg_gradients == b.avg_gradients && a.ref_hgt == b.ref_hgt
 
 diffToDict(a::Climate2D, b::Climate2D) = Dict{Symbol, Bool}(
@@ -189,7 +194,8 @@ diffToDict(a::Climate2D, b::Climate2D) = Dict{Symbol, Bool}(
     :climate_raw_step => a.climate_raw_step == b.climate_raw_step,
     :climate_step => a.climate_step == b.climate_step,
     :climate_2D_step => a.climate_2D_step == b.climate_2D_step,
-    :longterm_temps => a.longterm_temps == b.longterm_temps,
+    :longterm_temps_scalar => a.longterm_temps_scalar == b.longterm_temps_scalar,
+    :longterm_temps_gridded => a.longterm_temps_gridded == b.longterm_temps_gridded,
     :avg_temps => a.avg_temps == b.avg_temps,
     :avg_gradients => a.avg_gradients == b.avg_gradients,
     :ref_hgt => a.ref_hgt == b.ref_hgt,
@@ -209,7 +215,8 @@ Arguments:
 - `longterm_temps::Vector{F}`: Long term temperatures.
 """
 function DummyClimate2D(;
-    longterm_temps::Vector{F} = Vector{Sleipnir.Float}([])
+    longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
+    longterm_temps_gridded::Matrix{F} = Matrix{Sleipnir.Float}([])
 ) where {F <: AbstractFloat}
     ras = Raster(rand(X(1:0), Y(1:0), Ti(DateTime(2001):Month(1):DateTime(2002))))
     emptyRasterStack = RasterStack(ras)
@@ -233,7 +240,7 @@ function DummyClimate2D(;
         ref_hgt = 0.0,
         prcp = 0.0,
     )
-    return Climate2D(emptyRasterStack, emptyRasterStack, climate_step, emptyClimate2Dstep, longterm_temps, 0.0, 0.0, 0.0)
+    return Climate2D(emptyRasterStack, emptyRasterStack, climate_step, emptyClimate2Dstep, longterm_temps_scalar, longterm_temps_gridded, 0.0, 0.0, 0.0)
 end
 
 # TODO: update show with ref_hgt
@@ -288,10 +295,16 @@ function Base.show(io::IO, climate::Climate2D)
     printstyled(io, round(climate.climate_step.prcp;digits=1);color=:blue)
     println(io, " kg/m²")
 
-    print(io, "  longterm_temps: ")
-    printstyled(io, "$(typeof(climate.longterm_temps))";color=:yellow)
+    print(io, "  longterm_temps_scalar: ")
+    printstyled(io, "$(typeof(climate.longterm_temps_scalar))";color=:yellow)
     print(io, " with ")
-    printstyled(io, "$(length(climate.longterm_temps))";color=:red)
+    printstyled(io, "$(length(climate.longterm_temps_scalar))";color=:red)
+    println(io, " elements")
+
+    print(io, "  longterm_temps_gridded: ")
+    printstyled(io, "$(typeof(climate.longterm_temps_gridded))";color=:yellow)
+    print(io, " with ")
+    printstyled(io, "$(size(climate.longterm_temps_gridded))";color=:red)
     println(io, " elements")
 
     print(io, "  ref_hgt = ")
