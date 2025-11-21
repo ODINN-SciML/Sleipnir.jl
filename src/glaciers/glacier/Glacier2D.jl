@@ -33,6 +33,8 @@ manually, but rather through the `initialize_glaciers` function.
 - `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
 - `n::F`: Flow law exponent.
+- `p::F`: Power law exponent associated to Weertman sliding law (Power associated to basal drag).
+- `q::F`: Power law exponent associated to Weertman sliding law (Power associated to normal pressure).
 - `slope::Matrix{F}`: Surface slope matrix.
 - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
 - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
@@ -61,6 +63,8 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, TH
     A::F
     C::F
     n::F
+    p::F
+    q::F
     slope::Matrix{F}
     dist_border::Matrix{F}
     mask::BitMatrix
@@ -91,6 +95,8 @@ end
         A::F = 0.0,
         C::F = 0.0,
         n::F = 0.0,
+        p::F = 0.0,
+        q::F = 0.0,
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         mask::BitMatrix = BitMatrix([;;]),
@@ -127,6 +133,8 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 - `A::F`: Flow law parameter.
 - `C::F`: Sliding law parameter.
 - `n::F`: Flow law exponent.
+- `p::F`: Power law exponent associated to Weertman sliding law (Power associated to basal drag).
+- `q::F`: Power law exponent associated to Weertman sliding law (Power associated to normal pressure).
 - `slope::Matrix{F}`: Slope matrix.
 - `dist_border::Matrix{F}`: Distance to border matrix.
 - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
@@ -158,6 +166,8 @@ function Glacier2D(;
     A::F = 0.0,
     C::F = 0.0,
     n::F = 0.0,
+    p::F = 0.0,
+    q::F = 0.0,
     slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
     mask::BitMatrix = BitMatrix([;;]),
@@ -179,7 +189,7 @@ function Glacier2D(;
 }
     return Glacier2D{Sleipnir.Float,Sleipnir.Int,typeof(climate),typeof(thicknessData),typeof(velocityData)}(
         rgi_id, name, climate, H₀, H_glathida,
-        S, B, V, Vx, Vy, A, C, n,
+        S, B, V, Vx, Vy, A, C, n, p, q,
         slope, dist_border, mask, Coords,
         Δx, Δy, nx, ny,
         cenlon, cenlat, params_projection,
@@ -216,7 +226,8 @@ function Glacier2D(
             typeof(glacier.climate),typeof(thicknessData),typeof(velocityData)
         }(
         glacier.rgi_id, glacier.name, glacier.climate, glacier.H₀, glacier.H_glathida,
-        glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy, glacier.A, glacier.C, glacier.n,
+        glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy,
+        glacier.A, glacier.C, glacier.n, glacier.p, glacier.q,
         glacier.slope, glacier.dist_border, glacier.mask, glacier.Coords,
         glacier.Δx, glacier.Δy, glacier.nx, glacier.ny,
         glacier.cenlon, glacier.cenlat, glacier.params_projection,
@@ -232,7 +243,7 @@ end
 Base.:(==)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.name &&
                                       a.climate == b.climate &&
                                       a.H₀ == b.H₀ && a.H_glathida == b.H_glathida && a.S == b.S && a.B == b.B && a.V == b.V &&
-                                      a.A == b.A && a.C == b.C && a.n == b.n &&
+                                      a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
                                       a.slope == b.slope && a.dist_border == b.dist_border && a.mask == b.mask &&
                                       a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx && a.ny == b.ny &&
                                       a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
@@ -244,7 +255,7 @@ Base.:(≈)(a::Glacier2D, b::Glacier2D) = a.rgi_id == b.rgi_id && a.name == b.na
                                         a.climate == b.climate &&
                                         safe_approx(a.H₀, b.H₀) && safe_approx(a.H_glathida, b.H_glathida) &&
                                         safe_approx(a.S, b.S) && safe_approx(a.B, b.B) && safe_approx(a.V, b.V) &&
-                                        a.A == b.A && a.C == b.C && a.n == b.n &&
+                                        a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
                                         isapprox(a.slope, b.slope; rtol=1e-3) && 
                                         safe_approx(a.dist_border, b.dist_border) &&
                                         a.mask == b.mask &&
@@ -266,6 +277,8 @@ diffToDict(a::Glacier2D, b::Glacier2D) = Dict{Symbol, Bool}(
     :A => a.A == b.A,
     :C => a.C == b.C,
     :n => a.n == b.n,
+    :p => a.p == b.p,
+    :q => a.q == b.q,
     :slope => a.slope == b.slope,
     :dist_border => a.dist_border == b.dist_border,
     :mask => a.mask == b.mask,
@@ -314,12 +327,16 @@ function Base.show(io::IO, glacier::Glacier2D)
     print(io, "Mean,max ice thickness H₀ : ")
     printstyled(io, "$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";color=:blue)
 
-    print(io, "A= ")
+    print(io, "A = ")
     printstyled(io, @sprintf("%.3e", glacier.A); color=:blue)
-    print(io, "  C= ")
+    print(io, "  C = ")
     printstyled(io, glacier.C; color=:blue)
-    print(io, "  n= ")
+    print(io, "  n = ")
     printstyled(io, glacier.n; color=:blue)
+    print(io, "  p = ")
+    printstyled(io, glacier.p; color=:blue)
+    print(io, "  q = ")
+    printstyled(io, glacier.q; color=:blue)
 
     if isnothing(glacier.thicknessData)
         printstyled(io, "\nw/o";color=:red)
