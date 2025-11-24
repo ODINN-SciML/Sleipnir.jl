@@ -764,6 +764,37 @@ end
 
 min_non_zero(M::Matrix{<: AbstractFloat}) = minimum(M[(!isnan).(M) .& (M .> 0)])
 
+"""
+    plot_gridded_data(
+        gridded_data::Union{Vector{Matrix{F}}, Matrix{F}},
+        results::Results;
+        scale_text_size::Union{Nothing,Float64}=nothing,
+        timeIdx::Union{Nothing,Int64}=nothing,
+        figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
+        plotContour::Bool=false,
+        colormap = :cool,
+        logPlot = false,
+    ) where {F <: AbstractFloat}
+
+Plot a gridded matrix (or a time series of matrices) as a heatmap using metadata from results.
+
+# Arguments
+- `gridded_data::Union{Vector{Matrix{F}}, Matrix{F}}`: Single snapshot or time series (defaults to last timestep).
+- `results::Results`: Supplies lon, lat, x, y, rgi_id, Δx and H (mask).
+- `scale_text_size`, `figsize`, `colormap`: Optional plotting params.
+- `timeIdx::Union{Nothing,Int64}`: Select timestep when `gridded_data` is a vector.
+- `plotContour::Bool`: overlay glacier-mask contour from results.H.
+- `logPlot::Bool`: Use log10 colorscale (positive non-NaN values determine range).
+
+# Behavior
+- Masks out cells where `results.H[begin] .<= 0` (set to NaN).
+- Adds colorbar, central lon/lat tick, and a Δx-based scale bar in km.
+- If `plotContour`, draws mask boundary lines.
+- Returns a `CairoMakie.Figure`.
+
+# Errors
+- Asserts gridded_data is non-empty and timeIdx (if provided) is in range.
+"""
 function plot_gridded_data(
     gridded_data::Union{Vector{Matrix{F}}, Matrix{F}},
     results::Results;
