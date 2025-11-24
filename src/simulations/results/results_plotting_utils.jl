@@ -1,4 +1,5 @@
 export plot_glacier, plot_glacier_heatmaps, plot_glacier_quivers, plot_glacier_difference_evolution, plot_glacier_statistics_evolution, plot_glacier_integrated_volume
+export plot_gridded_data
 
 using CairoMakie: Axis
 
@@ -759,4 +760,102 @@ function plot_glacier(results::Results, plot_type::String, variables::Vector{Sym
     else
         error("Invalid plot_type: $plot_type")
     end
+end
+
+min_non_zero(M::Matrix{<: AbstractFloat}) = minimum(M[(!isnan).(M) .& (M .> 0)])
+
+function plot_gridded_data(
+    gridded_data::Union{Vector{Matrix{F}}, Matrix{F}},
+    results::Results;
+    scale_text_size::Union{Nothing,Float64}=nothing,
+    timeIdx::Union{Nothing,Int64}=nothing,
+    figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
+    plotContour::Bool=false,
+    colormap = :cool,
+    logPlot = false,
+) where {F <: AbstractFloat}
+    figKwargs = isnothing(figsize) ? Dict{Symbol,Any}() : Dict{Symbol,Any}(:size => figsize)
+
+    # Extract metadata about the glacier
+    lon = results.lon
+    lat = results.lat
+    x = results.x
+    y = results.y
+    rgi_id = results.rgi_id
+    Δx = results.Δx
+    mask = results.H[begin] .> 0.0
+    nx, ny = size(results.H[begin])
+    ctr = plotContour ? Contour.contour(collect(1:nx),1+ny.-collect(1:ny),mask, 0.5) : nothing
+
+    @assert !isempty(gridded_data) "There is no data."
+    if typeof(gridded_data) <: Vector
+        @assert length(gridded_data)>0 "Data is an empty vector"
+        @assert (isnothing(timeIdx)) || (size(gridded_data,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector which is $(size(gridded_data,1))"
+        min_values = isnothing(timeIdx) ? min_non_zero(gridded_data[end]) : minimum(
+            map(gridded_data) do M
+                min_non_zero(M)
+            end
+        )
+        max_values = maximum(replace(isnothing(timeIdx) ? gridded_data[end] : gridded_data[timeIdx], NaN => 0.))
+    else
+        min_values = min_non_zero(gridded_data)
+        max_values = maximum(replace(gridded_data, NaN => 0.))
+    end
+
+    # Determine global minimum/maximum
+    global_min = isempty(min_values) ? nothing : maximum(min_values)
+    global_max = isempty(max_values) ? nothing : maximum(max_values)
+
+    figKwargs[:layout] = GridLayout(2, 2)
+    fig = Figure(; figKwargs...)
+
+    ax_row = 1
+    ax_col = 1
+    ax = Axis(fig[ax_row, ax_col], aspect=DataAspect())
+    data = deepcopy(gridded_data)
+    # title, unit = get(title_mapping, string(var), (string(var), ""))
+
+    if typeof(data) <: Vector
+        @assert length(data)>0 "Data is an empty vector"
+        @assert (isnothing(timeIdx)) || (size(data,1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector which is $(size(data,1))"
+        data = isnothing(timeIdx) ? data[end] : data[timeIdx]
+    end
+
+    nx, ny = size(data)
+
+    mask = results.H[begin] .> 0.0
+    data[.!mask] .= NaN
+
+    hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap=colormap, colorrange=(logPlot ? global_min*0.85 : 0, global_max), colorscale=logPlot ? log10 : identity)
+    cb = Colorbar(fig[ax_row, ax_col + 1], hm)
+    Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
+    # Label(fig[ax_row, ax_col + 1], "$var ($unit)", fontsize=14, valign=:top, padding=(0, -25))
+
+    if plotContour
+        for curve in ctr.lines
+            xs = first.(curve.vertices)
+            ys = last.(curve.vertices)
+            lines!(ax, xs, ys, color=:black, linewidth=1)
+        end
+    end
+
+    # ax.title = "$title"
+    ax.xlabel = "Longitude"
+    ax.ylabel = "Latitude"
+    ax.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
+    ax.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
+    ax.yticklabelrotation = π/2
+    ax.ylabelpadding = 5
+    ax.yticklabelalign = (:center, :bottom)
+
+    scale_width = 0.10*nx
+    scale_number = round(Δx * scale_width / 1000; digits=1) # Convert to km
+    textsize = isnothing(scale_text_size) ? 1.2*scale_width : scale_text_size
+
+    poly!(ax, Rect(nx - round(0.15*nx), round(0.075*ny), scale_width, scale_width/10), color=:black)
+    text!(ax, "$scale_number km", position=(nx - round(0.15*nx) + scale_width/16, round(0.075*ny) + scale_width/10), fontsize=textsize)
+
+    fig[0, :] = Label(fig, "$rgi_id")
+    resize_to_layout!(fig)
+    return fig
 end
