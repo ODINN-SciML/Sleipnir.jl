@@ -48,5 +48,5 @@ function climate_downscale(; save_refs::Bool=false)
 end
 
 function dummy_climate()
-    climate = Sleipnir.DummyClimate2D(longterm_temps = [-2.0])
+    climate = Sleipnir.DummyClimate2D(longterm_temps_scalar = [-2.0], longterm_temps_gridded = [ -2.0 -1.5; -1.0 -0.5])
 end

@@ -52,6 +52,10 @@ function glaciers2D_plots()
         @testset "Bias" begin
             plot_glacier(results, "bias", [:B,:S])
         end
+
+        @testset "Gridded data" begin
+            plot_gridded_data(abs.(randn(size(glaciers[1].H₀)...)), results; logPlot=true)
+        end
     end
 end
 
