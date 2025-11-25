@@ -33,42 +33,43 @@ include("misc.jl")
 ENV["GKSwstype"]="nul"
 
 @testset "Run all tests" begin
+    @testset "Constructors" begin
+        @testset "Parameters constructors with specified values" params_constructor_specified(save_refs = false)
+        @testset "Parameters constructors by default" params_constructor_default(save_refs = false)
+        @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(
+            use_glathida_data = false, save_refs = false)
+        @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(
+            use_glathida_data = true, save_refs = false)
+        @testset "Surface velocity datacube" surface_velocity_data()
+        @testset "Thickness data constructor" thickness_construction()
+        @testset "Results instantiation w/o velocity datacube" results_default(save_refs = false)
+        @testset "Results instantiation w/ velocity datacube" results_default(
+            save_refs = false, useDatacube = true)
+    end
 
-@testset "Constructors" begin
-    @testset "Parameters constructors with specified values" params_constructor_specified(save_refs=false)
-    @testset "Parameters constructors by default" params_constructor_default(save_refs=false)
-    @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(use_glathida_data=false, save_refs=false)
-    @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(use_glathida_data=true, save_refs=false)
-    @testset "Surface velocity datacube" surface_velocity_data()
-    @testset "Thickness data constructor" thickness_construction()
-    @testset "Results instantiation w/o velocity datacube" results_default(save_refs=false)
-    @testset "Results instantiation w/ velocity datacube" results_default(save_refs=false, useDatacube=true)
-end
+    @testset "Climate operations" begin
+        @testset "Climate downscale" climate_downscale(save_refs = false)
+        @testset "Dummy climate" dummy_climate()
+    end
 
-@testset "Climate operations" begin
-    @testset "Climate downscale" climate_downscale(save_refs=false)
-    @testset "Dummy climate" dummy_climate()
-end
+    @testset "Misc" begin
+        @testset "Helpers" helpers()
+        @testset "Simulation utils" simulation_utils()
+        @testset "Results utils" results_utils()
+        @testset "Glacier grid downscaling" glacier_grid_downscaling()
+        @testset "Operations on glacier mask" operations_glacier_mask()
+    end
 
-@testset "Misc" begin
-    @testset "Helpers" helpers()
-    @testset "Simulation utils" simulation_utils()
-    @testset "Results utils" results_utils()
-    @testset "Glacier grid downscaling" glacier_grid_downscaling()
-    @testset "Operations on glacier mask" operations_glacier_mask()
-end
+    @testset "Plotting functions" begin
+        @testset "Glaciers 2D plots" glaciers2D_plots()
+        @testset "Video plot test" make_thickness_video_test()
+    end
 
-@testset "Plotting functions" begin
-    @testset "Glaciers 2D plots" glaciers2D_plots()
-    @testset "Video plot test" make_thickness_video_test()
-end
-
-@testset "Law" begin
-    generate_inputs_testset()
-    normalize_law_inputs_testset()
-    cache_testset()
-    apply_law_testset()
-    apply_vjp_law_testset()
-end
-
+    @testset "Law" begin
+        generate_inputs_testset()
+        normalize_law_inputs_testset()
+        cache_testset()
+        apply_law_testset()
+        apply_vjp_law_testset()
+    end
 end

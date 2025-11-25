@@ -7,13 +7,17 @@ export AbstractPrepVJP
 Abstract type representing an input source for a `Law`.
 Concrete subtypes must implement:
 
-- `default_name(::ConcreteInput)`: returns the default field name (as a `Symbol`) under which this input will be accessed in the law's input `NamedTuple`.
-- `get_input(::ConcreteInput, simulation, glacier_idx, t)`: retrieves the actual input value given the simulation context, glacier index, and time `t`.
+  - `default_name(::ConcreteInput)`: returns the default field name (as a `Symbol`) under which this input will be accessed in the law's input `NamedTuple`.
+  - `get_input(::ConcreteInput, simulation, glacier_idx, t)`: retrieves the actual input value given the simulation context, glacier index, and time `t`.
 """
 abstract type AbstractInput end
 
-default_name(inp::AbstractInput) = throw(error("Concrete subtypes of AbstractInput must implement default_name. Please provide an implementation for $(typeof(inp))."))
-get_input(inp::AbstractInput, simulation, glacier_idx, t) = throw(error("Concrete subtypes of AbstractInput must implement get_input. Please provide an implementation for $(typeof(inp))."))
+function default_name(inp::AbstractInput)
+    throw(error("Concrete subtypes of AbstractInput must implement default_name. Please provide an implementation for $(typeof(inp))."))
+end
+function get_input(inp::AbstractInput, simulation, glacier_idx, t)
+    throw(error("Concrete subtypes of AbstractInput must implement get_input. Please provide an implementation for $(typeof(inp))."))
+end
 
 function generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
     map(inputs) do input
@@ -47,7 +51,8 @@ function (with_input_f::GenInputsAndApply)(simulation, glacier_idx::Integer, t::
     return with_input_f.f(inputs, θ)
 end
 
-function (with_input_f::GenInputsAndApply)(cache, simulation, glacier_idx::Integer, t::Real, θ)
+function (with_input_f::GenInputsAndApply)(
+        cache, simulation, glacier_idx::Integer, t::Real, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, inputs, θ)
 end
@@ -62,12 +67,14 @@ It is for internal use only and not exposed to the user.
 """
 abstract type AbstractPrepVJP end
 
-function (with_input_f::GenInputsAndApply)(vjpPrep::Union{AbstractPrepVJP, Nothing}, simulation, glacier_idx::Integer, t::Real, θ)
+function (with_input_f::GenInputsAndApply)(vjpPrep::Union{AbstractPrepVJP, Nothing},
+        simulation, glacier_idx::Integer, t::Real, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(vjpPrep, inputs, θ)
 end
 
-function (with_input_f::GenInputsAndApply)(cache, vjpPrep::Union{AbstractPrepVJP, Nothing}, simulation, glacier_idx::Integer, t::Real, θ)
+function (with_input_f::GenInputsAndApply)(cache, vjpPrep::Union{AbstractPrepVJP, Nothing},
+        simulation, glacier_idx::Integer, t::Real, θ)
     inputs = generate_inputs(with_input_f.inputs, simulation, glacier_idx, t)
     return with_input_f.f(cache, vjpPrep, inputs, θ)
 end

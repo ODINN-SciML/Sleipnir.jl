@@ -12,26 +12,26 @@ export initialize_surfacevelocitydata, random_spatially_coherent_mask
 Initialize SurfaceVelocityData from Rabatel et. al (2023).
 
 Arguments:
-- `raster::Union{String, RasterStack}`: RasterStack or path of the netCDF file with surface velocity data.
-- `glacier::Union{G, Nothing}`: Glacier associated to the surface velocity datacube.
+
+  - `raster::Union{String, RasterStack}`: RasterStack or path of the netCDF file with surface velocity data.
+  - `glacier::Union{G, Nothing}`: Glacier associated to the surface velocity datacube.
     When provided, the surface velocity data are gridded on the glacier grid using
     the `mapping`.
-- `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
+  - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
-- `compute_vabs_error::Bool`: Whether to compute the absolute error uncertainty.
-- `flag::Union{String, <: RasterStack, Nothing}`: Option to provide a `RasterStack`
+  - `compute_vabs_error::Bool`: Whether to compute the absolute error uncertainty.
+  - `flag::Union{String, <: RasterStack, Nothing}`: Option to provide a `RasterStack`
     containing a `fmask` raster and which provides an indicator of whether each pixel
     of the ice surface velocity data is considered as reliable or not.
 """
 function initialize_surfacevelocitydata(
-    raster::Union{String, <: RasterStack};
-    glacier::Union{G, Nothing}=nothing,
-    mapping::VM=MeanDateVelocityMapping(),
-    compute_vabs_error::Bool=true,
-    flag::Union{String, <: RasterStack, Nothing} = nothing
+        raster::Union{String, <: RasterStack};
+        glacier::Union{G, Nothing} = nothing,
+        mapping::VM = MeanDateVelocityMapping(),
+        compute_vabs_error::Bool = true,
+        flag::Union{String, <: RasterStack, Nothing} = nothing
 ) where {G <: AbstractGlacier, VM <: VelocityMapping}
-
-    velRast = isa(raster, String) ? RasterStack(raster, lazy=true) : raster
+    velRast = isa(raster, String) ? RasterStack(raster, lazy = true) : raster
 
     # Boolean variable indicating if the file represents interpolated data or not.
     interp = :xcount_x in keys(velRast)
@@ -80,7 +80,9 @@ function initialize_surfacevelocitydata(
     # Spatial preprocessing
     params_projection = parse_proj(metadata(velRast)["proj4"])
     hemisphere = (y[end]+y[begin])/2 >= 0 ? :north : :south
-    transform(X,Y) = Sleipnir.UTMercator(X, Y; zone=Int(params_projection["zone"]), hemisphere=hemisphere)
+    transform(X,
+        Y) = Sleipnir.UTMercator(
+        X, Y; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
     latitudes_vel = map(x -> x.lat.val, transform.(mean(x), y))
     longitudes_vel = map(x -> x.lon.val, transform.(x, mean(y)))
 
@@ -98,12 +100,13 @@ function initialize_surfacevelocitydata(
         xx = x * ones(length(y))'
 
         # Map glacier coordinates onto the local velocity product coordinates
-        transformReverse(lat,lon) = ReverseUTMercator(lat, lon; zone=Int(params_projection["zone"]), hemisphere=hemisphere)
-        mask_data = [
-            minimum(local_distance(transformReverse(lat, lon), xx, yy)) .> min_distance
-            for lon in longitudes_glacier,
-            lat in latitudes_glacier
-        ]
+        transformReverse(lat,
+            lon) = ReverseUTMercator(
+            lat, lon; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
+        mask_data = [minimum(local_distance(transformReverse(lat, lon), xx, yy)) .>
+                     min_distance
+                     for lon in longitudes_glacier,
+        lat in latitudes_glacier]
 
         # Define mask where there is no ice
         mask_ice = glacier.H₀ .== 0
@@ -117,8 +120,10 @@ function initialize_surfacevelocitydata(
         icy_latitudes_glacier = latitudes_glacier[any.(eachcol(is_icy))]
         icy_longitudes_glacier = longitudes_glacier[any.(eachrow(is_icy))]
 
-        lat_g_begin, lat_g_end = minimum(icy_latitudes_glacier), maximum(icy_latitudes_glacier)
-        lon_g_begin, lon_g_end = minimum(icy_longitudes_glacier), maximum(icy_longitudes_glacier)
+        lat_g_begin,
+        lat_g_end = minimum(icy_latitudes_glacier), maximum(icy_latitudes_glacier)
+        lon_g_begin,
+        lon_g_end = minimum(icy_longitudes_glacier), maximum(icy_longitudes_glacier)
 
         # Overlapping occurs when one of the glacier corners is inside velocity datacube:
         lw, up = (lat_v_begin, lon_v_begin), (lat_v_end, lon_v_end)
@@ -130,16 +135,18 @@ function initialize_surfacevelocitydata(
         ]
         @assert any(glacier_in_datacube) "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
         if any(.!glacier_in_datacube)
-            coverage = round(100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
+            coverage = round(
+                100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
             @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
             @warn "Glacier is not enterely included in the datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
         end
 
         # Here vx and vy are of type DiskArrays.BroadcastDiskArray
-        x, y, vx, vy, vflag = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, vflag, mapping)
+        x, y, vx,
+        vy, vflag = grid(glacier, latitudes_vel, longitudes_vel, vx, vy, vflag, mapping)
         # Set ice velocity to NaN outside of the glacier outlines
         mask = mask_ice .|| mask_data
-        for i in range(1, size(vx,3))
+        for i in range(1, size(vx, 3))
             vx[mask, i] .= missing
             vy[mask, i] .= missing
         end
@@ -161,7 +168,7 @@ function initialize_surfacevelocitydata(
     vy = all(diff(longitudes) .> 0.0) ? vy : .- vy
 
     # Compute absolute velocity
-    vabs = (vx.^2 .+ vy.^2).^0.5
+    vabs = (vx .^ 2 .+ vy .^ 2) .^ 0.5
     # The sqrt operation in Julia promotes Float32 to Float64. We convert manually
     # to keep type consistency
     vabs = convert(typeof(vx), vabs)
@@ -181,7 +188,8 @@ function initialize_surfacevelocitydata(
         if compute_vabs_error
             vx_ratio_max = map(i -> ratio_max(vx[i], vabs[i]), 1:size(vx, 1))
             vy_ratio_max = map(i -> ratio_max(vy[i], vabs[i]), 1:size(vy, 1))
-            vabs_error = ((vx_ratio_max .* vx_error).^2 .+ (vy_ratio_max .* vy_error).^2).^0.5
+            vabs_error = ((vx_ratio_max .* vx_error) .^ 2 .+
+                          (vy_ratio_max .* vy_error) .^ 2) .^ 0.5
             vabs_error = convert(typeof(vx_error[:]), vabs_error[:])
         else
             vabs_error = nothing
@@ -211,17 +219,19 @@ Create a mask for a glacier surface velocity dataset by subsetting and
 aligning a flag raster to the spatial domain of `data`.
 
 # Arguments
-- `data::RasterStack`: The glacier datacube or surface velocity dataset.
-- `flag::Union{String, RasterStack, Nothing}`: Type of flag to be applied
+
+  - `data::RasterStack`: The glacier datacube or surface velocity dataset.
+  - `flag::Union{String, RasterStack, Nothing}`: Type of flag to be applied
 
 # Description
+
 This function extracts the portion of the flag raster that spatially overlaps with
 the glacier domain defined by `data`. Because the flag raster is centered on pixel
 centers, its bounding box is shifted by half a grid step when subsetting.
 """
 function initialize_surfacevelocitydata_mask(
-    data::RasterStack,
-    flag::Union{String, <: RasterStack, Nothing} = nothing
+        data::RasterStack,
+        flag::Union{String, <: RasterStack, Nothing} = nothing
 )
     flagRast = isa(flag, String) ? RasterStack(flag, lazy = true) : flag
 
@@ -239,8 +249,10 @@ function initialize_surfacevelocitydata_mask(
     # We align the axes of the glacier subset with the flag
     X_glacier_increasing = first(Xs) < last(Xs)
     Y_glacier_increasing = first(Ys) < last(Ys)
-    X_flag_increasing = first(dims(flagRast_subset, :X).val.data) < last(dims(flagRast_subset, :X).val.data)
-    Y_flag_increasing = first(dims(flagRast_subset, :Y).val.data) < last(dims(flagRast_subset, :Y).val.data)
+    X_flag_increasing = first(dims(flagRast_subset, :X).val.data) <
+                        last(dims(flagRast_subset, :X).val.data)
+    Y_flag_increasing = first(dims(flagRast_subset, :Y).val.data) <
+                        last(dims(flagRast_subset, :Y).val.data)
 
     X_reverse = xor(X_glacier_increasing, X_flag_increasing)
     Y_reverse = xor(Y_glacier_increasing, Y_flag_increasing)
@@ -273,7 +285,6 @@ function max_or_empty(A::Array)
     return length(A) == 0 ? 0.0 : maximum(A)
 end
 
-
 """
     grid(
         glacier::G,
@@ -298,48 +309,51 @@ The returned velocity variables have shape `(nTimes, nx, ny)` where `nTimes` is 
 number of time steps and `(nx, ny)` is the size of the glacier grid.
 
 Arguments:
-- `glacier::G`: Glacier instance which determines the glacier on which the
+
+  - `glacier::G`: Glacier instance which determines the glacier on which the
     velocities are projected onto.
-- `latitudes::Vector{F}`: Vector of latitude values of the original surface
+  - `latitudes::Vector{F}`: Vector of latitude values of the original surface
     velocity grid.
-- `longitudes::Vector{F}`: Vector of longitude values of the original surface
+  - `longitudes::Vector{F}`: Vector of longitude values of the original surface
     velocity grid.
-- `vx::Union{FileArray, Array{Union{Missing, F}, 3}}`: X component of the original
+  - `vx::Union{FileArray, Array{Union{Missing, F}, 3}}`: X component of the original
     surface velocities. It can be either a `Rasters.FileArray` if the datacube is
     read in lazy mode, or a plain 3 dimensional array.
-- `vy::Union{FileArray, Array{Union{Missing, F}, 3}}`: Y component of the original
+  - `vy::Union{FileArray, Array{Union{Missing, F}, 3}}`: Y component of the original
     surface velocities. It can be either a `Rasters.FileArray` if the datacube is
     read in lazy mode, or a plain 3 dimensional array.
-- `mapping::VM`: Mapping to use.
+  - `mapping::VM`: Mapping to use.
 
 Returns:
-- `xG`: A vector that gives the x coordinates of the glacier grid.
-- `yG`: A vector that gives the y coordinates of the glacier grid.
-- `vxG`: A 3 dimensional array of the x component of the velocity gridded onto the
+
+  - `xG`: A vector that gives the x coordinates of the glacier grid.
+  - `yG`: A vector that gives the y coordinates of the glacier grid.
+  - `vxG`: A 3 dimensional array of the x component of the velocity gridded onto the
     glacier grid.
-- `vyG`: A 3 dimensional array of the y component of the velocity gridded onto the
+  - `vyG`: A 3 dimensional array of the y component of the velocity gridded onto the
     glacier grid.
 """
 function grid(
-    glacier::G,
-    latitudes::Vector{F},
-    longitudes::Vector{F},
-    vx::Union{FileArray, Array{Union{Missing, F}, 3}},
-    vy::Union{FileArray, Array{Union{Missing, F}, 3}},
-    vflag::Union{BitMatrix, Nothing},
-    mapping::VM
+        glacier::G,
+        latitudes::Vector{F},
+        longitudes::Vector{F},
+        vx::Union{FileArray, Array{Union{Missing, F}, 3}},
+        vy::Union{FileArray, Array{Union{Missing, F}, 3}},
+        vflag::Union{BitMatrix, Nothing},
+        mapping::VM
 ) where {
-    G <: AbstractGlacier,
-    F <: AbstractFloat,
-    VM <: VelocityMapping,
-    FileArray <: Rasters.FileArray
+        G <: AbstractGlacier,
+        F <: AbstractFloat,
+        VM <: VelocityMapping,
+        FileArray <: Rasters.FileArray
 }
     params_projection = glacier.params_projection
-    transformReverse(lat,lon) = ReverseUTMercator(
+    transformReverse(lat,
+        lon) = ReverseUTMercator(
         lat, lon;
-        k=params_projection["k"],
-        cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"],
-        x0=params_projection["x_0"], y0=params_projection["y_0"]
+        k = params_projection["k"],
+        cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
+        x0 = params_projection["x_0"], y0 = params_projection["y_0"]
     )
     # Glacier coordinates in northing/easting coordinates
     xG = map(x -> x.x.val, transformReverse.(glacier.cenlat, glacier.Coords["lon"]))
@@ -353,8 +367,8 @@ function grid(
 
     # Velocity tensor in glacier grid
     velType = eltype(vx)
-    vxG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
-    vyG = zeros(velType, glacier.nx, glacier.ny, size(vx,3))
+    vxG = zeros(velType, glacier.nx, glacier.ny, size(vx, 3))
+    vyG = zeros(velType, glacier.nx, glacier.ny, size(vx, 3))
     flagG = isnothing(vflag) ? nothing : BitMatrix(falses(glacier.nx, glacier.ny))
 
     if mapping.spatialInterp == :nearest
@@ -366,8 +380,8 @@ function grid(
         by = yV[1] - ΔyV
         ix = collect(1:length(longitudes))
         iy = collect(1:length(latitudes))
-        indx = Int.(round.((xG .- bx)./ΔxV))
-        indy = Int.(round.((yG .- by)./ΔyV))
+        indx = Int.(round.((xG .- bx) ./ ΔxV))
+        indy = Int.(round.((yG .- by) ./ ΔyV))
 
         # Lazy arrays need to be read by block, hence we read the smallest block of data that contains all the points we need
         indx_lw = max(minimum(indx), 1)
@@ -381,11 +395,13 @@ function grid(
         # Assign to each point of the glacier grid the closest point on the grid of surface velocities
         shiftx = - indx_lw + 1
         shifty = - indy_lw + 1
-        for ix in range(1, length(glacier.Coords["lon"])), iy in range(1, length(glacier.Coords["lat"]))
+        for ix in range(1, length(glacier.Coords["lon"])),
+            iy in range(1, length(glacier.Coords["lat"]))
+
             ixv, iyv = indx[ix] + shiftx, indy[iy] + shifty
             if checkbounds(Bool, block_vx, ixv, iyv, 1)
-                vxG[ix,iy,begin:end] .= block_vx[ixv, iyv, :]
-                vyG[ix,iy,begin:end] .= block_vy[ixv, iyv, :]
+                vxG[ix, iy, begin:end] .= block_vx[ixv, iyv, :]
+                vyG[ix, iy, begin:end] .= block_vy[ixv, iyv, :]
                 if !isnothing(vflag)
                     flagG[ix, iy] = block_flag[ixv, iyv]
                 end
@@ -406,28 +422,33 @@ This is done by drawing white noise, applying a Gaussian low-pass filter in the 
 the result.
 
 # Arguments
-- `h::Integer`, `w::Integer`: Height and width of the mask.
-- `mask::BitMatrix`: An existing binary mask. The generated spatially coherent mask
+
+  - `h::Integer`, `w::Integer`: Height and width of the mask.
+  - `mask::BitMatrix`: An existing binary mask. The generated spatially coherent mask
     will be applied elementwise (`.&`) to this mask.
-- `sigma::Real=1.0`: Controls the spatial correlation length. Larger values produce
+  - `sigma::Real=1.0`: Controls the spatial correlation length. Larger values produce
     smoother, larger patches.
-- `threshold::Real=0.0`: Threshold applied to the filtered noise. Higher values
+  - `threshold::Real=0.0`: Threshold applied to the filtered noise. Higher values
     result in sparser masks. Statistically, setting the threshold to zero results in
     a mask with half pixels to true.
 
 # Returns
+
 A `BitMatrix` of size `(h, w)` containing `true` in patchy regions and `false` elsewhere.
 
 # Examples
+
 ```julia
 # Generate a new 256×256 patchy mask
-mask = random_spatially_coherent_mask(256, 256; sigma=8.0, threshold=0.0)
+mask = random_spatially_coherent_mask(256, 256; sigma = 8.0, threshold = 0.0)
 
 # Apply patchy masking to an existing mask
 base = trues(128, 128)
-patchy = random_spatially_coherent_mask(base; sigma=5.0, threshold=0.3)
+patchy = random_spatially_coherent_mask(base; sigma = 5.0, threshold = 0.3)    # 1) white noise
+```
 """
-function random_spatially_coherent_mask(h::Integer, w::Integer; sigma::Real=1.0, threshold::Real=0.0)
+function random_spatially_coherent_mask(
+        h::Integer, w::Integer; sigma::Real = 1.0, threshold::Real = 0.0)
     # 1) white noise
     noise = randn(h, w)
 
@@ -442,7 +463,7 @@ function random_spatially_coherent_mask(h::Integer, w::Integer; sigma::Real=1.0,
     KY = ones(h, 1) .* reshape(ky, 1, length(ky))  # h × (w÷2+1)
 
     # 4) Gaussian low-pass filter
-    power = exp.(- (KX.^2 .+ KY.^2) .* (2π*sigma)^2)
+    power = exp.(- (KX .^ 2 .+ KY .^ 2) .* (2π*sigma)^2)
 
     # 5) apply filter in frequency space
     f_filtered = f .* power
@@ -453,17 +474,19 @@ function random_spatially_coherent_mask(h::Integer, w::Integer; sigma::Real=1.0,
     # 7) threshold for binary mask
     return smooth .> threshold
 end
-function random_spatially_coherent_mask(mask::BitMatrix; sigma::Real=1.0, threshold::Real=0.0)
+function random_spatially_coherent_mask(
+        mask::BitMatrix; sigma::Real = 1.0, threshold::Real = 0.0)
     h, w = size(mask)
-    random_mask = random_spatially_coherent_mask(h, w; sigma=sigma, threshold=threshold)
+    random_mask = random_spatially_coherent_mask(h, w; sigma = sigma, threshold = threshold)
     return mask .& random_mask
 end
 
 """
 Compute distance between one point in the format of a `TransverseMercator` point and a set of points defined through the coordinates `x` and `y` in meters.
 """
-function local_distance(pt::TransverseMercator, x::Union{F,Vector{F},Matrix{F}}, y::Union{F,Vector{F},Matrix{F}}) where {F <: AbstractFloat}
-    return ((pt.x.val .- x).^2 .+ (pt.y.val .- y).^2).^0.5
+function local_distance(pt::TransverseMercator, x::Union{F, Vector{F}, Matrix{F}},
+        y::Union{F, Vector{F}, Matrix{F}}) where {F <: AbstractFloat}
+    return ((pt.x.val .- x) .^ 2 .+ (pt.y.val .- y) .^ 2) .^ 0.5
 end
 
 """
@@ -472,17 +495,20 @@ end
 Combine multiple ice surface velocity datasets into a single `SurfaceVelocityData` object.
 
 # Arguments
-- `refVelocities::Vector{SurfaceVelocityData}`: A vector of ice surface velocity datasets to combine. Each element must have the same grid alignment (`isGridGlacierAligned` must be `true` for all).
-- `merge::Bool=false`: If `true`, velocities with the same `date` are averaged, and corresponding date ranges (`date1`, `date2`) are reduced to their min/max. If `false`, data are simply concatenated.
+
+  - `refVelocities::Vector{SurfaceVelocityData}`: A vector of ice surface velocity datasets to combine. Each element must have the same grid alignment (`isGridGlacierAligned` must be `true` for all).
+  - `merge::Bool=false`: If `true`, velocities with the same `date` are averaged, and corresponding date ranges (`date1`, `date2`) are reduced to their min/max. If `false`, data are simply concatenated.
 
 # Returns
-- `SurfaceVelocityData`: A single object containing the combined velocity data, including `vx`, `vy`, `vabs` and their associated errors, as well as coordinate (`x`, `y`, `lat`, `lon`) and date information. The `isGridGlacierAligned` field reflects whether all input datasets were aligned.
+
+  - `SurfaceVelocityData`: A single object containing the combined velocity data, including `vx`, `vy`, `vabs` and their associated errors, as well as coordinate (`x`, `y`, `lat`, `lon`) and date information. The `isGridGlacierAligned` field reflects whether all input datasets were aligned.
 
 # Notes
-- The function asserts that all input datasets are aligned on the same grid.
-- When `merge=true`, velocities and errors are averaged over datasets sharing the same `date`.
-- Uses `nanmean` for averaging to handle missing data.
-- `date_error` is set to `nothing` when merging.
+
+  - The function asserts that all input datasets are aligned on the same grid.
+  - When `merge=true`, velocities and errors are averaged over datasets sharing the same `date`.
+  - Uses `nanmean` for averaging to handle missing data.
+  - `date_error` is set to `nothing` when merging.    # Check all surfaces are on the same grid as the glacier
 """
 function combine_velocity_data(refVelocities; merge = false)
     # Check all surfaces are on the same grid as the glacier
@@ -525,42 +551,42 @@ function combine_velocity_data(refVelocities; merge = false)
                 nanmean,
                 cat(vx[date .== dt]..., dims = 3);
                 dims = 3
-                )[:, :, 1]
+            )[:, :, 1]
             vy_unique[i] = mapslices(
                 nanmean,
                 cat(vy[date .== dt]..., dims = 3);
                 dims = 3
-                )[:, :, 1]
+            )[:, :, 1]
             vabs_unique[i] = mapslices(
                 nanmean,
                 cat(vabs[date .== dt]..., dims = 3);
                 dims = 3
-                )[:, :, 1]
+            )[:, :, 1]
             vx_error_unique[i] = mapslices(
                 nanmean,
                 cat(vx_error[date .== dt]..., dims = 3);
                 dims = 3
-                ) |> only
+            ) |> only
             vy_error_unique[i] = mapslices(
                 nanmean,
                 cat(vy_error[date .== dt]..., dims = 3);
                 dims = 3
-                ) |> only
+            ) |> only
             vabs_error_unique[i] = mapslices(
                 nanmean,
                 cat(vabs_error[date .== dt]..., dims = 3);
                 dims = 3
-                ) |> only
+            ) |> only
             date1_unique[i] = mapslices(
                 minimum,
                 cat(date1[date .== dt]..., dims = 3);
                 dims = 3
-                ) |> only
+            ) |> only
             date2_unique[i] = mapslices(
                 maximum,
                 cat(date2[date .== dt]..., dims = 3);
                 dims = 3
-                ) |> only
+            ) |> only
         end
         return SurfaceVelocityData(
             x = x,

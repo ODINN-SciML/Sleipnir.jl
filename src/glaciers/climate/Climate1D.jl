@@ -11,10 +11,12 @@
     ref_hgt::F
 end
 
-Base.:(==)(a::Climate1Dstep, b::Climate1Dstep) = a.temp == b.temp && a.PDD == b.PDD &&
-                                      a.snow == b.snow && a.rain == b.rain &&
-                                      a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
-                                      a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
+function Base.:(==)(a::Climate1Dstep, b::Climate1Dstep)
+    a.temp == b.temp && a.PDD == b.PDD &&
+        a.snow == b.snow && a.rain == b.rain &&
+        a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
+        a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
+end
 
 @kwdef mutable struct Climate1D{F <: AbstractFloat}
     raw_climate::RasterStack # Raw climate dataset for the whole simulation
@@ -27,7 +29,9 @@ Base.:(==)(a::Climate1Dstep, b::Climate1Dstep) = a.temp == b.temp && a.PDD == b.
     avg_gradients::F # Intermediate buffer for computing average gradients
 end
 
-Base.:(==)(a::Climate1D, b::Climate1D) = a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
-                                      a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
-                                      a.longterm_temps == b.longterm_temps && a.avg_temps == b.avg_temps &&
-                                      a.avg_gradients == b.avg_gradients
+function Base.:(==)(a::Climate1D, b::Climate1D)
+    a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
+        a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
+        a.longterm_temps == b.longterm_temps && a.avg_temps == b.avg_temps &&
+        a.avg_gradients == b.avg_gradients
+end

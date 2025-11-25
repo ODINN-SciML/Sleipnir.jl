@@ -20,7 +20,8 @@ flow model. It is valid only for ice surface velocities estimated from short tim
 windows since the velocity can vary within this time window.
 
 # Fields
-- `spatialInterp::Symbol`: The spatial interpolation to use to map the ice surface
+
+  - `spatialInterp::Symbol`: The spatial interpolation to use to map the ice surface
     velocity grid to the glacier grid. For the moment only `:nearest` is supported.
 """
 @kwdef struct MeanDateVelocityMapping <: VelocityMapping
@@ -37,7 +38,8 @@ velocity of the datacube. It has not been implemented yet but its computational 
 will likely be expensive.
 
 # Fields
-- `spatialInterp::Symbol`: The spatial interpolation to use to map the ice surface
+
+  - `spatialInterp::Symbol`: The spatial interpolation to use to map the ice surface
     velocity grid to the glacier grid. For the moment only `:nearest` is supported.
 """
 @kwdef struct IntegratedTrajectoryMapping <: VelocityMapping
