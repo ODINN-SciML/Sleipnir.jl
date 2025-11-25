@@ -214,6 +214,22 @@ function apply_t_grad!(climate::RasterStack, dem::Raster)
     climate.temp.data .= climate.temp.data .+ climate.gradient.data .* (mean(dem.data[:]) .- metadata(climate)["ref_hgt"])
 end
 
+function apply_t_grad!(climate::RasterStack, dem::Matrix{<: AbstractFloat})
+    # We apply the gradients to the temperature
+    climate.temp.data .= climate.temp.data .+ climate.gradient.data .* (mean(dem) .- metadata(climate)["ref_hgt"])
+end
+
+function apply_t_grad_gridded(climate::RasterStack, dem::Matrix{<: AbstractFloat})
+    # We apply the gradients to the temperature
+    dummy_grid = zeros(size(dem))
+    temps_2D = [temp .+ dummy_grid for temp in climate.temp.data]
+    for i in eachindex(temps_2D)
+        temps_2D[i] .= temps_2D[i] .+ climate.gradient.data[i] .* (dem .- metadata(climate)["ref_hgt"])
+    end
+
+    return temps_2D
+end
+
 """
     downscale_2D_climate!(glacier::Glacier2D)
 
@@ -383,9 +399,15 @@ Calculate the long-term average temperatures for a given glacier.
 # Description
 This function retrieves the gridded data for the specified glacier using its RGI identifier. It then applies a temperature gradient to the climate data based on the glacier's topography. Finally, it calculates the long-term average temperatures by grouping the temperature data by year and computing the mean for each group.
 """
-function get_longterm_temps(rgi_id::String, params::Parameters, climate::RasterStack)
+function get_longterm_temps(rgi_id::String, params::Parameters, climate::RasterStack, S::Matrix{<: AbstractFloat})
     glacier_gd = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
     apply_t_grad!(climate, glacier_gd.topo)
-    longterm_temps = mean.(groupby(climate.temp, Ti=>year)).data
-    return longterm_temps
+    temps_2D = apply_t_grad_gridded(climate, S)
+    
+    # Scalar long-term temps
+    longterm_temps_scalar = mean.(groupby(climate.temp, Ti=>year)).data
+    # Gridded long-term temps
+    longterm_temps_gridded = mean(temps_2D, dims=1)[1]
+
+    return longterm_temps_scalar, longterm_temps_gridded
 end

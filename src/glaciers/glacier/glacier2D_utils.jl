@@ -468,7 +468,9 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
         for missing_glacier in missing_glaciers
             deleteat!(rgi_ids, findall(x->x == missing_glacier,rgi_ids))
         end
-        @info "Filtering out these glaciers from RGI ID list: $missing_glaciers"
+        if length(missing_glaciers) > 0
+            @info "Filtering out these glaciers from RGI ID list: $missing_glaciers"
+        end
     catch error
         @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
