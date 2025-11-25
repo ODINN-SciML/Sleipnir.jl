@@ -5,17 +5,18 @@ A structure representing physical parameters used in simulations.
     PhysicalParameters{F <: AbstractFloat}
 
 # Fields
-- `ρ::F`: Density of ice.
-- `g::F`: Gravitational acceleration.
-- `ϵ::F`: Regularization used in the square root of norms for AD numerical stability.
-- `η₀::F`: Initial viscosity.
-- `maxA::F`: Maximum A.
-- `minA::F`: Minimum A.
-- `maxC::F`: Maximum C.
-- `minC::F`: Minimum C.
-- `maxTlaw::F`: Maximum temperature according to some law.
-- `minTlaw::F`: Minimum temperature according to some law.
-- `noise_A_magnitude::F`: Magnitude of noise in A.
+
+  - `ρ::F`: Density of ice.
+  - `g::F`: Gravitational acceleration.
+  - `ϵ::F`: Regularization used in the square root of norms for AD numerical stability.
+  - `η₀::F`: Initial viscosity.
+  - `maxA::F`: Maximum A.
+  - `minA::F`: Minimum A.
+  - `maxC::F`: Maximum C.
+  - `minC::F`: Minimum C.
+  - `maxTlaw::F`: Maximum temperature according to some law.
+  - `minTlaw::F`: Minimum temperature according to some law.
+  - `noise_A_magnitude::F`: Magnitude of noise in A.
 """
 struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     ρ::F
@@ -48,8 +49,8 @@ Initialize the physical parameters of a model.
         noise_A_magnitude::Float64 = 5e-18
         )
 
-Keyword arguments
-=================
+# Keyword arguments
+
     - `ρ`: Ice density
     - `g`: Gravitational acceleration.
     - `ϵ`: Regularization used in the square root of norms for AD numerical stability.
@@ -63,32 +64,34 @@ Keyword arguments
     - `noise_A_magnitude`: Magnitude of noise added to A
 """
 function PhysicalParameters(;
-            ρ::F = 900.0,
-            g::F = 9.81,
-            ϵ::F = 1e-10,
-            η₀::F = 1.0,
-            maxA::F = 8e-17,
-            minA::F = 8.5e-20,
-            maxC::F = 8e-17, # TODO: to be revised
-            minC::F = 8.5e-20,
-            maxTlaw::F = 1.0,
-            minTlaw::F = -25.0,
-            noise_A_magnitude::F = 5e-18
-            ) where {F <: AbstractFloat}
+        ρ::F = 900.0,
+        g::F = 9.81,
+        ϵ::F = 1e-10,
+        η₀::F = 1.0,
+        maxA::F = 8e-17,
+        minA::F = 8.5e-20,
+        maxC::F = 8e-17, # TODO: to be revised
+        minC::F = 8.5e-20,
+        maxTlaw::F = 1.0,
+        minTlaw::F = -25.0,
+        noise_A_magnitude::F = 5e-18
+) where {F <: AbstractFloat}
     # Build PhysicalParameters based on values
     ft = typeof(g)
     physical_parameters = PhysicalParameters{ft}(ρ, g, ϵ, η₀,
-                                            maxA, minA,
-                                            maxC, minC,
-                                            maxTlaw, minTlaw,
-                                            noise_A_magnitude)
+        maxA, minA,
+        maxC, minC,
+        maxTlaw, minTlaw,
+        noise_A_magnitude)
 
     return physical_parameters
 end
 
-Base.:(==)(a::PhysicalParameters, b::PhysicalParameters) = a.ρ == b.ρ && a.g == b.g &&
-                                      a.ϵ == b.ϵ && a.η₀ == b.η₀ &&
-                                      a.maxA == b.maxA && a.minA == b.minA && 
-                                      a.minC == b.minC && a.maxC == b.maxC && 
-                                      a.maxTlaw == b.maxTlaw &&
-                                      a.noise_A_magnitude == b.noise_A_magnitude
+function Base.:(==)(a::PhysicalParameters, b::PhysicalParameters)
+    a.ρ == b.ρ && a.g == b.g &&
+        a.ϵ == b.ϵ && a.η₀ == b.η₀ &&
+        a.maxA == b.maxA && a.minA == b.minA &&
+        a.minC == b.minC && a.maxC == b.maxC &&
+        a.maxTlaw == b.maxTlaw &&
+        a.noise_A_magnitude == b.noise_A_magnitude
+end

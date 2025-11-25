@@ -16,28 +16,35 @@ export glacierName
 Initialize glaciers based on provided RGI IDs and parameters.
 
 # Arguments
-- `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
+
+  - `rgi_ids::Vector{String}`: A vector of RGI IDs representing the glaciers to be initialized.
+  - `params::Parameters`: A `Parameters` object containing simulation parameters.
+  - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
-- `glaciers::Vector{Glacier2D}`: A vector of initialized `Glacier2D` objects.
+
+  - `glaciers::Vector{Glacier2D}`: A vector of initialized `Glacier2D` objects.
 
 # Description
+
 This function performs the following steps:
-1. Generates a file for missing glaciers if it does not already exist.
-2. Filters out missing glaciers from the provided RGI IDs.
-3. Generates raw climate data for the glaciers if necessary.
-4. Initializes the glaciers using the provided RGI IDs and parameters.
-5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers.
+
+ 1. Generates a file for missing glaciers if it does not already exist.
+ 2. Filters out missing glaciers from the provided RGI IDs.
+ 3. Generates raw climate data for the glaciers if necessary.
+ 4. Initializes the glaciers using the provided RGI IDs and parameters.
+ 5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers.
 
 # Errors
-- Throws an error if none of the provided RGI IDs have GlaThiDa data.
+
+  - Throws an error if none of the provided RGI IDs have GlaThiDa data.
 
 # Warnings
-- Issues a warning if not all glaciers have GlaThiDa data available.
+
+  - Issues a warning if not all glaciers have GlaThiDa data available.
 
 # Example
+
 ```julia
 # We declare a list of glaciers to be initialized with their RGI IDs
 rgi_ids = ["RGI60-11.03638", "RGI60-11.01450", "RGI60-11.02346", "RGI60-08.00203"]
@@ -46,15 +53,15 @@ glaciers = initialize_glaciers(rgi_ids, params)
 ```
 """
 function initialize_glaciers(
-    rgi_ids::Vector{String},
-    params::Parameters;
-    velocityDatacubes::Union{
-        Dict{String, String},
-        Dict{String, Vector{String}},
-        Dict{String, <:RasterStack},
-        Dict{String, Vector{<:RasterStack}}
-        } = Dict{String,String}(),
-    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
+        rgi_ids::Vector{String},
+        params::Parameters;
+        velocityDatacubes::Union{
+            Dict{String, String},
+            Dict{String, Vector{String}},
+            Dict{String, <:RasterStack},
+            Dict{String, Vector{<:RasterStack}}
+        } = Dict{String, String}(),
+        velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
 
     # Generate missing glaciers file
@@ -65,7 +72,8 @@ function initialize_glaciers(
 
     if !isfile(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))
         missing_glaciers = Vector([])
-        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+            missing_glaciers)
     end
     filter_missing_glaciers!(rgi_ids, params)
 
@@ -83,7 +91,7 @@ function initialize_glaciers(
             params;
             velocityDatacubes = velocityDatacubes,
             velocityFlag = velocityFlag
-            ),
+        ),
         rgi_ids
     )
 
@@ -121,27 +129,29 @@ end
 Initialize a glacier with the given RGI ID and parameters.
 
 # Arguments
-- `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
-- `parameters::Parameters`: A struct containing various parameters required for initialization.
-- `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
-- `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
-- `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
+
+  - `rgi_id::String`: The RGI (Randolph Glacier Inventory) ID of the glacier.
+  - `parameters::Parameters`: A struct containing various parameters required for initialization.
+  - `smoothing::Bool`: Optional. If `true`, apply smoothing to the initial topography. Default is `false`.
+  - `masking::Union{Int, Nothing, Matrix}`: Type of mask applied to the glacier to determine regions with no ice.
+  - `velocityDatacubes::Union{Dict{String, String}, Dict{String, RasterStack}}`: A dictionary that provides for each RGI ID either the path to the datacube or the `RasterStack` with velocity data.
 
 # Returns
-- `glacier`: An initialized glacier object containing the initial topography and climate data.
+
+  - `glacier`: An initialized glacier object containing the initial topography and climate data.
 """
 function initialize_glacier(
-    rgi_id::String,
-    parameters::Parameters;
-    smoothing::Bool = false,
-    masking::Union{Int, Nothing, Matrix} = 2,
-    velocityDatacubes::Union{
-        Dict{String, String},
-        Dict{String, Vector{String}},
-        Dict{String, <: RasterStack},
-        Dict{String, Vector{<:RasterStack}}
-        } = Dict{String,String}(),
-    velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
+        rgi_id::String,
+        parameters::Parameters;
+        smoothing::Bool = false,
+        masking::Union{Int, Nothing, Matrix} = 2,
+        velocityDatacubes::Union{
+            Dict{String, String},
+            Dict{String, Vector{String}},
+            Dict{String, <: RasterStack},
+            Dict{String, Vector{<:RasterStack}}
+        } = Dict{String, String}(),
+        velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
     # Build glacier and its associated climate
     glacier = Glacier2D(rgi_id, parameters; masking = masking, smoothing = smoothing)
@@ -156,11 +166,11 @@ function initialize_glacier(
                     glacier = glacier,
                     mapping = mapping,
                     flag = velocityFlag
-                    ),
-                    datacubes
-                )
-                # Combine velocity data with unique datetime
-                combine_velocity_data(refVelocities; merge = true)
+                ),
+                datacubes
+            )
+            # Combine velocity data with unique datetime
+            combine_velocity_data(refVelocities; merge = true)
         else
             # Note: we don't merge data here based on unique date
             initialize_surfacevelocitydata(
@@ -168,13 +178,13 @@ function initialize_glacier(
                 glacier = glacier,
                 mapping = mapping,
                 flag = velocityFlag
-                )
+            )
         end
         # Rebuild glacier since we cannot change type of `glacier.velocityData`
         glacier = Glacier2D(
             glacier,
             velocityData = refVelocity
-            )
+        )
     end
 
     return glacier
@@ -184,7 +194,7 @@ function convertRasterStackToFloat64(rs::RasterStack)
     layerNames = names(rs)
     return RasterStack(
         NamedTuple{Tuple(layerNames)}([Float64.(rs[n]) for n in layerNames]),
-        metadata=metadata(rs)
+        metadata = metadata(rs)
     )
 end
 
@@ -199,33 +209,39 @@ end
 Build glacier object for a given RGI ID and parameters.
 
 # Arguments
-- `rgi_id::String`: The RGI ID of the glacier.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `masking::Union{Int, Nothing, BitMatrix}`: Type of mask applied to the glacier to determine regions with no ice.
-    * When `masking` is an `Int`, the mask is based on the initial ice thickness `H₀` and it is set to true for
-      pixels outside at a distance of the glacier borders greater than the value of `masking`.
-    * When `masking` is set to `nothing`, the mask is set to a `BitMatrix` full of falses.
-    * When `masking` is a `BitMatrix`, this matrix is used for the mask.
-    Defaults to `2`.
-- `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
-- `test::Bool=false`: Optional; test flag. Default is `false`.
+
+  - `rgi_id::String`: The RGI ID of the glacier.
+
+  - `params::Parameters`: A `Parameters` object containing simulation parameters.
+  - `masking::Union{Int, Nothing, BitMatrix}`: Type of mask applied to the glacier to determine regions with no ice.
+
+      + When `masking` is an `Int`, the mask is based on the initial ice thickness `H₀` and it is set to true for
+        pixels outside at a distance of the glacier borders greater than the value of `masking`.
+      + When `masking` is set to `nothing`, the mask is set to a `BitMatrix` full of falses.
+      + When `masking` is a `BitMatrix`, this matrix is used for the mask.
+        Defaults to `2`.
+  - `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
+  - `test::Bool=false`: Optional; test flag. Default is `false`.
 
 # Returns
-- `glacier::Glacier2D`: A `Glacier2D` object initialized with the glacier data.
+
+  - `glacier::Glacier2D`: A `Glacier2D` object initialized with the glacier data.
 
 # Description
+
 This function loads and initializes the glacier data for a given RGI ID. It retrieves the initial ice thickness conditions based on the specified source in the parameters, applies optional smoothing, and initializes the glacier's topographical and velocity data. The function also handles Mercator projection for the glacier coordinates and filters glacier borders in high elevations to avoid overflow problems.
 
 # Notes
-- The function reverses the matrices for ice thickness, bedrock, and other data to match the required orientation.
-- If the Mercator projection includes latitudes larger than 80°, a warning is issued.
-- If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
+
+  - The function reverses the matrices for ice thickness, bedrock, and other data to match the required orientation.
+  - If the Mercator projection includes latitudes larger than 80°, a warning is issued.
+  - If the glacier data is missing, the function updates a list of missing glaciers and issues a warning.
 """
 function Glacier2D(
-    rgi_id::String,
-    params::Parameters;
-    masking::Union{Int, Nothing, BitMatrix} = 2,
-    smoothing=false
+        rgi_id::String,
+        params::Parameters;
+        masking::Union{Int, Nothing, BitMatrix} = 2,
+        smoothing = false
 )
 
     # Load glacier gridded data
@@ -238,10 +254,13 @@ function Glacier2D(
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.simulation.ice_thickness_source == "Millan22" && params.simulation.use_velocities
-        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+    if params.simulation.ice_thickness_source == "Millan22" &&
+       params.simulation.use_velocities
+        H₀ = F.(ifelse.(
+            glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
     elseif params.simulation.ice_thickness_source == "Farinotti19"
-        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
+        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1,
+            glacier_gd.consensus_ice_thickness.data, 0.0))
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
     if smoothing
@@ -257,7 +276,8 @@ function Glacier2D(
         dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
         if params.simulation.gridScalingFactor > 1
             # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
-            dist_border = block_average_pad_edge(dist_border, params.simulation.gridScalingFactor)
+            dist_border = block_average_pad_edge(
+                dist_border, params.simulation.gridScalingFactor)
         end
 
         # Define mask where ice is constrained to be zero
@@ -271,11 +291,12 @@ function Glacier2D(
 
         # Mercator Projection
         params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
-        transform(X,Y) = UTMercator(
+        transform(X,
+            Y) = UTMercator(
             X, Y;
-            k=params_projection["k"],
-            cenlon=params_projection["lon_0"], cenlat=params_projection["lat_0"],
-            x0=params_projection["x_0"], y0=params_projection["y_0"]
+            k = params_projection["k"],
+            cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
+            x0 = params_projection["x_0"], y0 = params_projection["y_0"]
         )
         easting = dims(glacier_gd, 1).val
         northing = dims(glacier_gd, 2).val
@@ -295,7 +316,7 @@ function Glacier2D(
         end
         B = S .- H₀ # bedrock
 
-        Coords = Dict{String,Vector{Float64}}("lon"=> longitudes, "lat"=> latitudes)
+        Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
         if params.simulation.use_velocities
             V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
@@ -337,9 +358,11 @@ function Glacier2D(
 
     catch error
         @show error
-        missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        missing_glaciers = load(joinpath(
+            params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
         push!(missing_glaciers, rgi_id)
-        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+            missing_glaciers)
         @warn "Glacier without data: $rgi_id. Updating list of missing glaciers. Please try again."
     end
 end
@@ -351,36 +374,44 @@ end
 Retrieve and process glacier thickness data for a vector of `Glacier2D` objects.
 
 # Arguments
-- `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects for which the glacier thickness data is to be retrieved.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
-- `force::Bool=false`: A boolean flag indicating whether to force the retrieval of glacier thickness data.
+
+  - `glaciers::Vector{Glacier2D}`: A vector of `Glacier2D` objects for which the glacier thickness data is to be retrieved.
+  - `params::Parameters`: A `Parameters` object containing simulation parameters.
+  - `force::Bool=false`: A boolean flag indicating whether to force the retrieval of glacier thickness data.
 
 # Returns
-- `gtd_grids::Vector`: A vector of glacier thickness data grids.
-- `glaciers::Vector{Glacier2D}`: The updated vector of `Glacier2D` objects after removing glaciers with no data.
+
+  - `gtd_grids::Vector`: A vector of glacier thickness data grids.
+  - `glaciers::Vector{Glacier2D}`: The updated vector of `Glacier2D` objects after removing glaciers with no data.
 
 # Description
+
 This function retrieves glacier thickness data for each glacier in the input vector using parallel processing. It updates a list of missing glaciers if any glacier has all data points equal to zero. The function then removes glaciers with no data from both the `gtd_grids` and `glaciers` vectors and returns the updated vectors.
 
 # Notes
-- The function uses `pmap` for parallel processing of glaciers.
-- The list of missing glaciers is stored in a JLD2 file located at `params.simulation.working_dir/data/missing_glaciers.jld2`.
-- Glaciers with no data are identified and removed based on the condition that all data points in their thickness grid are zero.
+
+  - The function uses `pmap` for parallel processing of glaciers.
+  - The list of missing glaciers is stored in a JLD2 file located at `params.simulation.working_dir/data/missing_glaciers.jld2`.
+  - Glaciers with no data are identified and removed based on the condition that all data points in their thickness grid are zero.
 """
-function get_glathida!(glaciers::Vector{G}, params::Parameters; force=false) where {G <: Glacier2D}
+function get_glathida!(
+        glaciers::Vector{G}, params::Parameters; force = false) where {G <: Glacier2D}
     gtd_grids = pmap(glacier -> get_glathida_glacier(glacier, params, force), glaciers)
 
-     # Update missing_glaciers list before removing them
-    missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+    # Update missing_glaciers list before removing them
+    missing_glaciers = load(joinpath(
+        params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
     for (gtd_grid, glacier) in zip(gtd_grids, glaciers)
-        if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) && all(glacier.rgi_id .!= missing_glaciers)
+        if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) &&
+           all(glacier.rgi_id .!= missing_glaciers)
             push!(missing_glaciers, glacier.rgi_id)
             @info "Glacier with all data at 0: $(glacier.rgi_id). Updating list of missing glaciers..."
         end
     end
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"); missing_glaciers)
+    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+        missing_glaciers)
 
-   # Apply deletion to both gtd_grids and glaciers using the same set of indices
+    # Apply deletion to both gtd_grids and glaciers using the same set of indices
     indices_to_remove = findall(x -> length(x[x .!= 0.0]) == 0, gtd_grids)
     deleteat!(gtd_grids, indices_to_remove)
     deleteat!(glaciers, indices_to_remove)
@@ -394,14 +425,17 @@ end
 Retrieve or generate the glathida glacier grid for a given glacier.
 
 # Arguments
-- `glacier::Glacier2D`: The glacier object for which the glathida grid is to be retrieved or generated.
-- `params::Parameters`: The parameters object containing simulation settings.
-- `force`: A boolean flag indicating whether to force regeneration of the glathida grid even if it already exists.
+
+  - `glacier::Glacier2D`: The glacier object for which the glathida grid is to be retrieved or generated.
+  - `params::Parameters`: The parameters object containing simulation settings.
+  - `force`: A boolean flag indicating whether to force regeneration of the glathida grid even if it already exists.
 
 # Returns
-- `gtd_grid`: A 2D array representing the glathida glacier grid.
+
+  - `gtd_grid`: A 2D array representing the glathida glacier grid.
 
 # Description
+
 This function checks if the glathida glacier grid file (`glathida.h5`) exists in the specified path. If the file exists and `force` is `false`, it reads the grid from the file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`), computes the average thickness for each grid cell, and saves the resulting grid to an HDF5 file (`glathida.h5`).
 """
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
@@ -413,9 +447,10 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
         gtd_grid = zeros(size(glacier.H₀))
         count = zeros(size(glacier.H₀))
-        for (thick, i, j) in zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
-            count[i,j] += 1
-            gtd_grid[i,j] += thick
+        for (thick, i, j) in
+            zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
+            count[i, j] += 1
+            gtd_grid[i, j] += thick
         end
 
         gtd_grid .= ifelse.(count .> 0, gtd_grid ./ count, 0.0)
@@ -436,17 +471,23 @@ end
 Filter out glaciers that cannot be processed from the given list of RGI IDs.
 
 # Arguments
-- `rgi_ids::Vector{String}`: A vector of RGI IDs representing glaciers.
-- `params::Parameters`: A `Parameters` object containing simulation parameters.
+
+  - `rgi_ids::Vector{String}`: A vector of RGI IDs representing glaciers.
+  - `params::Parameters`: A `Parameters` object containing simulation parameters.
 
 # Description
+
 This function filters out glaciers from the provided `rgi_ids` list based on two criteria:
-1. Glaciers that are marked as level 2 in the RGI statistics CSV file.
-2. Glaciers listed in the `missing_glaciers.jld2` file located in the `params.simulation.working_dir` directory.
+
+ 1. Glaciers that are marked as level 2 in the RGI statistics CSV file.
+ 2. Glaciers listed in the `missing_glaciers.jld2` file located in the `params.simulation.working_dir` directory.
 
 # Notes
-- The RGI statistics CSV file is downloaded from a remote server.
-- If the `missing_glaciers.jld2` file is not available, a warning is logged and the function skips this filtering step.
+
+# TODO: see if this is necessary, otherwise remove
+
+  - The RGI statistics CSV file is downloaded from a remote server.
+  - If the `missing_glaciers.jld2` file is not available, a warning is logged and the function skips this filtering step.    # Check which glaciers we can actually process # TODO: see if this is necessary, otherwise remove
 """
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
@@ -460,13 +501,13 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
             @warn "Filtering glacier $rgi_id..."
             deleteat!(rgi_ids, rgi_ids .== rgi_id)
         end
-
     end
 
     try
-        missing_glaciers = load(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        missing_glaciers = load(joinpath(
+            params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
         for missing_glacier in missing_glaciers
-            deleteat!(rgi_ids, findall(x->x == missing_glacier,rgi_ids))
+            deleteat!(rgi_ids, findall(x->x == missing_glacier, rgi_ids))
         end
         if length(missing_glaciers) > 0
             @info "Filtering out these glaciers from RGI ID list: $missing_glaciers"
@@ -474,7 +515,6 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
     catch error
         @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
-
 end
 
 """
@@ -510,10 +550,11 @@ end
 Replace all `NaN` values in the array `A` with the specified `fill` value.
 
 # Arguments
-- `A::AbstractArray`: The array in which `NaN` values will be replaced.
-- `fill::Number`: The value to replace `NaN` with. Defaults to `zero(eltype(A))`.
+
+  - `A::AbstractArray`: The array in which `NaN` values will be replaced.
+  - `fill::Number`: The value to replace `NaN` with. Defaults to `zero(eltype(A))`.
 """
-function fillNaN!(A, fill=zero(eltype(A)))
+function fillNaN!(A, fill = zero(eltype(A)))
     for i in eachindex(A)
         @inbounds A[i] = ifelse(isnan(A[i]), fill, A[i])
     end
@@ -522,17 +563,19 @@ end
 """
     fillNaN(A::AbstractArray, fill::Number=zero(eltype(A)))
 
-Replace all NaN values in the array `A` with the specified `fill` value. 
+Replace all NaN values in the array `A` with the specified `fill` value.
 If no `fill` value is provided, it defaults to the zero value of the element type of `A`.
 
 # Arguments
-- `A::AbstractArray`: The input array that may contain NaN values.
-- `fill::Number`: The value to replace NaNs with. Defaults to `zero(eltype(A))`.
+
+  - `A::AbstractArray`: The input array that may contain NaN values.
+  - `fill::Number`: The value to replace NaNs with. Defaults to `zero(eltype(A))`.
 
 # Returns
-- An array of the same type and shape as `A`, with all NaN values replaced by `fill`.
+
+  - An array of the same type and shape as `A`, with all NaN values replaced by `fill`.
 """
-function fillNaN(A, fill=zero(eltype(A)))
+function fillNaN(A, fill = zero(eltype(A)))
     return @. ifelse(isnan(A), fill, A)
 end
 
@@ -542,10 +585,11 @@ end
 Replace all zero elements in the array `A` with the specified `fill` value.
 
 # Arguments
-- `A::AbstractArray`: The array in which to replace zero elements.
-- `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
+
+  - `A::AbstractArray`: The array in which to replace zero elements.
+  - `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
 """
-function fillZeros!(A, fill=NaN)
+function fillZeros!(A, fill = NaN)
     for i in eachindex(A)
         @inbounds A[i] = ifelse(iszero(A[i]), fill, A[i])
     end
@@ -557,13 +601,15 @@ end
 Replace all zero elements in the array `A` with the specified `fill` value.
 
 # Arguments
-- `A::AbstractArray`: The input array in which zero elements are to be replaced.
-- `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
+
+  - `A::AbstractArray`: The input array in which zero elements are to be replaced.
+  - `fill::Number`: The value to replace zero elements with. Defaults to `NaN`.
 
 # Returns
-- `AbstractArray`: A new array with zero elements replaced by the `fill` value.
+
+  - `AbstractArray`: A new array with zero elements replaced by the `fill` value.
 """
-function fillZeros(A, fill=NaN)
+function fillZeros(A, fill = NaN)
     return @. ifelse(iszero(A), fill, A)
 end
 
@@ -579,7 +625,7 @@ function parse_proj(proj::String)
     ℓ = ℓ[ℓ .!= ""]
     for (i, key) in enumerate(ℓ)
         if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0", "zone"]
-            res[key] = parse(Float64, ℓ[i+1])
+            res[key] = parse(Float64, ℓ[i + 1])
         end
     end
     return res
@@ -591,8 +637,8 @@ end
 Transverse Mercator Projection.
 This function reprojects northing/easting coordinates into latitude/longitude.
 
-Keyword arguments
-=================
+# Keyword arguments
+
     - `k`: scale factor of the projection
     - `cenlon`: Central longitude used in the projection
     - `cenlat`: Central latitude used in the projection
@@ -601,11 +647,12 @@ Keyword arguments
     - `zone` : Zone of the projection
     - `hemisphere`: Either :north or :south
 """
-function UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
-
+function UTMercator(x::F, y::F; k = 0.9996, cenlon = 0.0, cenlat = 0.0,
+        x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
+        hemisphere = nothing) where {F <: AbstractFloat}
     if !isnothing(zone)
         @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
-        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x,y)
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x, y)
     else
         # Convert to right units
         lonₒ = cenlon * 1.0°
@@ -627,8 +674,8 @@ end
 Transverse Mercator Projection.
 This function reprojects latitude/longitude into northing/easting coordinates.
 
-Keyword arguments
-=================
+# Keyword arguments
+
     - `k`: scale factor of the projection
     - `cenlon`: Central longitude used in the projection
     - `cenlat`: Central latitude used in the projection
@@ -637,8 +684,9 @@ Keyword arguments
     - `zone` : Zone of the projection
     - `hemisphere`: Either :north or :south
 """
-function ReverseUTMercator(lat::F, lon::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
-
+function ReverseUTMercator(lat::F, lon::F; k = 0.9996, cenlon = 0.0, cenlat = 0.0,
+        x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
+        hemisphere = nothing) where {F <: AbstractFloat}
     if !isnothing(zone)
         @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
@@ -664,14 +712,23 @@ end
 Smooths the interior of a 2D array `A` using a simple averaging method. The function modifies the array `A` in place.
 
 # Arguments
-- `A::AbstractMatrix`: A 2D array to be smoothed.
+
+  - `A::AbstractMatrix`: A 2D array to be smoothed.
 
 # Details
+
 The function updates the interior elements of `A` (excluding the boundary elements) by adding a weighted average of the second differences along both dimensions. The boundary elements are then set to the values of their nearest interior neighbors to maintain the boundary conditions.
 """
 @views function smooth!(A)
-    A[2:end-1,2:end-1] .= A[2:end-1,2:end-1] .+ 1.0./4.1.*(diff(diff(A[:,2:end-1], dims=1), dims=1) .+ diff(diff(A[2:end-1,:], dims=2), dims=2))
-    A[1,:]=A[2,:]; A[end,:]=A[end-1,:]; A[:,1]=A[:,2]; A[:,end]=A[:,end-1]
+    A[2:(end - 1),
+    2:(end - 1)] .= A[2:(end - 1), 2:(end - 1)] .+
+                                   1.0 ./ 4.1 .*
+                                   (diff(diff(A[:, 2:(end - 1)], dims = 1), dims = 1) .+
+                                    diff(diff(A[2:(end - 1), :], dims = 2), dims = 2))
+    A[1, :]=A[2, :];
+    A[end, :]=A[end - 1, :];
+    A[:, 1]=A[:, 2];
+    A[:, end]=A[:, end - 1]
 end
 
 # function smooth(A)
@@ -686,12 +743,12 @@ end
 Return a matrix with booleans indicating if a given pixel is at distance at least
 `distance` in the set of non zero values of the matrix. This usually allows
 discarding the border pixels of a glacier.
-A positive value of `distance`` indicates a measurement from inside the glacier, while a
-negative `distance`` indicates one from outside.
+A positive value of `distance`` indicates a measurement from inside the glacier, while a negative `distance`` indicates one from outside.
 
 Arguments:
-- `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
-- `distance::I`: Distance to the border, computed as the number of pixels we need
+
+  - `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
+  - `distance::I`: Distance to the border, computed as the number of pixels we need
     to move from within the glacier to find a pixel with value zero.
 """
 function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
@@ -705,11 +762,11 @@ function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: Abst
         # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
         B = min.(
             B,
-            circshift(B, (1,0)),
-            circshift(B, (-1,0)),
-            circshift(B, (0,1)),
-            circshift(B, (0,-1))
-            )
+            circshift(B, (1, 0)),
+            circshift(B, (-1, 0)),
+            circshift(B, (0, 1)),
+            circshift(B, (0, -1))
+        )
     end
     B_bool = B .> 0.001
     if distance >= 0
@@ -729,8 +786,9 @@ dimensions are divisible by `n`.
 Returns a matrix of averaged values with size `(ceil(Int, X/n), ceil(Int, Y/n))`.
 
 Arguments
-- `mat::Matrix{F}`: Input 2D matrix.
-- `n::Int`: Block size for downsampling.
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `n::Int`: Block size for downsampling.
 """
 function block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
     X, Y = size(mat)
@@ -745,22 +803,22 @@ function block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloa
 
     # Pad bottom rows with last row
     if new_X > X
-        for i in X+1:new_X
+        for i in (X + 1):new_X
             padded[i, 1:Y] .= mat[end, :]
         end
     end
 
     # Pad right columns with last column
     if new_Y > Y
-        for j in Y+1:new_Y
+        for j in (Y + 1):new_Y
             padded[1:X, j] .= mat[:, end]
         end
     end
 
     # Fill bottom-right corner (if both X and Y were padded)
     if new_X > X && new_Y > Y
-        for i in X+1:new_X
-            for j in Y+1:new_Y
+        for i in (X + 1):new_X
+            for j in (Y + 1):new_Y
                 padded[i, j] = mat[end, end]
             end
         end
@@ -777,8 +835,9 @@ Returns a matrix of the block-averaged values with size `(div(X, n), div(Y, n))`
 where `(X, Y) = size(mat)`.
 
 Arguments
-- `mat::Matrix{F}`: Input 2D matrix.
-- `n::Int`: Block size for downsampling. Both matrix dimensions must be divisible by `n`.
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `n::Int`: Block size for downsampling. Both matrix dimensions must be divisible by `n`.
 """
 function block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
     X, Y = size(mat)
@@ -787,6 +846,6 @@ function block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
     A, B = div(X, n), div(Y, n)
     reshaped = reshape(mat, n, A, n, B)
     permuted = permutedims(reshaped, (2, 4, 1, 3))  # (A, B, n, n)
-    mean_blocks = mean(permuted, dims=(3, 4))
-    return dropdims(mean_blocks, dims=(3, 4))
+    mean_blocks = mean(permuted, dims = (3, 4))
+    return dropdims(mean_blocks, dims = (3, 4))
 end

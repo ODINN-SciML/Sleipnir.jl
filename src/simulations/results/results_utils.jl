@@ -3,8 +3,11 @@ function datetime_to_floatyear(dt::DateTime)
     start_of_year = DateTime(y, 1, 1)
     start_next_year = DateTime(y + 1, 1, 1)
     # Compute total seconds in the year and seconds since start of year
-    seconds_in_year = convert(Int, Dates.value(Day((start_next_year - start_of_year)))) * 24 * 60 * 60
-    seconds_since_start = convert(Int, floor((dt - start_of_year)/Day(1))) * 24 * 60 * 60 + Dates.value(Hour(dt)) * 3600 + Dates.value(Minute(dt)) * 60 + Dates.value(Second(dt))
+    seconds_in_year = convert(Int, Dates.value(Day((start_next_year - start_of_year)))) *
+                      24 * 60 * 60
+    seconds_since_start = convert(Int, floor((dt - start_of_year)/Day(1))) * 24 * 60 * 60 +
+                          Dates.value(Hour(dt)) * 3600 + Dates.value(Minute(dt)) * 60 +
+                          Dates.value(Second(dt))
     return y + seconds_since_start / seconds_in_year
 end
 
@@ -29,35 +32,40 @@ end
 Create a `Results` object from a given simulation and solution.
 
 # Arguments
-- `simulation::SIM`: The simulation object of type `Simulation`.
-- `glacier_idx::I`: The index of the glacier within the simulation.
-- `solution`: The solution object containing all the steps including intermediate ones.
-- `tstops::Vector{F}`: The list of time steps to use to construct the results.
-- `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+
+  - `simulation::SIM`: The simulation object of type `Simulation`.
+  - `glacier_idx::I`: The index of the glacier within the simulation.
+  - `solution`: The solution object containing all the steps including intermediate ones.
+  - `tstops::Vector{F}`: The list of time steps to use to construct the results.
+  - `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
-- `results`: A `Results` object containing the processed simulation data.
+
+  - `results`: A `Results` object containing the processed simulation data.
 
 # Details
+
 The function processes the solution to select the last value for each time step. It then constructs a `Results` object containing various attributes from the simulation and the iceflow model.
 """
 function create_results(
-    simulation::SIM,
-    glacier_idx::I,
-    solution,
-    tstops::Vector{F};
-    processVelocity::Union{Nothing, Function} = nothing,
+        simulation::SIM,
+        glacier_idx::I,
+        solution,
+        tstops::Vector{F};
+        processVelocity::Union{Nothing, Function} = nothing
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
-
     tspan = simulation.parameters.simulation.tspan
 
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    solStepIndices = Zygote.@ignore_derivatives [
-            val==tspan[1] ?
-                findfirst(t->(isapprox(t, val, rtol=1e-7)), solution.t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
-                findlast(t->(isapprox(t, val, rtol=1e-7)), solution.t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
-        for val in tstops] # We use isapprox because of potential numerical roundings
+    solStepIndices = Zygote.@ignore_derivatives [val==tspan[1] ?
+                                                 findfirst(
+                                                     t->(isapprox(t, val, rtol = 1e-7)),
+                                                     solution.t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
+                                                 findlast(
+                                                     t->(isapprox(t, val, rtol = 1e-7)),
+                                                     solution.t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
+                                                 for val in tstops] # We use isapprox because of potential numerical roundings
     t = Zygote.@ignore_derivatives solution.t[solStepIndices]
     H = solution.u[solStepIndices]
 
@@ -71,9 +79,9 @@ function create_results(
 
     if !isnothing(processVelocity)
         velocities = map((Hi, ti) -> processVelocity(simulation, Hi, ti, θ), H, t)
-        Vx = [velocities[i][1] for i in range(1,length(velocities))]
-        Vy = [velocities[i][2] for i in range(1,length(velocities))]
-        V  = [velocities[i][3] for i in range(1,length(velocities))]
+        Vx = [velocities[i][1] for i in range(1, length(velocities))]
+        Vy = [velocities[i][2] for i in range(1, length(velocities))]
+        V = [velocities[i][3] for i in range(1, length(velocities))]
 
         # Get reference surface velocities
         if !isnothing(glacier.velocityData)
@@ -126,12 +134,11 @@ function create_results(
         nx = glacier.nx,
         ny = glacier.ny,
         t = t,
-        tspan = tspan,
+        tspan = tspan
     )
 
     return results
 end
-
 
 """
     save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Integer, SIM <: Simulation}
@@ -139,17 +146,23 @@ end
 Save the results of a simulation to a file.
 
 # Arguments
-- `results_list::Vector{Results{F, I}}`: A vector containing the results of the simulation.
-- `simulation::SIM`: The simulation object containing the parameters and results.
-- `path::Union{String,Nothing}`: Optional. The path where the results file will be saved. If not provided, a default path will be used.
+
+  - `results_list::Vector{Results{F, I}}`: A vector containing the results of the simulation.
+  - `simulation::SIM`: The simulation object containing the parameters and results.
+  - `path::Union{String,Nothing}`: Optional. The path where the results file will be saved. If not provided, a default path will be used.
 
 # Description
+
 This function saves the results of a simulation to a file in JLD2 format. If the `path` argument is not provided, the function will create a default path based on the current project directory. The results are saved in a file named `prediction_<nglaciers>glaciers_<tspan>.jld2`, where `<nglaciers>` is the number of glaciers in the simulation and `<tspan>` is the simulation time span.
 """
-function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM; path::Union{String,Nothing}=nothing) where {F <: AbstractFloat, I <: Integer, SIM <: Simulation}
+function save_results_file!(results_list::Vector{Results{F, I}},
+        simulation::SIM;
+        path::Union{String, Nothing} = nothing) where {
+        F <: AbstractFloat, I <: Integer, SIM <: Simulation}
     # Create path for simulation results
     if isnothing(path)
-        predictions_path = joinpath(dirname(Base.current_project()), "data/results/predictions")
+        predictions_path = joinpath(
+            dirname(Base.current_project()), "data/results/predictions")
     else
         predictions_path = path
     end
@@ -161,7 +174,8 @@ function save_results_file!(results_list::Vector{Results{F, I}}, simulation::SIM
 
     tspan = simulation.parameters.simulation.tspan
     nglaciers = length(simulation.glaciers)
-    jldsave(joinpath(predictions_path, "prediction_$(nglaciers)glaciers_$tspan.jld2"); simulation.results)
+    jldsave(joinpath(predictions_path, "prediction_$(nglaciers)glaciers_$tspan.jld2");
+        simulation.results)
 end
 
 """
@@ -170,11 +184,12 @@ end
 Extract results of specific simulation from the `Simulation` object.
 
 # Arguments
-- `glacier_id::I`: Numerical ID of glacier used to generate simulation.
-- `simulation::SIM``: The simulation object containing the parameters and results.
-"""
-function get_result_id_from_rgi(glacier_id::I, simulation::SIM) where {I <: Integer, SIM <: Simulation}
 
+  - `glacier_id::I`: Numerical ID of glacier used to generate simulation.
+  - `simulation::SIM``: The simulation object containing the parameters and results.
+"""
+function get_result_id_from_rgi(
+        glacier_id::I, simulation::SIM) where {I <: Integer, SIM <: Simulation}
     rgi_id = simulation.glaciers[glacier_id].rgi_id
 
     for id in 1:length(simulation.glaciers)

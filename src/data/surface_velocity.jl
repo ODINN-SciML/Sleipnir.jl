@@ -8,40 +8,43 @@ It corresponds to the interpolated data.
 function fake_interpolated_datacube()
     dates = collect(DateTime(2011):Month(1):DateTime(2012))
     offset_date1 = dates[begin]
-    offset_date2 = dates[begin+1]
-    date1 = Vector{Union{Missing, Int32}}( Dates.value.(Day.(dates[begin:end-1]-offset_date1)) )
-    date2 = Vector{Union{Missing, Int32}}( Dates.value.(Day.(dates[begin+1:end]-offset_date2)) )
-    mid_date = mjd.(0.5.*(datetime2julian.(dates[begin:end-1]).- 2400000.5) .+ 0.5.*(datetime2julian.(dates[begin+1:end]) .- 2400000.5))
+    offset_date2 = dates[begin + 1]
+    date1 = Vector{Union{Missing, Int32}}(Dates.value.(Day.(dates[begin:(end - 1)]-offset_date1)))
+    date2 = Vector{Union{Missing, Int32}}(Dates.value.(Day.(dates[(begin + 1):end]-offset_date2)))
+    mid_date = mjd.(0.5 .* (datetime2julian.(dates[begin:(end - 1)]) .- 2400000.5) .+
+                    0.5 .* (datetime2julian.(dates[(begin + 1):end]) .- 2400000.5))
     mid_date = Dim{:mid_date}(mid_date)
 
     xstart = 325550.0
     ystart = 5088450.0
     step = 50.0
     nSteps = 250
-    x = X(Float32.(xstart:step:xstart+(nSteps-1)*step))
-    y = Y(Float32.(ystart:-step:ystart-(nSteps-1)*step))
+    x = X(Float32.(xstart:step:(xstart + (nSteps - 1) * step)))
+    y = Y(Float32.(ystart:(-step):(ystart - (nSteps - 1) * step)))
 
     vx = Array{Union{Missing, Float32}, 3}(rand(x, y, mid_date))
-    vx[1,1,:] .= missing
+    vx[1, 1, :] .= missing
 
     vy = Array{Union{Missing, Float32}, 3}(rand(x, y, mid_date))
-    vy[1,1,:] .= missing
+    vy[1, 1, :] .= missing
 
-    xcount_x = Array{Union{Missing, Int16}, 3}(rand(Int16.(1:6), length(x), length(y), length(mid_date)))
-    xcount_y = Array{Union{Missing, Int16}, 3}(rand(Int16.(1:6), length(x), length(y), length(mid_date)))
+    xcount_x = Array{Union{Missing, Int16}, 3}(rand(
+        Int16.(1:6), length(x), length(y), length(mid_date)))
+    xcount_y = Array{Union{Missing, Int16}, 3}(rand(
+        Int16.(1:6), length(x), length(y), length(mid_date)))
 
-    vx = Raster(vx, (x,y,mid_date))
-    vy = Raster(vy, (x,y,mid_date))
+    vx = Raster(vx, (x, y, mid_date))
+    vy = Raster(vy, (x, y, mid_date))
     date1 = Raster(date1, (mid_date,),
-        metadata=Dict{String, Any}(
+        metadata = Dict{String, Any}(
             "units" => "days since " * Dates.format(offset_date1, "yyyy-mm-dd HH:MM:SS"
         )))
     date2 = Raster(date2, (mid_date,),
-        metadata=Dict{String, Any}(
+        metadata = Dict{String, Any}(
             "units" => "days since " * Dates.format(offset_date2, "yyyy-mm-dd HH:MM:SS"
         )))
-    xcount_x = Raster(xcount_x, (x,y,mid_date))
-    xcount_y = Raster(xcount_y, (x,y,mid_date))
+    xcount_x = Raster(xcount_x, (x, y, mid_date))
+    xcount_y = Raster(xcount_y, (x, y, mid_date))
 
     md = Dict{String, Any}(
         "history" => "Created on the $(today())",
@@ -52,21 +55,22 @@ function fake_interpolated_datacube()
         "title" => "Ice velocity time series",
         "institution" => "Université Grenoble Alpes",
         "proj4" => "+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs",
-        "Conventions" => "CF-1.10",
+        "Conventions" => "CF-1.10"
     )
 
-    fakeRasterStack = RasterStack((
-        vx=vx,
-        vy=vy,
-        date1=date1,
-        date2=date2,
-        xcount_x=xcount_x,
-        xcount_y=xcount_y,
-        # grid_mapping=..., # Should contain a "0-dimensional Raster{String, 0} grid_mapping" but it doesn't seem possible with Rasters.jl
-    ); metadata=md, missingval=missing)
+    fakeRasterStack = RasterStack(
+        (
+            vx = vx,
+            vy = vy,
+            date1 = date1,
+            date2 = date2,
+            xcount_x = xcount_x,
+            xcount_y = xcount_y            # grid_mapping=..., # Should contain a "0-dimensional Raster{String, 0} grid_mapping" but it doesn't seem possible with Rasters.jl
+        );
+        metadata = md,
+        missingval = missing)
     return fakeRasterStack
 end
-
 
 """
     fake_multi_datacube()
@@ -79,21 +83,21 @@ function fake_multi_datacube()
     ystart = 5088450.0
     step = 50.0
     nSteps = 250
-    x = X(Float32.(xstart:step:xstart+(nSteps-1)*step))
-    y = Y(Float32.(ystart:-step:ystart-(nSteps-1)*step))
+    x = X(Float32.(xstart:step:(xstart + (nSteps - 1) * step)))
+    y = Y(Float32.(ystart:(-step):(ystart - (nSteps - 1) * step)))
     z = Z(Base.OneTo(365))
     nletter = Dim{:nletter}(Base.OneTo(300))
     nletter2 = Dim{:nletter2}(Base.OneTo(30))
 
     dates = collect(DateTime(2011):Day(1):DateTime(2012))
-    date1 = Int32.(round.(datetime2julian.(dates[begin:end-1]) .- 2400000.5))
-    date2 = Int32.(round.(datetime2julian.(dates[begin+1:end]) .- 2400000.5))
+    date1 = Int32.(round.(datetime2julian.(dates[begin:(end - 1)]) .- 2400000.5))
+    date2 = Int32.(round.(datetime2julian.(dates[(begin + 1):end]) .- 2400000.5))
 
     vx = Array{Union{Missing, Float32}, 3}(rand(x, y, z))
-    vx[1,1,:] .= missing
+    vx[1, 1, :] .= missing
 
     vy = Array{Union{Missing, Float32}, 3}(rand(x, y, z))
-    vy[1,1,:] .= missing
+    vy[1, 1, :] .= missing
 
     error_vx = Float32.(abs.(rand(length(z))))
     error_vy = Float32.(abs.(rand(length(z))))
@@ -102,8 +106,8 @@ function fake_multi_datacube()
     sensor = fill('s', (length(nletter2), length(z)))
     creation_date = fill('d', (length(nletter), length(z)))
 
-    vx = Raster(vx, (x,y,z))
-    vy = Raster(vy, (x,y,z))
+    vx = Raster(vx, (x, y, z))
+    vy = Raster(vy, (x, y, z))
     date1 = Raster(date1, (z,))
     date2 = Raster(date2, (z,))
     error_vx = Raster(error_vx, (z,))
@@ -125,20 +129,23 @@ function fake_multi_datacube()
         "j" => 3675,
         "Title" => "Cube of Ice Velocity",
         "Conventions" => "CF-1.6",
-        "Notes" => "Data are fake and were randomly generated by ODINN",
+        "Notes" => "Data are fake and were randomly generated by ODINN"
     )
 
-    fakeRasterStack = RasterStack((
-        vx=vx,
-        vy=vy,
-        date1=date1,
-        date2=date2,
-        error_vx=error_vx,
-        error_vy=error_vy,
-        source=source,
-        sensor=sensor,
-        creation_date=creation_date,
-    ); metadata=md, missingval=missing)
+    fakeRasterStack = RasterStack(
+        (
+            vx = vx,
+            vy = vy,
+            date1 = date1,
+            date2 = date2,
+            error_vx = error_vx,
+            error_vy = error_vy,
+            source = source,
+            sensor = sensor,
+            creation_date = creation_date
+        );
+        metadata = md,
+        missingval = missing)
 
     return fakeRasterStack
 end

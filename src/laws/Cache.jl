@@ -8,14 +8,17 @@ export MatrixCacheNoVJP, ScalarCacheNoVJP, MatrixCache, ScalarCache
 Abstract type for defining a cache struct of a law.
 
 Mandatory field:
-- `value`: Store the result of a forward evaluation.
+
+  - `value`: Store the result of a forward evaluation.
 
 Optional fields:
-- `vjp_inp`: Store the result of the evaluation of the vector-Jacobian product (VJP) with respect to the inputs.
-- `vjp_θ`: Store the result of the evaluation of the vector-Jacobian product (VJP) with respect to the parameters θ.
+
+  - `vjp_inp`: Store the result of the evaluation of the vector-Jacobian product (VJP) with respect to the inputs.
+  - `vjp_θ`: Store the result of the evaluation of the vector-Jacobian product (VJP) with respect to the parameters θ.
 
 Notes:
-- If a concrete subtype does not implement `vjp_inp` and `vjp_θ`, the law should not be used for gradient computation, and therefore for inversions.
+
+  - If a concrete subtype does not implement `vjp_inp` and `vjp_θ`, the law should not be used for gradient computation, and therefore for inversions.
 """
 abstract type Cache end
 
@@ -26,7 +29,8 @@ A mutable cache structure for storing a two-dimensional array of `Float64` value
 This is typically used for spatially varying laws.
 This struct is intended for use cases where the law is not differentiated, and hence the vector-Jacobian products (VJP) are not required.
 Fields:
-- `value::Array{Float64, 2}`: The cached matrix.
+
+  - `value::Array{Float64, 2}`: The cached matrix.
 """
 mutable struct MatrixCacheNoVJP <: Cache
     value::Array{Float64, 2}
@@ -39,7 +43,8 @@ A mutable cache structure for storing a scalar value as a zero-dimensional array
 This is typically used for constant per glacier laws.
 This struct is intended for use cases where the law is not differentiated, and hence the vector-Jacobian products (VJP) are not required.
 Fields:
-- `value::Array{Float64, 0}`: The cached scalar value.
+
+  - `value::Array{Float64, 0}`: The cached scalar value.
 """
 mutable struct ScalarCacheNoVJP <: Cache
     value::Array{Float64, 0}
@@ -47,7 +52,10 @@ end
 
 similar(c::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = typeof(c)(similar(c.value))
 size(c::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = size(c.value)
-Base.:(==)(a::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}, b::Union{ScalarCacheNoVJP, MatrixCacheNoVJP}) = a.value == b.value
+function Base.:(==)(a::Union{ScalarCacheNoVJP, MatrixCacheNoVJP},
+        b::Union{ScalarCacheNoVJP, MatrixCacheNoVJP})
+    a.value == b.value
+end
 
 """
     MatrixCache <: Cache
@@ -56,9 +64,10 @@ A cache structure for storing a two-dimensional array of `Float64` values along 
 their associated vector-Jacobian products (VJP).
 This is typically used for spatially varying laws.
 Fields:
-- `value::Array{Float64, 2}`: The cached matrix.
-- `vjp_inp::Array{Float64, 2}`: VJP with respect to inputs.
-- `vjp_θ::Vector{Float64}`: VJP with respect to parameters.
+
+  - `value::Array{Float64, 2}`: The cached matrix.
+  - `vjp_inp::Array{Float64, 2}`: VJP with respect to inputs.
+  - `vjp_θ::Vector{Float64}`: VJP with respect to parameters.
 """
 struct MatrixCache <: Cache
     value::Array{Float64, 2}
@@ -73,9 +82,10 @@ A cache structure for storing a scalar value as a zero-dimensional array of `Flo
 their associated vector-Jacobian products (VJP).
 This is typically used for constant per glacier laws.
 Fields:
-- `value::Array{Float64, 0}`: The cached scalar value.
-- `vjp_inp::Array{Float64, 0}`: VJP with respect to inputs.
-- `vjp_θ::Vector{Float64}`: VJP with respect to parameters.
+
+  - `value::Array{Float64, 0}`: The cached scalar value.
+  - `vjp_inp::Array{Float64, 0}`: VJP with respect to inputs.
+  - `vjp_θ::Vector{Float64}`: VJP with respect to parameters.
 """
 struct ScalarCache <: Cache
     value::Array{Float64, 0}
@@ -83,6 +93,10 @@ struct ScalarCache <: Cache
     vjp_θ::Vector{Float64}
 end
 
-similar(c::Union{ScalarCache, MatrixCache}) = typeof(c)(similar(c.value), similar(c.vjp_inp), similar(c.vjp_θ))
+function similar(c::Union{ScalarCache, MatrixCache})
+    typeof(c)(similar(c.value), similar(c.vjp_inp), similar(c.vjp_θ))
+end
 size(c::Union{ScalarCache, MatrixCache}) = size(c.value)
-Base.:(==)(a::Union{ScalarCache, MatrixCache}, b::Union{ScalarCache, MatrixCache}) = a.value == b.value && a.vjp_inp == b.vjp_inp && a.vjp_θ == b.vjp_θ
+function Base.:(==)(a::Union{ScalarCache, MatrixCache}, b::Union{ScalarCache, MatrixCache})
+    a.value == b.value && a.vjp_inp == b.vjp_inp && a.vjp_θ == b.vjp_θ
+end

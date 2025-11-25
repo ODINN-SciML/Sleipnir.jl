@@ -1,6 +1,5 @@
 
 function params_constructor_specified(; save_refs::Bool = false)
-
     rgi_id = "RGI60-11.03638"
     rgi_paths = get_rgi_paths()
     # Filter out glaciers that are not used to avoid having references that depend on all the glaciers processed in Gungnir
@@ -36,7 +35,7 @@ function params_constructor_specified(; save_refs::Bool = false)
         use_velocities = false,
         overwrite_climate = false,
         use_glathida_data = false,
-        tspan = (2010.0,2015.0),
+        tspan = (2010.0, 2015.0),
         multiprocessing = false,
         workers = 10,
         working_dir = "",
@@ -49,7 +48,7 @@ function params_constructor_specified(; save_refs::Bool = false)
         use_velocities = false,
         overwrite_climate = false,
         use_glathida_data = false,
-        tspan = (2010.0,2015.0),
+        tspan = (2010.0, 2015.0),
         multiprocessing = false,
         workers = 10,
         working_dir = "",
@@ -57,32 +56,39 @@ function params_constructor_specified(; save_refs::Bool = false)
     )
 
     params = Parameters(
-        physical=physical_params,
-        simulation=simulation_params
+        physical = physical_params,
+        simulation = simulation_params
     )
     JET.@test_opt target_modules=(Sleipnir,) Parameters( # Report only issues in Sleipnir
-        physical=physical_params,
-        simulation=simulation_params
+        physical = physical_params,
+        simulation = simulation_params
     )
 
     if save_refs
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"); simulation_params)
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2"); physical_params)
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/params/params_specified.jld2"); params)
+        jldsave(
+            joinpath(
+                Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2");
+            simulation_params)
+        jldsave(
+            joinpath(Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2");
+            physical_params)
+        jldsave(
+            joinpath(Sleipnir.root_dir, "test/data/params/params_specified.jld2"); params)
     end
 
-    simulation_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"))["simulation_params"]
-    physical_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2"))["physical_params"]
-    params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/params_specified.jld2"))["params"]
+    simulation_params_ref = load(joinpath(
+        Sleipnir.root_dir, "test/data/params/simulation_params_specified.jld2"))["simulation_params"]
+    physical_params_ref = load(joinpath(
+        Sleipnir.root_dir, "test/data/params/physical_params_specified.jld2"))["physical_params"]
+    params_ref = load(joinpath(
+        Sleipnir.root_dir, "test/data/params/params_specified.jld2"))["params"]
 
     @test physical_params == physical_params_ref
     @test simulation_params == simulation_params_ref
     @test params == params_ref
-
 end
 
 function params_constructor_default(; save_refs::Bool = false)
-
     physical_params = PhysicalParameters()
     JET.@test_opt PhysicalParameters()
 
@@ -90,26 +96,31 @@ function params_constructor_default(; save_refs::Bool = false)
     JET.@test_opt SimulationParameters()
 
     params = Parameters(
-        simulation=simulation_params,
-        physical=physical_params
+        simulation = simulation_params,
+        physical = physical_params
     )
     JET.@test_opt target_modules=(Sleipnir,) Parameters( # Report only issues in Sleipnir
-        simulation=simulation_params,
-        physical=physical_params
+        simulation = simulation_params,
+        physical = physical_params
     )
 
     if save_refs
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2"); simulation_params)
-        jldsave(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_default.jld2"); physical_params)
+        jldsave(
+            joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2");
+            simulation_params)
+        jldsave(
+            joinpath(Sleipnir.root_dir, "test/data/params/physical_params_default.jld2");
+            physical_params)
         jldsave(joinpath(Sleipnir.root_dir, "test/data/params/params_default.jld2"); params)
     end
 
-    simulation_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2"))["simulation_params"]
-    physical_params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/physical_params_default.jld2"))["physical_params"]
+    simulation_params_ref = load(joinpath(
+        Sleipnir.root_dir, "test/data/params/simulation_params_default.jld2"))["simulation_params"]
+    physical_params_ref = load(joinpath(
+        Sleipnir.root_dir, "test/data/params/physical_params_default.jld2"))["physical_params"]
     params_ref = load(joinpath(Sleipnir.root_dir, "test/data/params/params_default.jld2"))["params"]
 
     @test physical_params == physical_params_ref
     @test simulation_params == simulation_params_ref
     @test params == params_ref
-
 end

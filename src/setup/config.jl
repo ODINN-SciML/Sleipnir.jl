@@ -9,7 +9,8 @@ function __init__()
     end
     existsAndRedownload = false
     if isdir(prepro_dir)
-        daysSinceLastDownload = (Dates.now() - Dates.unix2datetime(mtime(prepro_dir)))/Day(1)
+        daysSinceLastDownload = (Dates.now() -
+                                 Dates.unix2datetime(mtime(prepro_dir)))/Day(1)
         if daysSinceLastDownload > 7
             # Re-download data if older than one week
             # This is useful especially when the data on the server have been
@@ -25,10 +26,9 @@ function __init__()
         tempDir = Tar.extract(tar)
         close(tar)
         if existsAndRedownload
-            rm(prepro_dir, recursive=true)
+            rm(prepro_dir, recursive = true)
         end
         mv(joinpath(tempDir, "ODINN_prepro"), prepro_dir)
-
     end
     csvPath = joinpath(odinn_path, "rgi62_stats.csv")
     if !isfile(csvPath)
@@ -36,23 +36,22 @@ function __init__()
         csvPathTmp = Downloads.download("https://cluster.klima.uni-bremen.de/~oggm/rgi/rgi62_stats.csv")
         mv(csvPathTmp, csvPath)
     end
-
 end
 
 function enable_multiprocessing(procs::Int)
     if procs > 0
         if nprocs() < procs
             @eval begin
-            addprocs($procs - nprocs(); exeflags="--project")
-            @info "Number of cores: $(nprocs())"
-            @info "Number of workers: $(nworkers())"
-            @everywhere using Sleipnir
+                addprocs($procs - nprocs(); exeflags = "--project")
+                @info "Number of cores: $(nprocs())"
+                @info "Number of workers: $(nworkers())"
+                @everywhere using Sleipnir
             end # @eval
         elseif nprocs() != procs && procs == 1
             @eval begin
-            rmprocs(workers(), waitfor=0)
-            @info "Number of cores: $(nprocs())"
-            @info "Number of workers: $(nworkers())"
+                rmprocs(workers(), waitfor = 0)
+                @info "Number of cores: $(nprocs())"
+                @info "Number of workers: $(nworkers())"
             end # @eval
         end
     end
@@ -63,7 +62,7 @@ function get_rgi_paths()
     rgi_paths = JSON.parsefile(joinpath(prepro_dir, "rgi_paths.json"))
     # Convert Dict{String, Any} to Dict{String, String} and explicitely define type
     # to ensure type stability in the other packages
-    rgi_paths::Dict{String, String} = Dict(k => string(v) for (k,v) in pairs(rgi_paths))
+    rgi_paths::Dict{String, String} = Dict(k => string(v) for (k, v) in pairs(rgi_paths))
     return rgi_paths
 end
 
@@ -71,7 +70,7 @@ function get_rgi_names()
     rgi_names = JSON.parsefile(joinpath(prepro_dir, "rgi_names.json"))
     # Convert Dict{String, Any} to Dict{String, String} and explicitely define type
     # to ensure type stability in the other packages
-    rgi_names::Dict{String, String} = Dict(k => string(v) for (k,v) in pairs(rgi_names))
+    rgi_names::Dict{String, String} = Dict(k => string(v) for (k, v) in pairs(rgi_names))
     return rgi_names
 end
 
