@@ -216,7 +216,7 @@ Arguments:
 """
 function DummyClimate2D(;
     longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
-    longterm_temps_gridded::Matrix{F} = Matrix{Sleipnir.Float}([])
+    longterm_temps_gridded::Matrix{F} = Matrix{Sleipnir.Float}(zeros(0,0))
 ) where {F <: AbstractFloat}
     ras = Raster(rand(X(1:0), Y(1:0), Ti(DateTime(2001):Month(1):DateTime(2002))))
     emptyRasterStack = RasterStack(ras)
