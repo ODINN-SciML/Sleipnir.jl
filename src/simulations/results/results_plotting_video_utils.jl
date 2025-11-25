@@ -1,15 +1,15 @@
 export plot_glacier_vid
 
 function make_thickness_video(
-    results::Results,
-    glacier::Glacier2D,
-    tspan,
-    step,
-    pathVideo::String;
-    colormap::Symbol = :viridis,
-    colorrange::Union{Tuple, Nothing} = nothing,
-    framerate::Int = 24,
-    baseTitle::String = "",
+        results::Results,
+        glacier::Glacier2D,
+        tspan,
+        step,
+        pathVideo::String;
+        colormap::Symbol = :viridis,
+        colorrange::Union{Tuple, Nothing} = nothing,
+        framerate::Int = 24,
+        baseTitle::String = ""
 )
     H_plot = results.H
 
@@ -20,7 +20,7 @@ function make_thickness_video(
         lat = glacier.Δy .* collect(1:1:glacier.ny)
         lon = glacier.Δx .* collect(1:1:glacier.nx)
     end
-    X, Y = GR.meshgrid(lon,lat)
+    X, Y = GR.meshgrid(lon, lat)
     x = results.x
     y = results.y
 
@@ -49,7 +49,7 @@ function make_thickness_video(
         colorrange = colorrange,
         colormap = colormap,
         nan_color = :transparent
-        )
+    )
     CairoMakie.Colorbar(fig[1, 2], hm, label = "Thickness (m)")
 
     years = tspan[1] .+ step * collect(1:size(H, 1))
@@ -69,7 +69,6 @@ function make_thickness_video(
     end
 end
 
-
 """
     plot_glacier_vid(
         plot_type::String,
@@ -82,21 +81,25 @@ end
         baseTitle::String=""
     )
 
-Generate various types of videos for glacier data. For now only the evolution of the glacier ice thickness is supported. More types of visualizations will be added in the future. 
+Generate various types of videos for glacier data. For now only the evolution of the glacier ice thickness is supported. More types of visualizations will be added in the future.
 
 # Arguments
-- `plot_type`: Type of plot to generate. Options are:
-  * "thickness": Heatmap of the glacier thickness.
-- `results`: A result object containing the simulation results including ice
+
+  - `plot_type`: Type of plot to generate. Options are:
+
+      + "thickness": Heatmap of the glacier thickness.
+
+  - `results`: A result object containing the simulation results including ice
     thickness over time.
-- `glacier`: A glacier instance.
-- `tspan`: The simulation time span.
-- `step`: Time step to use to retrieve the results and generate the video.
-- `pathVideo`: Path of the mp4 file to generate.
+  - `glacier`: A glacier instance.
+  - `tspan`: The simulation time span.
+  - `step`: Time step to use to retrieve the results and generate the video.
+  - `pathVideo`: Path of the mp4 file to generate.
 
 # Optional Keyword Arguments
-- `framerate`: The framerate to use for the video generation.
-- `baseTitle`: The prefix to use in the title of the frames. In each frame it is
+
+  - `framerate`: The framerate to use for the video generation.
+  - `baseTitle`: The prefix to use in the title of the frames. In each frame it is
     concatenated with the value of the year in the form " (t=XXXX)".
 """
 function plot_glacier_vid(
@@ -106,12 +109,12 @@ function plot_glacier_vid(
         tspan,
         step,
         pathVideo::String;
-        framerate::Int=24,
-        baseTitle::String="",
-    )
-
+        framerate::Int = 24,
+        baseTitle::String = ""
+)
     if plot_type == "thickness"
-        make_thickness_video(results, glacier, tspan, step, pathVideo; framerate=framerate, baseTitle=baseTitle)
+        make_thickness_video(results, glacier, tspan, step, pathVideo;
+            framerate = framerate, baseTitle = baseTitle)
     else
         error("Invalid plot_type: $plot_type")
     end
