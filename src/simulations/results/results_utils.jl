@@ -71,8 +71,8 @@ function create_results(
 
     glacier = simulation.glaciers[glacier_idx]
     iceflow_cache = simulation.cache.iceflow
-    if !isnothing(simulation.model.machine_learning)
-        θ = simulation.model.machine_learning.θ
+    if !isnothing(simulation.model.trainable_components)
+        θ = simulation.model.trainable_components.θ
     else
         θ = nothing
     end

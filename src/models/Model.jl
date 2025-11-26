@@ -11,15 +11,15 @@ abstract type AbstractModel end
 const AbstractEmptyModel = Union{AbstractModel, Nothing}
 
 """
-    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
 
 A mutable struct that represents a model with three components: iceflow, mass balance, and machine learning.
 
     Model(
         iceflow::IFM,
         mass_balance::MBM,
-        machine_learning::MLM,
-    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+        trainable_components::TC,
+    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
 
     Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
@@ -29,28 +29,28 @@ Initialize Model (no machine learning model).
 
   - `iceflow::IFM}`: Represents the iceflow component, which is an instance of `IFM`.
   - `mass_balance::Union{MBM, Vector{MBM}}`: Represents the mass balance component, which is an instance of `MBM`.
-  - `machine_learning::MLM`: Represents the machine learning component, which is an instance of `MLM`.
+  - `trainable_components::TC`: Represents the trainable components, which is an instance of `TC`.
 
 # Type Parameters
 
   - `IFM`: A subtype of `AbstractEmptyModel` representing the type of the iceflow model.
   - `MBM`: A subtype of `AbstractEmptyModel` representing the type of the mass balance model.
-  - `MLM`: A subtype of `AbstractEmptyModel` representing the type of the machine learning model.
+  - `TC`: A subtype of `AbstractEmptyModel` representing the type of the trainable components.
 """
 mutable struct Model{
-    IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
+    IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
     iceflow::IFM
     mass_balance::MBM
-    machine_learning::MLM
+    trainable_components::TC
 
     function Model(
             iceflow::IFM,
             mass_balance::MBM,
-            machine_learning::MLM
+            trainable_components::TC
     ) where {
-            IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, MLM <: AbstractEmptyModel}
-        new{typeof(iceflow), typeof(mass_balance), typeof(machine_learning)}(
-            iceflow, mass_balance, machine_learning)
+            IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+        new{typeof(iceflow), typeof(mass_balance), typeof(trainable_components)}(
+            iceflow, mass_balance, trainable_components)
     end
 end
 Model(; iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
@@ -99,11 +99,11 @@ function Base.show(io::IO, type::MIME"text/plain", model::Model)
     println(io)
     Base.show(io, type, model.mass_balance)
     println(io)
-    if isnothing(model.machine_learning)
+    if isnothing(model.trainable_components)
         println(io, "No learnable components")
     else
         println(io, "Learnable components")
-        Base.show(io, type, model.machine_learning)
+        Base.show(io, type, model.trainable_components)
         println(io)
     end
     print(io, "***************")
