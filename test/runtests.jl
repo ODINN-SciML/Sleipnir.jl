@@ -17,6 +17,7 @@ using DimensionalData
 using Dates
 using DateFormats
 using JET
+using Aqua
 
 include("iceflow_def.jl")
 include("params_construction.jl")
@@ -28,6 +29,7 @@ include("plot_utils.jl")
 include("results.jl")
 include("laws.jl")
 include("misc.jl")
+include("Aqua.jl")
 
 # Activate to avoid GKS backend Plot issues in the JupyterHub
 ENV["GKSwstype"]="nul"
@@ -72,4 +74,6 @@ ENV["GKSwstype"]="nul"
         apply_law_testset()
         apply_vjp_law_testset()
     end
+
+    @testset "Aqua" test_Aqua()
 end
