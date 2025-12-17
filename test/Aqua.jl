@@ -1,0 +1,10 @@
+function test_Aqua()
+    Aqua.test_ambiguities(Sleipnir)
+    Aqua.test_undefined_exports(Sleipnir)
+    Aqua.test_project_extras(Sleipnir)
+    Aqua.test_stale_deps(Sleipnir; ignore = [:JET, :Test, :BenchmarkTools, :Revise])
+    Aqua.test_deps_compat(Sleipnir)
+    Aqua.test_piracies(Sleipnir)
+    Aqua.test_persistent_tasks(Sleipnir)
+    Aqua.test_undocumented_names(Sleipnir; broken = true)
+end
