@@ -241,6 +241,7 @@ function Glacier2D(
         rgi_id::String,
         params::Parameters;
         masking::Union{Int, Nothing, BitMatrix} = 2,
+        masking_loss::Union{Int, Nothing, BitMatrix} = nothing,
         smoothing = false
 )
 
@@ -285,6 +286,13 @@ function Glacier2D(
             ::Nothing => falses(size(H₀)...)
             ::Int => is_in_glacier(H₀, -masking)
             ::BitMatrix => masking
+        end
+
+        # Define mask where losses used for inversion will be evaluated
+        mask_loss = @match masking_loss begin
+            ::Nothing => falses(size(H₀)...)
+            ::Int => is_in_glacier(H₀, masking_loss)
+            ::BitMatrix => masking_loss
         end
 
         nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
@@ -350,7 +358,8 @@ function Glacier2D(
             H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
             A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0),
             n = Sleipnir.Float(3.0), p = Sleipnir.Float(3.0), q = Sleipnir.Float(2.0),
-            slope = slope, dist_border = dist_border, mask = mask,
+            slope = slope, dist_border = dist_border,
+            mask = mask, mask_loss = mask_loss,
             Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
             cenlon = cenlon, cenlat = cenlat,
             params_projection = params_projection
