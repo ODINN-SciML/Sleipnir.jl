@@ -39,6 +39,7 @@ manually, but rather through the `initialize_glaciers` function.
   - `slope::Matrix{F}`: Surface slope matrix.
   - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
   - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
+  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses uses for inversions will only evaluated in mask.
   - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
   - `Δx::F`: Grid spacing in the x-direction.
   - `Δy::F`: Grid spacing in the y-direction.
@@ -71,6 +72,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     slope::Matrix{F}
     dist_border::Matrix{F}
     mask::BitMatrix
+    mask_loss::BitMatrix
     Coords::Dict{String, Vector{Float64}}
     Δx::F
     Δy::F
@@ -103,6 +105,7 @@ end
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         mask::BitMatrix = BitMatrix([;;]),
+        mask_loss::BitMatrix = BitMatrix([;;]),
         Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}("lon" => [], "lat" => []),
         Δx::F = 0.0,
         Δy::F = 0.0,
@@ -142,6 +145,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
   - `slope::Matrix{F}`: Slope matrix.
   - `dist_border::Matrix{F}`: Distance to border matrix.
   - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
+  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses uses for inversions will only evaluated in mask.
   - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
   - `Δx::F`: Grid spacing in the x-direction.
   - `Δy::F`: Grid spacing in the y-direction.
@@ -176,6 +180,7 @@ function Glacier2D(;
         slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         mask::BitMatrix = BitMatrix([;;]),
+        mask_loss::BitMatrix = BitMatrix([;;]),
         Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}(
             "lon" => [], "lat" => []),
         Δx::F = 0.0,
@@ -197,7 +202,7 @@ function Glacier2D(;
         typeof(thicknessData), typeof(velocityData)}(
         rgi_id, name, climate, H₀, H_glathida,
         S, B, V, Vx, Vy, A, C, n, p, q,
-        slope, dist_border, mask, Coords,
+        slope, dist_border, mask, mask_loss, Coords,
         Δx, Δy, nx, ny,
         cenlon, cenlat, params_projection,
         thicknessData, velocityData
@@ -237,7 +242,7 @@ function Glacier2D(
         glacier.rgi_id, glacier.name, glacier.climate, glacier.H₀, glacier.H_glathida,
         glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy,
         glacier.A, glacier.C, glacier.n, glacier.p, glacier.q,
-        glacier.slope, glacier.dist_border, glacier.mask, glacier.Coords,
+        glacier.slope, glacier.dist_border, glacier.mask, glacier.mask_loss, glacier.Coords,
         glacier.Δx, glacier.Δy, glacier.nx, glacier.ny,
         glacier.cenlon, glacier.cenlat, glacier.params_projection,
         thicknessData, velocityData
@@ -254,7 +259,8 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.H₀ == b.H₀ && a.H_glathida == b.H_glathida && a.S == b.S && a.B == b.B &&
         a.V == b.V &&
         a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
-        a.slope == b.slope && a.dist_border == b.dist_border && a.mask == b.mask &&
+        a.slope == b.slope && a.dist_border == b.dist_border &&
+        a.mask == b.mask && a.mask_loss == b.mask_loss
         a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
         a.ny == b.ny &&
         a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
@@ -270,7 +276,7 @@ function Base.:(≈)(a::Glacier2D, b::Glacier2D)
         a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
         isapprox(a.slope, b.slope; rtol = 1e-3) &&
         safe_approx(a.dist_border, b.dist_border) &&
-        a.mask == b.mask &&
+        a.mask == b.mask && a.mask_loss == b.mask_loss &&
         safe_approx(a.Coords, b.Coords) && a.Δx == b.Δx && a.Δy == b.Δy &&
         a.nx == b.nx && a.ny == b.ny &&
         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
@@ -297,6 +303,7 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :slope => a.slope == b.slope,
         :dist_border => a.dist_border == b.dist_border,
         :mask => a.mask == b.mask,
+        :mask_loss => a.mask_loss == b.mask_loss,
         :Coords => a.Coords == b.Coords,
         :Δx => a.Δx == b.Δx,
         :nx => a.nx == b.nx,
