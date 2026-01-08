@@ -39,7 +39,7 @@ manually, but rather through the `initialize_glaciers` function.
   - `slope::Matrix{F}`: Surface slope matrix.
   - `dist_border::Matrix{F}`: Distance to the glacier border matrix.
   - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
-  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses uses for inversions will only evaluated in mask.
+  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses used for inversions will only be evaluated withing the mask.
   - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys as coordinate names and values as vectors of coordinates.
   - `Δx::F`: Grid spacing in the x-direction.
   - `Δy::F`: Grid spacing in the y-direction.
@@ -145,7 +145,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
   - `slope::Matrix{F}`: Slope matrix.
   - `dist_border::Matrix{F}`: Distance to border matrix.
   - `mask::BitMatrix`: Boolean matrix representing the glacier mask, where true values indicate regions constrained by the mask (i.e., no-ice zones)
-  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses uses for inversions will only evaluated in mask.
+  - `mask_loss::BitMatrix`: Boolean matrix representing mask for inversion. Losses used for inversions will only be evaluated withing the mask.
   - `Coords::Dict{String, Vector{Float64}}`: Coordinates dictionary with keys "lon" and "lat".
   - `Δx::F`: Grid spacing in the x-direction.
   - `Δy::F`: Grid spacing in the y-direction.
