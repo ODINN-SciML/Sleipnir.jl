@@ -241,7 +241,7 @@ function Glacier2D(
         rgi_id::String,
         params::Parameters;
         masking::Union{Int, Nothing, BitMatrix} = 2,
-        masking_loss::Union{Int, Nothing, BitMatrix} = nothing,
+        masking_loss::Union{Int, Nothing, BitMatrix} = 0,
         smoothing = false
 )
 
