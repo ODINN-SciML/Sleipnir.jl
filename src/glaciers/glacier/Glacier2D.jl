@@ -52,8 +52,8 @@ manually, but rather through the `initialize_glaciers` function.
   - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
-    THICKDATA <: Union{<: ThicknessData, Nothing},
-    SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing}} <: AbstractGlacier
+    THICKDATA <: Union{<:ThicknessData, Nothing},
+    SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing}} <: AbstractGlacier
     rgi_id::String
     name::String
     climate::CLIM
@@ -165,22 +165,22 @@ function Glacier2D(;
         rgi_id::String = "",
         name::String = "",
         climate::Climate2D = nothing,
-        H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        B::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        V::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        Vx::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        Vy::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
+        H₀::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        H_glathida::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        S::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        B::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        V::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        Vx::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        Vy::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
         A::F = 0.0,
         C::F = 0.0,
         n::F = 0.0,
         p::F = 0.0,
         q::F = 0.0,
-        slope::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        dist_border::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
-        mask::BitMatrix = BitMatrix([;;]),
-        mask_loss::BitMatrix = BitMatrix([;;]),
+        slope::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        dist_border::Matrix{F} = Matrix{Sleipnir.Float64}(undef, 0, 0),
+        mask::BitMatrix = BitMatrix(undef, 0, 0),
+        mask_loss::BitMatrix = BitMatrix(undef, 0, 0),
         Coords::Dict{String, Vector{Float64}} = Dict{String, Vector{Float64}}(
             "lon" => [], "lat" => []),
         Δx::F = 0.0,
@@ -195,8 +195,8 @@ function Glacier2D(;
 ) where {
         F <: AbstractFloat,
         I <: Integer,
-        THICKDATA <: Union{<: ThicknessData, Nothing},
-        SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing}
+        THICKDATA <: Union{<:ThicknessData, Nothing},
+        SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing}
 }
     return Glacier2D{Sleipnir.Float, Sleipnir.Int, typeof(climate),
         typeof(thicknessData), typeof(velocityData)}(
@@ -230,8 +230,8 @@ Copies a `Glacier2D` object and updates the thickness and/or surface velocity da
 """
 function Glacier2D(
         glacier::Glacier2D;
-        thicknessData::Union{<: ThicknessData, Nothing} = nothing,
-        velocityData::Union{<: SurfaceVelocityData, Nothing} = nothing
+        thicknessData::Union{<:ThicknessData, Nothing} = nothing,
+        velocityData::Union{<:SurfaceVelocityData, Nothing} = nothing
 )
     thicknessData = isnothing(thicknessData) ? glacier.thicknessData : thicknessData
     velocityData = isnothing(velocityData) ? glacier.velocityData : velocityData
@@ -260,7 +260,7 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.V == b.V &&
         a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
         a.slope == b.slope && a.dist_border == b.dist_border &&
-        a.mask == b.mask && a.mask_loss == b.mask_loss
+        a.mask == b.mask && a.mask_loss == b.mask_loss &&
         a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
         a.ny == b.ny &&
         a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
@@ -320,12 +320,12 @@ end
 Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D) = Base.show(io, glacier)
 function Base.show(io::IO, glacier::Glacier2D)
     if !isnothing(glacier.H₀)
-        H=round.(255*glacier.H₀/maximum(glacier.H₀))
-        display(Gray.(Int.(H')/255))
+        H = round.(255 * glacier.H₀ / maximum(glacier.H₀))
+        display(Gray.(Int.(H') / 255))
     end
 
     print(io, "Glacier2D ")
-    strName = glacier.name=="" ? "" : " ($(glacier.name))"
+    strName = glacier.name == "" ? "" : " ($(glacier.name))"
     printstyled(io, "$(glacier.rgi_id)$(strName)"; color = :yellow)
     print(io, " with a ")
     printstyled(io, "$(glacier.nx)x$(glacier.ny)"; color = :red)
@@ -383,10 +383,10 @@ end
 
 # Vectorial form
 # If you don't understand what's going on below, refer to https://discourse.julialang.org/t/improving-doc-for-display-print-show-repr/69124/3
-function Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{<: AbstractGlacier})
+function Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{<:AbstractGlacier})
     Base.show(io, glaciers)
 end
-function Base.show(io::IO, glaciers::Vector{<: AbstractGlacier})
+function Base.show(io::IO, glaciers::Vector{<:AbstractGlacier})
     len = length(glaciers)
     print(io, "$(len)-element Vector{$(eltype(glaciers).name.wrapper)}")
     try
@@ -397,7 +397,7 @@ function Base.show(io::IO, glaciers::Vector{<: AbstractGlacier})
     catch
         println(io, " distributed over undefined regions")
     end
-    if len>5
+    if len > 5
         print(io, join([glacier.rgi_id for glacier in glaciers[1:2]], " "))
         print(io, " ... ")
         println(io, join([glacier.rgi_id for glacier in glaciers[(len - 1):len]], " "))

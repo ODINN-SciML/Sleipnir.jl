@@ -25,11 +25,11 @@ Arguments:
     of the ice surface velocity data is considered as reliable or not.
 """
 function initialize_surfacevelocitydata(
-        raster::Union{String, <: RasterStack};
+        raster::Union{String, <:RasterStack};
         glacier::Union{G, Nothing} = nothing,
         mapping::VM = MeanDateVelocityMapping(),
         compute_vabs_error::Bool = true,
-        flag::Union{String, <: RasterStack, Nothing} = nothing
+        flag::Union{String, <:RasterStack, Nothing} = nothing
 ) where {G <: AbstractGlacier, VM <: VelocityMapping}
     velRast = isa(raster, String) ? RasterStack(raster, lazy = true) : raster
 
@@ -79,10 +79,12 @@ function initialize_surfacevelocitydata(
 
     # Spatial preprocessing
     params_projection = parse_proj(metadata(velRast)["proj4"])
-    hemisphere = (y[end]+y[begin])/2 >= 0 ? :north : :south
-    transform(X,
-        Y) = Sleipnir.UTMercator(
-        X, Y; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
+    hemisphere = (y[end] + y[begin]) / 2 >= 0 ? :north : :south
+    function transform(X,
+            Y)
+        Sleipnir.UTMercator(
+            X, Y; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
+    end
     latitudes_vel = map(x -> x.lat.val, transform.(mean(x), y))
     longitudes_vel = map(x -> x.lon.val, transform.(x, mean(y)))
 
@@ -100,9 +102,11 @@ function initialize_surfacevelocitydata(
         xx = x * ones(length(y))'
 
         # Map glacier coordinates onto the local velocity product coordinates
-        transformReverse(lat,
-            lon) = ReverseUTMercator(
-            lat, lon; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
+        function transformReverse(lat,
+                lon)
+            ReverseUTMercator(
+                lat, lon; zone = Int(params_projection["zone"]), hemisphere = hemisphere)
+        end
         mask_data = [minimum(local_distance(transformReverse(lat, lon), xx, yy)) .>
                      min_distance
                      for lon in longitudes_glacier,
@@ -137,7 +141,7 @@ function initialize_surfacevelocitydata(
         if any(.!glacier_in_datacube)
             coverage = round(
                 100 * sum(.!mask_ice .&& .!mask_data) / sum(.!mask_ice); digits = 2)
-            @assert coverage > 0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
+            @assert coverage>0.0 "Datacube doesn't include any region of the glacier, please check that you use the right datacube for glacier $(glacier.rgi_id)."
             @warn "Glacier is not enterely included in the datacube. Current datacube covers $(coverage)% of glacier $(glacier.rgi_id)."
         end
 
@@ -164,8 +168,8 @@ function initialize_surfacevelocitydata(
     # Glacier convention follows matrix index notation: first index is latitude (northing), second index is longitude (easting)
     # The ice surface velocity product reports velocities vx and vy in east-west and south-north orientations, respectivelly
     # To check for the right orientation of the velocity vectors, we see how coordinates are encoded in each data object
-    vx = all(diff(latitudes) .> 0.0) ? vx : .- vx
-    vy = all(diff(longitudes) .> 0.0) ? vy : .- vy
+    vx = all(diff(latitudes) .> 0.0) ? vx : .-vx
+    vy = all(diff(longitudes) .> 0.0) ? vy : .-vy
 
     # Compute absolute velocity
     vabs = (vx .^ 2 .+ vy .^ 2) .^ 0.5
@@ -231,7 +235,7 @@ centers, its bounding box is shifted by half a grid step when subsetting.
 """
 function initialize_surfacevelocitydata_mask(
         data::RasterStack,
-        flag::Union{String, <: RasterStack, Nothing} = nothing
+        flag::Union{String, <:RasterStack, Nothing} = nothing
 )
     flagRast = isa(flag, String) ? RasterStack(flag, lazy = true) : flag
 
@@ -244,7 +248,7 @@ function initialize_surfacevelocitydata_mask(
     Ys = dims(data, :Y).val.data
     Y_begin, Y_end = minimum(Ys) - Δ, maximum(Ys) + Δ
 
-    flagRast_subset = flagRast[X(X_begin..X_end), Y(Y_begin..Y_end)]
+    flagRast_subset = flagRast[X(X_begin .. X_end), Y(Y_begin .. Y_end)]
 
     # We align the axes of the glacier subset with the flag
     X_glacier_increasing = first(Xs) < last(Xs)
@@ -261,7 +265,7 @@ function initialize_surfacevelocitydata_mask(
 
     # Unreliable pixels are indicated with 0
     # Reliable pixels are indicated with 1
-    return flagRast_subset.fmask.data .== 1
+    return flagRast_subset.layer1.data .== 1
 end
 
 """
@@ -348,20 +352,22 @@ function grid(
         FileArray <: Rasters.FileArray
 }
     params_projection = glacier.params_projection
-    transformReverse(lat,
-        lon) = ReverseUTMercator(
-        lat, lon;
-        k = params_projection["k"],
-        cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
-        x0 = params_projection["x_0"], y0 = params_projection["y_0"]
-    )
+    function transformReverse(lat,
+            lon)
+        ReverseUTMercator(
+            lat, lon;
+            k = params_projection["k"],
+            cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
+            x0 = params_projection["x_0"], y0 = params_projection["y_0"]
+        )
+    end
     # Glacier coordinates in northing/easting coordinates
     xG = map(x -> x.x.val, transformReverse.(glacier.cenlat, glacier.Coords["lon"]))
     yG = map(x -> x.y.val, transformReverse.(glacier.Coords["lat"], glacier.cenlon))
 
     # Velocity coordinates in northing/easting coordinates
-    cenlatVel = (latitudes[end]+latitudes[begin])/2
-    cenlonVel = (longitudes[end]+longitudes[begin])/2
+    cenlatVel = (latitudes[end] + latitudes[begin]) / 2
+    cenlonVel = (longitudes[end] + longitudes[begin]) / 2
     xV = map(x -> x.x.val, transformReverse.(cenlatVel, longitudes))
     yV = map(x -> x.y.val, transformReverse.(latitudes, cenlonVel))
 
@@ -393,8 +399,8 @@ function grid(
         block_flag = isnothing(vflag) ? nothing : vflag[indx_lw:indx_up, indy_lw:indy_up]
 
         # Assign to each point of the glacier grid the closest point on the grid of surface velocities
-        shiftx = - indx_lw + 1
-        shifty = - indy_lw + 1
+        shiftx = -indx_lw + 1
+        shifty = -indy_lw + 1
         for ix in range(1, length(glacier.Coords["lon"])),
             iy in range(1, length(glacier.Coords["lat"]))
 
@@ -463,7 +469,7 @@ function random_spatially_coherent_mask(
     KY = ones(h, 1) .* reshape(ky, 1, length(ky))  # h × (w÷2+1)
 
     # 4) Gaussian low-pass filter
-    power = exp.(- (KX .^ 2 .+ KY .^ 2) .* (2π*sigma)^2)
+    power = exp.(-(KX .^ 2 .+ KY .^ 2) .* (2π * sigma)^2)
 
     # 5) apply filter in frequency space
     f_filtered = f .* power
