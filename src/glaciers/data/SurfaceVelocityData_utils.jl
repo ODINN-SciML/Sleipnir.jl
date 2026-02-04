@@ -248,7 +248,8 @@ function initialize_surfacevelocitydata_mask(
     Ys = dims(data, :Y).val.data
     Y_begin, Y_end = minimum(Ys) - Δ, maximum(Ys) + Δ
 
-    flagRast_subset = flagRast[X(X_begin .. X_end), Y(Y_begin .. Y_end)]
+    flagRast_subset = flagRast[X(X_begin .. X_end), Y(Y_begin ..
+                                                                                    Y_end)]
 
     # We align the axes of the glacier subset with the flag
     X_glacier_increasing = first(Xs) < last(Xs)
