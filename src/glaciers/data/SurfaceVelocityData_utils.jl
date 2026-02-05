@@ -266,7 +266,7 @@ function initialize_surfacevelocitydata_mask(
 
     # Unreliable pixels are indicated with 0
     # Reliable pixels are indicated with 1
-    return flagRast_subset.layer1.data .== 1
+    return flagRast_subset.fmask.data .== 1
 end
 
 """
