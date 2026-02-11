@@ -160,9 +160,12 @@ function save_results_file!(results_list::Vector{Results{F, I}},
         path::Union{String, Nothing} = nothing) where {
         F <: AbstractFloat, I <: Integer, SIM <: Simulation}
     # Create path for simulation results
+    @show Base.current_project()
+    @show Base.active_project()
+    @show pwd()
     if isnothing(path)
         predictions_path = joinpath(
-            dirname(Base.current_project()), "data/results/predictions")
+            dirname(Base.active_project()), "data/results/predictions")
     else
         predictions_path = path
     end
