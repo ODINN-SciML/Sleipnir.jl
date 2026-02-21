@@ -174,8 +174,9 @@ function save_results_file!(results_list::Vector{Results{F, I}},
 
     tspan = simulation.parameters.simulation.tspan
     nglaciers = length(simulation.glaciers)
-    jldsave(joinpath(predictions_path, "prediction_$(nglaciers)glaciers_$tspan.jld2");
-        simulation.results)
+    # We don't save results files as this is not required and can crash multiple simulations
+    # jldsave(joinpath(predictions_path, "prediction_$(nglaciers)glaciers_$tspan.jld2");
+        # simulation.results)
 end
 
 """
