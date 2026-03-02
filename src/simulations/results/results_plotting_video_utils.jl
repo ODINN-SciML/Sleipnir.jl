@@ -91,9 +91,13 @@ Generate various types of videos for glacier data. For now only the evolution of
 
   - `results`: A result object containing the simulation results including ice
     thickness over time.
+
   - `glacier`: A glacier instance.
+
   - `tspan`: The simulation time span.
+
   - `step`: Time step to use to retrieve the results and generate the video.
+
   - `pathVideo`: Path of the mp4 file to generate.
 
 # Optional Keyword Arguments
