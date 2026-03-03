@@ -76,11 +76,17 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
   - `raw_climate::CLIMRAW`: Raw climate dataset for the whole simulation.
 
   - `climate_raw_step::CLIMRAWSTEP`: Raw climate trimmed for the current step to avoid memory allocations.
+
   - `climate_step::ClimateStep`: Climate data for the current step.
+
   - `climate_2D_step::Climate2Dstep`: 2D climate data for the current step to feed to the mass balance (MB) model.
+
   - `longterm_temps::Vector{F}`: Long-term temperatures for the ice rheology.
+
   - `avg_temps::F`: Intermediate buffer for computing average temperatures.
+
   - `avg_gradients::F`: Intermediate buffer for computing average gradients.
+
   - `ref_hgt::F`: Reference elevation of the raw climate data.
 
     Climate2D(
@@ -106,9 +112,13 @@ This function initializes the climate data for a glacier by:
  1. Creating a dummy period based on the simulation time span and step.
 
  2. Loading the raw climate data from a NetCDF file.
+
  3. Calculating the cumulative climate data for the dummy period.
+
  4. Downscaling the cumulative climate data to a 2D grid.
+
  5. Retrieving long-term temperature data for the glacier.
+
  6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
 
     Climate2D(
