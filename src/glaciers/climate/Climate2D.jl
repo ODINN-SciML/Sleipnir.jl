@@ -12,7 +12,13 @@ A mutable struct representing a 2D climate time step with various climate-relate
   - `PDD::Matrix{F}`: Positive Degree Days matrix.
   - `snow::Matrix{F}`: Snowfall matrix.
   - `rain::Matrix{F}`: Rainfall matrix.
-  - `gradient::F`: Gradient value.
+  - `elevation_diff::Matrix{F}`: Elevation difference matrix.
+  - `albedo::Matrix{F}`: Albedo matrix.
+  - `slhf::Matrix{F}`: Surface latent heat flux matrix.
+  - `sshf::Matrix{F}`: Surface sensible heat flux matrix.
+  - `ssrd::Matrix{F}`: Surface shortwave radiation downwards matrix.
+  - `str::Matrix{F}`: Surface net thermal radiation matrix.
+  - `gradient::F`: Altitudinal gradient value.
   - `avg_gradient::F`: Average gradient value.
   - `x::Vector{F}`: X-coordinates vector.
   - `y::Vector{F}`: Y-coordinates vector.
@@ -23,6 +29,12 @@ A mutable struct representing a 2D climate time step with various climate-relate
     PDD::Matrix{F}
     snow::Matrix{F}
     rain::Matrix{F}
+    elevation_diff::Matrix{F}
+    albedo::Matrix{F}
+    slhf::Matrix{F}
+    sshf::Matrix{F}
+    ssrd::Matrix{F}
+    str::Matrix{F}
     gradient::F
     avg_gradient::F
     x::Vector{F}
@@ -33,6 +45,9 @@ end
 function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
     a.temp == b.temp && a.PDD == b.PDD &&
         a.snow == b.snow && a.rain == b.rain &&
+        a.elevation_diff == b.elevation_diff && a.albedo == b.albedo &&
+        a.slhf == b.slhf && a.sshf == b.sshf &&
+        a.ssrd == b.ssrd && a.str == b.str &&
         a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
         a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
 end
@@ -55,6 +70,11 @@ Mutable struct that represents a climate step before downscaling.
     prcp::F
     temp::F
     gradient::F
+    albedo::F
+    slhf::F
+    sshf::F
+    ssrd::F
+    str::F
     avg_temp::F
     avg_gradient::F
     ref_hgt::F
@@ -62,7 +82,10 @@ end
 
 function Base.:(==)(a::ClimateStep, b::ClimateStep)
     a.prcp == b.prcp && a.temp == b.temp &&
-        a.gradient == b.gradient && a.avg_temp == b.avg_temp &&
+        a.gradient == b.gradient &&
+        a.albedo == b.albedo && a.slhf == b.slhf && a.sshf == b.sshf &&
+        a.ssrd == b.ssrd && a.str == b.str &&
+        a.avg_temp == b.avg_temp &&
         a.avg_gradient == b.avg_gradient && a.ref_hgt == b.ref_hgt
 end
 
@@ -150,11 +173,15 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
         if Sleipnir.doublePrec
             raw_climate = convertRasterStackToFloat64(raw_climate)
         end
-        climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
-        climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
+        climate_raw_step = raw_climate[At(dummy_period)]
+        climate_step = get_cumulative_climate(climate_raw_step)
+        climate_2D_step = downscale_2D_climate(
+            climate_step,
+            S,
+            Coords
+        )
         longterm_temps_scalar,
         longterm_temps_gridded = get_longterm_temps(rgi_id, params, raw_climate, S)
-        climate_raw_step = raw_climate[At(dummy_period)]
         return new{
             typeof(raw_climate),
             typeof(climate_raw_step),
@@ -248,6 +275,12 @@ function DummyClimate2D(;
         PDD = dummyMatrix,
         snow = dummyMatrix,
         rain = dummyMatrix,
+        elevation_diff = dummyMatrix,
+        albedo = dummyMatrix,
+        slhf = dummyMatrix,
+        sshf = dummyMatrix,
+        ssrd = dummyMatrix,
+        str = dummyMatrix,
         gradient = 0.0,
         avg_gradient = 0.0,
         x = [0.0],
@@ -257,6 +290,11 @@ function DummyClimate2D(;
     climate_step = ClimateStep(
         gradient = 0.0,
         temp = 0.0,
+        albedo = 0.0,
+        slhf = 0.0,
+        sshf = 0.0,
+        ssrd = 0.0,
+        str = 0.0,
         avg_temp = 0.0,
         avg_gradient = 0.0,
         ref_hgt = 0.0,
