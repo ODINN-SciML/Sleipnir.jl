@@ -300,9 +300,9 @@ function precompute_law_VJP(
     # Dispatch when p_VJP!=DIVJP()
     backend = simulation.parameters.UDE.grad.VJP_method.regressorADBackend
     inputs = generate_inputs(law.p_VJP.inputs, simulation, glacier_idx, t)
-    ∂θ = ∂law∂θ!(backend, vjpsPrepLaw, inputs, θ)
+    ∂θ = ∂law∂θ!(vjpsPrepLaw, backend, inputs, θ)
     cache.vjp_θ .= ∂θ
-    ∂inp = ∂law∂inp!(backend, vjpsPrepLaw, inputs, θ)
+    ∂inp = ∂law∂inp!(vjpsPrepLaw, backend, inputs, θ)
     cache.vjp_inp .= ∂inp
 end
 
