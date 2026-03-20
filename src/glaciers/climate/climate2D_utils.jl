@@ -7,6 +7,13 @@ export downscale_2D_climate!, downscale_2D_climate,
        get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
        apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
+function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; reducer = sum)
+    if hasproperty(climate_raw_step, layer)
+        return Sleipnir.Float(round(reducer(getproperty(climate_raw_step, layer)); digits = 8))
+    end
+    return Sleipnir.Float(0.0)
+end
+
 """
     generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
 
@@ -115,6 +122,12 @@ function get_cumulative_climate!(
     climate.climate_step.temp = round(sum(climate.climate_raw_step.temp); digits = 8)
     climate.climate_step.gradient = round(
         sum(climate.climate_raw_step.gradient); digits = 8)
+    climate.climate_step.albedo = _aggregate_raw_layer(
+        climate.climate_raw_step, :fal; reducer = mean)
+    climate.climate_step.slhf = _aggregate_raw_layer(climate.climate_raw_step, :slhf)
+    climate.climate_step.sshf = _aggregate_raw_layer(climate.climate_raw_step, :sshf)
+    climate.climate_step.ssrd = _aggregate_raw_layer(climate.climate_raw_step, :ssrd)
+    climate.climate_step.str = _aggregate_raw_layer(climate.climate_raw_step, :str)
     climate.climate_step.avg_temp = round(climate.avg_temps; digits = 8)
     climate.climate_step.avg_gradient = round(climate.avg_gradients; digits = 8)
     climate.climate_step.ref_hgt = round(climate.ref_hgt; digits = 8)
@@ -163,6 +176,11 @@ function get_cumulative_climate(
         temp = round(sum(copy_climate.temp); digits = 8),
         prcp = round(sum(climate.prcp); digits = 8),
         gradient = round(sum(copy_climate.gradient); digits = 8),
+        albedo = _aggregate_raw_layer(climate, :fal; reducer = mean),
+        slhf = _aggregate_raw_layer(climate, :slhf),
+        sshf = _aggregate_raw_layer(climate, :sshf),
+        ssrd = _aggregate_raw_layer(climate, :ssrd),
+        str = _aggregate_raw_layer(climate, :str),
         avg_temp = round(avg_temp; digits = 8),
         avg_gradient = round(avg_gradient; digits = 8),
         ref_hgt = round(Sleipnir.Float(metadata(climate)["ref_hgt"]); digits = 8)
@@ -290,6 +308,13 @@ function downscale_2D_climate!(glacier::Glacier2D)
     climate.climate_2D_step.PDD .= climate.climate_step.temp
     climate.climate_2D_step.snow .= climate.climate_step.prcp
     climate.climate_2D_step.rain .= climate.climate_step.prcp
+    climate.climate_2D_step.elevation_diff .= reshape(glacier.S, size(glacier.S)) .-
+                                              climate.climate_step.ref_hgt
+    climate.climate_2D_step.albedo .= climate.climate_step.albedo
+    climate.climate_2D_step.slhf .= climate.climate_step.slhf
+    climate.climate_2D_step.sshf .= climate.climate_step.sshf
+    climate.climate_2D_step.ssrd .= climate.climate_step.ssrd
+    climate.climate_2D_step.str .= climate.climate_step.str
     # Update gradients
     climate.climate_2D_step.gradient = climate.climate_step.gradient
     climate.climate_2D_step.avg_gradient = climate.climate_step.avg_gradient
@@ -336,7 +361,9 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
 This function creates dummy 2D arrays based on the provided surface elevation data and applies the climate step data to these arrays. It then constructs a `Climate2Dstep` object with the downscaled climate data and applies temperature gradients to compute the snow/rain fraction for the selected period.
 """
 function downscale_2D_climate(
-        climate_step::ClimateStep, S::Matrix{<: AbstractFloat}, Coords::Dict)
+        climate_step::ClimateStep,
+        S::Matrix{<: AbstractFloat},
+        Coords::Dict)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     FT = typeof(S[1])
     dummy_grid = zeros(size(S))
@@ -344,11 +371,30 @@ function downscale_2D_climate(
     PDD_2D = climate_step.temp .+ dummy_grid
     snow_2D = climate_step.prcp .+ dummy_grid
     rain_2D = climate_step.prcp .+ dummy_grid
+    elevation_diff_2D = S .- climate_step.ref_hgt
+    albedo_2D = zero(Sleipnir.Float) .+ dummy_grid
+    slhf_2D = zero(Sleipnir.Float) .+ dummy_grid
+    sshf_2D = zero(Sleipnir.Float) .+ dummy_grid
+    ssrd_2D = zero(Sleipnir.Float) .+ dummy_grid
+    str_2D = zero(Sleipnir.Float) .+ dummy_grid
+
+    albedo_2D .= climate_step.albedo
+    slhf_2D .= climate_step.slhf
+    sshf_2D .= climate_step.sshf
+    ssrd_2D .= climate_step.ssrd
+    str_2D .= climate_step.str
+
     climate_2D_step = Climate2Dstep{Sleipnir.Float}(
         temp = temp_2D,
         PDD = PDD_2D,
         snow = snow_2D,
         rain = rain_2D,
+        elevation_diff = elevation_diff_2D,
+        albedo = albedo_2D,
+        slhf = slhf_2D,
+        sshf = sshf_2D,
+        ssrd = ssrd_2D,
+        str = str_2D,
         gradient = Float64(climate_step.gradient),
         avg_gradient = Float64(climate_step.avg_gradient),
         x = Coords["lon"],
