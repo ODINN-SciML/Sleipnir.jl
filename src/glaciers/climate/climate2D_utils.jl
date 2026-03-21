@@ -33,7 +33,6 @@ This function generates raw climate files for a specified RGI ID if they do not 
  1. Constructs the path to the RGI directory using the provided `rgi_id` and `simparams`.
 
  2. Checks if the raw climate file for the specified time span already exists.
-
  3. If the file does not exist:
 
       + Retrieves the raw climate data.
@@ -57,7 +56,7 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         # for variables with a sliding time window
         tspan_date = partial_year(Day, simparams.tspan[1] - 1):Day(1):partial_year(
             Day, simparams.tspan[2])
-        climate = get_raw_climate_data(rgi_path)
+        climate = get_raw_climate_data(rgi_path, simparams.climate_data_source)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
         climTstart = dims(climate, Ti)[begin]
@@ -202,10 +201,13 @@ Load raw climate data from a specified path.
 
   - `RasterStack`: A `RasterStack` object containing the climate data from the specified file.
 """
-function get_raw_climate_data(rgi_path::String)
-    climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
-    if Sleipnir.doublePrec
-        climate = convertRasterStackToFloat64(climate)
+function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
+    if climate_data_source == :W5E5
+        climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
+    elseif climate_data_source == :ERA5
+        climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_ERA5.nc"))
+    else
+        throw(ArgumentError("Unsupported climate data source"))
     end
     return climate
 end
@@ -302,7 +304,10 @@ This function updates the 2D climate structure of the given glacier by:
 
   - The function modifies the `glacier` object in place.
 """
-function downscale_2D_climate!(glacier::Glacier2D)
+function downscale_2D_climate!(
+        glacier::Glacier2D;
+        include_topography::Bool = false,
+        topography_window_m::AbstractFloat = 200.0)
     # Update 2D climate structure
     climate = glacier.climate
     climate.climate_2D_step.temp .= climate.climate_step.avg_temp
@@ -311,6 +316,10 @@ function downscale_2D_climate!(glacier::Glacier2D)
     climate.climate_2D_step.rain .= climate.climate_step.prcp
     climate.climate_2D_step.elevation_diff .= reshape(glacier.S, size(glacier.S)) .-
                                               climate.climate_step.ref_hgt
+    if include_topography
+        climate.climate_2D_step.slope,
+        climate.climate_2D_step.aspect = compute_surface_topography(glacier; window_m = topography_window_m)
+    end
     climate.climate_2D_step.albedo .= climate.climate_step.albedo
     climate.climate_2D_step.slhf .= climate.climate_step.slhf
     climate.climate_2D_step.sshf .= climate.climate_step.sshf
@@ -341,7 +350,6 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
       + `"ref_hgt"`: Reference height.
 
   - `S::Matrix{<: AbstractFloat}`: Surface elevation data.
-
   - `Coords::Dict`: A dictionary with keys `"lon"` and `"lat"` for longitude and latitude coordinates.
 
 # Returns
@@ -365,7 +373,11 @@ This function creates dummy 2D arrays based on the provided surface elevation da
 function downscale_2D_climate(
         climate_step::ClimateStep,
         S::Matrix{<: AbstractFloat},
-        Coords::Dict)
+        Coords::Dict;
+        include_topography::Bool = false,
+        topography_window_m::AbstractFloat = 200.0,
+        Δx::Union{Nothing, AbstractFloat} = nothing,
+        Δy::Union{Nothing, AbstractFloat} = nothing)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     FT = typeof(S[1])
     dummy_grid = zeros(size(S))
@@ -374,6 +386,18 @@ function downscale_2D_climate(
     snow_2D = climate_step.prcp .+ dummy_grid
     rain_2D = climate_step.prcp .+ dummy_grid
     elevation_diff_2D = S .- climate_step.ref_hgt
+    slope_2D = zero(Sleipnir.Float) .+ dummy_grid
+    aspect_2D = zero(Sleipnir.Float) .+ dummy_grid
+    if include_topography
+        Δx === nothing && error("Missing Δx for topography computation")
+        Δy === nothing && error("Missing Δy for topography computation")
+        slope_2D,
+        aspect_2D = compute_surface_topography(
+            S,
+            Δx,
+            Δy;
+            window_m = topography_window_m)
+    end
     albedo_2D = zero(Sleipnir.Float) .+ dummy_grid
     slhf_2D = zero(Sleipnir.Float) .+ dummy_grid
     sshf_2D = zero(Sleipnir.Float) .+ dummy_grid
@@ -392,8 +416,10 @@ function downscale_2D_climate(
         snow = snow_2D,
         rain = rain_2D,
         elevation_diff = elevation_diff_2D,
+        aspect = aspect_2D,
         albedo = albedo_2D,
         slhf = slhf_2D,
+        slope = slope_2D,
         sshf = sshf_2D,
         ssrd = ssrd_2D,
         str = str_2D,

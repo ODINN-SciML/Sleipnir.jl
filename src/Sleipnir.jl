@@ -79,6 +79,7 @@ include("models/Model.jl")
 include("simulations/Simulation.jl")
 # Law interface and utils
 include("laws/GenInput.jl")
+include("laws/Inputs.jl")
 include("laws/Cache.jl")
 include("laws/AbstractLaw.jl")
 include("laws/VJP.jl")

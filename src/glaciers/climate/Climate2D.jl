@@ -9,12 +9,17 @@ A mutable struct representing a 2D climate time step with various climate-relate
 # Keyword arguments
 
   - `temp::Matrix{F}`: Temperature matrix.
+
   - `PDD::Matrix{F}`: Positive Degree Days matrix.
   - `snow::Matrix{F}`: Snowfall matrix.
   - `rain::Matrix{F}`: Rainfall matrix.
   - `elevation_diff::Matrix{F}`: Elevation difference matrix.
+
+      + `aspect::Matrix{F}`: Surface aspect matrix in degrees.
   - `albedo::Matrix{F}`: Albedo matrix.
   - `slhf::Matrix{F}`: Surface latent heat flux matrix.
+
+      + `slope::Matrix{F}`: Surface slope matrix in degrees.
   - `sshf::Matrix{F}`: Surface sensible heat flux matrix.
   - `ssrd::Matrix{F}`: Surface shortwave radiation downwards matrix.
   - `str::Matrix{F}`: Surface net thermal radiation matrix.
@@ -30,8 +35,10 @@ A mutable struct representing a 2D climate time step with various climate-relate
     snow::Matrix{F}
     rain::Matrix{F}
     elevation_diff::Matrix{F}
+    aspect::Matrix{F}
     albedo::Matrix{F}
     slhf::Matrix{F}
+    slope::Matrix{F}
     sshf::Matrix{F}
     ssrd::Matrix{F}
     str::Matrix{F}
@@ -45,8 +52,9 @@ end
 function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
     a.temp == b.temp && a.PDD == b.PDD &&
         a.snow == b.snow && a.rain == b.rain &&
-        a.elevation_diff == b.elevation_diff && a.albedo == b.albedo &&
-        a.slhf == b.slhf && a.sshf == b.sshf &&
+        a.elevation_diff == b.elevation_diff && a.aspect == b.aspect &&
+        a.albedo == b.albedo && a.slhf == b.slhf &&
+        a.slope == b.slope && a.sshf == b.sshf &&
         a.ssrd == b.ssrd && a.str == b.str &&
         a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
         a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
@@ -99,17 +107,11 @@ A mutable struct representing a 2D climate for a glacier with various buffers an
   - `raw_climate::CLIMRAW`: Raw climate dataset for the whole simulation.
 
   - `climate_raw_step::CLIMRAWSTEP`: Raw climate trimmed for the current step to avoid memory allocations.
-
   - `climate_step::ClimateStep`: Climate data for the current step.
-
   - `climate_2D_step::Climate2Dstep`: 2D climate data for the current step to feed to the mass balance (MB) model.
-
   - `longterm_temps::Vector{F}`: Long-term temperatures for the ice rheology.
-
   - `avg_temps::F`: Intermediate buffer for computing average temperatures.
-
   - `avg_gradients::F`: Intermediate buffer for computing average gradients.
-
   - `ref_hgt::F`: Reference elevation of the raw climate data.
 
     Climate2D(
@@ -135,13 +137,9 @@ This function initializes the climate data for a glacier by:
  1. Creating a dummy period based on the simulation time span and step.
 
  2. Loading the raw climate data from a NetCDF file.
-
  3. Calculating the cumulative climate data for the dummy period.
-
  4. Downscaling the cumulative climate data to a 2D grid.
-
  5. Retrieving long-term temperature data for the glacier.
-
  6. Returning the climate data, including raw climate data, cumulative climate data, downscaled 2D climate data, long-term temperatures, average temperatures, and average gradients.
 
     Climate2D(
@@ -286,8 +284,10 @@ function DummyClimate2D(;
         snow = dummyMatrix,
         rain = dummyMatrix,
         elevation_diff = dummyMatrix,
+        aspect = dummyMatrix,
         albedo = dummyMatrix,
         slhf = dummyMatrix,
+        slope = dummyMatrix,
         sshf = dummyMatrix,
         ssrd = dummyMatrix,
         str = dummyMatrix,
