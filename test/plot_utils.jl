@@ -85,7 +85,7 @@ function make_thickness_video_test()
         multiprocessing = true,
         workers = 1,
         rgi_paths = rgi_paths,
-        ice_thickness_source = "Farinotti19"
+        ice_thickness_source = :Farinotti19
     ),
     )
 
