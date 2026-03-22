@@ -42,7 +42,8 @@ function enable_multiprocessing(procs::Int)
     if procs > 0
         if nprocs() < procs
             @eval begin
-                addprocs($procs - nprocs(); exeflags = "--project")
+                # Keep worker logs clean from upstream dependency deprecations.
+                addprocs($procs - nprocs(); exeflags = "--project --depwarn=no")
                 @info "Number of cores: $(nprocs())"
                 @info "Number of workers: $(nworkers())"
                 @everywhere using Sleipnir
