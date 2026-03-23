@@ -391,7 +391,7 @@ function Base.show(io::IO, climate::Climate2D)
     print(io, "    prcp = ")
     printstyled(io, round(climate.climate_step.prcp; digits = 1); color = :blue)
     println(io, " kg/m²")
-    if climate.climate_data_source !== :W5E5
+    if climate.climate_data_source == :ERA5
         print(io, "    albedo = ")
         printstyled(io, round(climate.climate_step.albedo; digits = 4); color = :blue)
         println(io, " (-)")
