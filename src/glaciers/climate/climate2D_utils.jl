@@ -14,6 +14,14 @@ function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; redu
     return Sleipnir.Float(0.0)
 end
 
+function _slice_climate_between_dates(climate::RasterStack, start_date::Date, end_date::Date)
+    time_axis = collect(dims(climate, Ti))
+    selected = filter(t -> start_date <= Date(t) <= end_date, time_axis)
+    isempty(selected) &&
+        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date)."))
+    return climate[At(selected)]
+end
+
 """
     generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
 
@@ -62,7 +70,7 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         climTstart = dims(climate, Ti)[begin]
         climTend = dims(climate, Ti)[end]
         if any((climTstart <= period[begin]) & any(climTend >= period[end]))
-            climate = climate[At(period)] # Crop desired time period
+            climate = _slice_climate_between_dates(climate, period[begin], period[end])
         else
             @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
         end
@@ -110,7 +118,8 @@ end
 
 function get_cumulative_climate!(
         climate, period::StepRange{Date, Day}, gradient_bounds = [-0.009, -0.003])
-    climate.climate_raw_step = climate.raw_climate[At(period)]
+    climate.climate_raw_step = _slice_climate_between_dates(
+        climate.raw_climate, period[begin], period[end])
 
     climate.avg_temps = mean(climate.climate_raw_step.temp)
 
@@ -205,7 +214,17 @@ function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
     if climate_data_source == :W5E5
         climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
     elseif climate_data_source == :ERA5
-        climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_ERA5.nc"))
+        monthly_path = joinpath(rgi_path, "climate_historical_monthly_ERA5.nc")
+        daily_path = joinpath(rgi_path, "climate_historical_daily_ERA5.nc")
+        if isfile(monthly_path)
+            climate = RasterStack(monthly_path)
+        elseif isfile(daily_path)
+            climate = RasterStack(daily_path)
+        else
+            throw(ArgumentError(
+                "No ERA5 climate file found in $(rgi_path). Expected climate_historical_monthly_ERA5.nc or climate_historical_daily_ERA5.nc."
+            ))
+        end
     else
         throw(ArgumentError("Unsupported climate data source"))
     end
