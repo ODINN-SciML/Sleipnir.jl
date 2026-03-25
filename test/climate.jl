@@ -60,8 +60,10 @@ function climate_downscale(; save_refs::Bool = false, climate_data_source::Symbo
     source_suffix = climate_data_source == :W5E5 ? "" : "_$(String(climate_data_source))"
     climate_ref_dir = joinpath(Sleipnir.root_dir, "test/data/climate")
     climate_step_ref_path = joinpath(climate_ref_dir, "climate_step$(source_suffix).jld2")
-    climate_step_period_ref_path = joinpath(climate_ref_dir, "climate_step_period$(source_suffix).jld2")
-    climate_2D_step_ref_path = joinpath(climate_ref_dir, "climate_2D_step$(source_suffix).jld2")
+    climate_step_period_ref_path = joinpath(
+        climate_ref_dir, "climate_step_period$(source_suffix).jld2")
+    climate_2D_step_ref_path = joinpath(
+        climate_ref_dir, "climate_2D_step$(source_suffix).jld2")
 
     params = Parameters(
         simulation = SimulationParameters(

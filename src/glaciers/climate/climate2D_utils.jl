@@ -9,12 +9,14 @@ export downscale_2D_climate!, downscale_2D_climate,
 
 function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; reducer = sum)
     if hasproperty(climate_raw_step, layer)
-        return Sleipnir.Float(round(reducer(getproperty(climate_raw_step, layer)); digits = 8))
+        return Sleipnir.Float(round(
+            reducer(getproperty(climate_raw_step, layer)); digits = 8))
     end
     return Sleipnir.Float(0.0)
 end
 
-function _slice_climate_between_dates(climate::RasterStack, start_date::Date, end_date::Date)
+function _slice_climate_between_dates(
+        climate::RasterStack, start_date::Date, end_date::Date)
     time_axis = collect(dims(climate, Ti))
     selected = filter(t -> start_date <= Date(t) <= end_date, time_axis)
     isempty(selected) &&
@@ -337,7 +339,8 @@ function downscale_2D_climate!(
                                               climate.climate_step.ref_hgt
     if include_topography
         climate.climate_2D_step.slope,
-        climate.climate_2D_step.aspect = compute_surface_topography(glacier; window_m = topography_window_m)
+        climate.climate_2D_step.aspect = compute_surface_topography(
+            glacier; window_m = topography_window_m)
     end
     climate.climate_2D_step.albedo .= climate.climate_step.albedo
     climate.climate_2D_step.slhf .= climate.climate_step.slhf

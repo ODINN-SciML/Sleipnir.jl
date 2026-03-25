@@ -176,8 +176,9 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             Coords::Dict
     )
         dummy_start = partial_year(Day, params.simulation.tspan[1])
-        dummy_end = partial_year(Day, params.simulation.tspan[1] +
-                                      params.simulation.step_MB)
+        dummy_end = partial_year(
+            Day, params.simulation.tspan[1] +
+                 params.simulation.step_MB)
         raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id],
             "raw_climate_$(params.simulation.tspan).nc"))
         if Sleipnir.doublePrec
