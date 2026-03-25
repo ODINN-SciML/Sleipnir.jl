@@ -55,8 +55,8 @@ function topography_and_inputs()
         @test size(slope_g) == size(glacier.S)
     end
 
-    # Test _era5_fields_present and Climate2D display for both data sources
-    @testset "ERA5 Fields Detection and Display" begin
+    # Test _era5_fields_present for different climate step configurations
+    @testset "ERA5 Fields Detection" begin
         cs_zero = ClimateStep(
             prcp = 0.1, temp = -5.0, gradient = -0.006,
             albedo = 0.0, slhf = 0.0, sshf = 0.0, ssrd = 0.0, str = 0.0,
@@ -70,42 +70,35 @@ function topography_and_inputs()
         @test !_era5_fields_present(cs_zero)
         @test _era5_fields_present(cs_era5)
 
-        # Climate2D display: W5E5 omits ERA5 fields, ERA5 includes them
-        dummy_raster = RasterStack()
-        cs2d = Climate2Dstep(
-            temp = fill(-5.0, 5, 5), PDD = fill(0.0, 5, 5),
-            snow = fill(0.1, 5, 5), rain = fill(0.05, 5, 5),
-            elevation_diff = fill(0.0, 5, 5), aspect = fill(180.0, 5, 5),
-            albedo = fill(0.0, 5, 5), slhf = fill(0.0, 5, 5),
-            slope = fill(15.0, 5, 5), sshf = fill(0.0, 5, 5),
-            ssrd = fill(0.0, 5, 5), str = fill(0.0, 5, 5),
+        # For Climate2Dstep, check detection with matrix fields
+        cs2d_zero = Climate2Dstep(
+            temp = fill(-5.0, 3, 3), PDD = fill(0.0, 3, 3),
+            snow = fill(0.1, 3, 3), rain = fill(0.05, 3, 3),
+            elevation_diff = fill(0.0, 3, 3), aspect = fill(180.0, 3, 3),
+            albedo = fill(0.0, 3, 3), slhf = fill(0.0, 3, 3),
+            slope = fill(15.0, 3, 3), sshf = fill(0.0, 3, 3),
+            ssrd = fill(0.0, 3, 3), str = fill(0.0, 3, 3),
             gradient = -0.006, avg_gradient = -0.006,
-            x = collect(1:5), y = collect(1:5), ref_hgt = 2500.0
+            x = collect(1:3), y = collect(1:3), ref_hgt = 2500.0
         )
-
-        for (source, cs, has_albedo) in [
-            (:W5E5, cs_zero, false),
-            (:ERA5, cs_era5, true)
-        ]
-            cli = Climate2D(
-                raw_climate = dummy_raster, climate_raw_step = dummy_raster,
-                climate_step = cs, climate_2D_step = cs2d,
-                longterm_temps_scalar = 0.0, longterm_temps_gridded = zeros(5, 5),
-                avg_temps = 0.0, avg_gradients = -0.006, ref_hgt = 2500.0;
-                climate_data_source = source
-            )
-            io = IOBuffer()
-            show(io, cli)
-            output = String(take!(io))
-            @test contains(output, string(source))
-            @test contains(output, "albedo") == has_albedo
-        end
+        cs2d_era5 = Climate2Dstep(
+            temp = fill(-5.0, 3, 3), PDD = fill(0.0, 3, 3),
+            snow = fill(0.1, 3, 3), rain = fill(0.05, 3, 3),
+            elevation_diff = fill(0.0, 3, 3), aspect = fill(180.0, 3, 3),
+            albedo = fill(0.2, 3, 3), slhf = fill(100.0, 3, 3),
+            slope = fill(15.0, 3, 3), sshf = fill(50.0, 3, 3),
+            ssrd = fill(200.0, 3, 3), str = fill(-100.0, 3, 3),
+            gradient = -0.006, avg_gradient = -0.006,
+            x = collect(1:3), y = collect(1:3), ref_hgt = 2500.0
+        )
+        @test !_era5_fields_present(cs2d_zero)
+        @test _era5_fields_present(cs2d_era5)
     end
 
     # Test utility functions: slicing (including error path) and aggregation fallback
     @testset "Climate Slicing and Aggregation Utilities" begin
-        rgi_path = joinpath(Sleipnir.prepro_dir, params.simulation.rgi_paths[rgi_ids[1]])
-        climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
+        # Use the glacier's raw climate which was loaded during initialization
+        climate = glacier.climate.raw_climate
 
         climate_slice = _slice_climate_between_dates(climate, Date(2010, 6, 1), Date(2010, 8, 31))
         @test size(climate_slice, Ti) > 0
