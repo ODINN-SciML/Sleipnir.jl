@@ -43,6 +43,7 @@ This function generates raw climate files for a specified RGI ID if they do not 
  1. Constructs the path to the RGI directory using the provided `rgi_id` and `simparams`.
 
  2. Checks if the raw climate file for the specified time span already exists.
+
  3. If the file does not exist:
 
       + Retrieves the raw climate data.
@@ -372,6 +373,7 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
       + `"ref_hgt"`: Reference height.
 
   - `S::Matrix{<: AbstractFloat}`: Surface elevation data.
+
   - `Coords::Dict`: A dictionary with keys `"lon"` and `"lat"` for longitude and latitude coordinates.
 
 # Returns
