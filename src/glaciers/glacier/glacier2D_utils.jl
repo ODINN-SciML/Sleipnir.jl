@@ -50,7 +50,8 @@ function _centered_gradients(
         dSdx[1, :] .= dSdx_edges[1, :]
         dSdx[end, :] .= dSdx_edges[end, :]
         if nx > 2
-            dSdx[2:(end - 1), :] .= 0.5 .*
+            dSdx[2:(end - 1),
+            :] .= 0.5 .*
                                     (dSdx_edges[1:(end - 1), :] .+ dSdx_edges[2:end, :])
         end
     end
@@ -60,7 +61,8 @@ function _centered_gradients(
         dSdy[:, 1] .= dSdy_edges[:, 1]
         dSdy[:, end] .= dSdy_edges[:, end]
         if ny > 2
-            dSdy[:, 2:(end - 1)] .= 0.5 .*
+            dSdy[:,
+            2:(end - 1)] .= 0.5 .*
                                     (dSdy_edges[:, 1:(end - 1)] .+ dSdy_edges[:, 2:end])
         end
     end
