@@ -18,7 +18,7 @@ default_name(::iTopoSlope) = :slope
 function get_input(inp::iTopoSlope, simulation, glacier_idx, t)
     _ = t
     glacier = simulation.glaciers[glacier_idx]
-    return compute_surface_slope(glacier; window_m = inp.window_m)
+    return compute_surface_slope(glacier.S, glacier.Δx, glacier.Δy; window_m = inp.window_m)
 end
 
 """
@@ -39,5 +39,5 @@ default_name(::iTopoAspect) = :aspect
 function get_input(inp::iTopoAspect, simulation, glacier_idx, t)
     _ = t
     glacier = simulation.glaciers[glacier_idx]
-    return compute_surface_aspect(glacier; window_m = inp.window_m)
+    return compute_surface_aspect(glacier.S, glacier.Δx, glacier.Δy; window_m = inp.window_m)
 end
