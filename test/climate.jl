@@ -65,65 +65,86 @@ function climate_downscale(; save_refs::Bool = false, climate_data_source::Symbo
     climate_2D_step_ref_path = joinpath(
         climate_ref_dir, "climate_2D_step$(source_suffix).jld2")
 
-    params = Parameters(
-        simulation = SimulationParameters(
-        use_velocities = false,
-        use_glathida_data = true,
-        multiprocessing = false,
-        workers = 1,
-        working_dir = Sleipnir.root_dir,
-        test_mode = true,
-        rgi_paths = rgi_paths,
-        climate_data_source = climate_data_source
-    )
-    )
+    tmpdir = nothing
+    try
+        if climate_data_source == :ERA5
+            # Write the synthetic ERA5 fixture into a dedicated temp directory so
+            # that the real prepro directory is never modified by tests.
+            tmpdir = mktempdir()
+            real_glacier_dir = joinpath(Sleipnir.prepro_dir, rgi_paths[rgi_ids[1]])
+            tmp_glacier_dir = joinpath(tmpdir, rgi_ids[1])
+            mkpath(tmp_glacier_dir)
+            for f in readdir(real_glacier_dir; join = true)
+                fname = basename(f)
+                if !startswith(fname, "climate_") && !startswith(fname, "raw_climate_")
+                    cp(f, joinpath(tmp_glacier_dir, fname))
+                end
+            end
+            _ensure_era5_file_for_tests(tmp_glacier_dir)
+            rgi_paths = Dict{String, String}(rgi_ids[1] => tmp_glacier_dir)
+        end
 
-    rgi_path = joinpath(Sleipnir.prepro_dir, params.simulation.rgi_paths[rgi_ids[1]])
-    if climate_data_source == :W5E5
-        @test isfile(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
-    else
-        _ensure_era5_file_for_tests(rgi_path)
-        @test isfile(joinpath(rgi_path, "climate_historical_monthly_ERA5.nc"))
+        params = Parameters(
+            simulation = SimulationParameters(
+            use_velocities = false,
+            use_glathida_data = true,
+            multiprocessing = false,
+            workers = 1,
+            working_dir = Sleipnir.root_dir,
+            test_mode = true,
+            rgi_paths = rgi_paths,
+            climate_data_source = climate_data_source
+        )
+        )
+
+        rgi_path = joinpath(Sleipnir.prepro_dir, params.simulation.rgi_paths[rgi_ids[1]])
+        if climate_data_source == :W5E5
+            @test isfile(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
+        else
+            @test isfile(joinpath(rgi_path, "climate_historical_monthly_ERA5.nc"))
+        end
+
+        glacier = initialize_glaciers(rgi_ids, params)[1]
+        @test glacier.climate.climate_data_source == climate_data_source
+
+        step = 1/12
+        t = 2011.0
+        period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
+
+        # Perform climate downscaling
+        climate_step = get_cumulative_climate(glacier.climate.raw_climate)
+        get_cumulative_climate!(glacier.climate, t, step)
+        climate_2D_step = downscale_2D_climate(
+            glacier.climate.climate_step, glacier.S, glacier.Coords)
+        downscale_2D_climate!(glacier)
+
+        JET.@test_opt broken=true target_modules=(Sleipnir,) get_cumulative_climate(glacier.climate.raw_climate)
+        JET.@test_opt broken=false target_modules=(Sleipnir,) get_cumulative_climate!(
+            glacier.climate, t, step)
+        JET.@test_opt broken=false target_modules=(Sleipnir,) downscale_2D_climate!(glacier)
+
+        if save_refs
+            jldsave(climate_step_ref_path; climate_step)
+            climate_step_period = glacier.climate.climate_step
+            jldsave(climate_step_period_ref_path; climate_step_period)
+            jldsave(climate_2D_step_ref_path; climate_2D_step)
+        end
+
+        @test isfile(climate_step_ref_path)
+        @test isfile(climate_step_period_ref_path)
+        @test isfile(climate_2D_step_ref_path)
+
+        climate_step_ref = load(climate_step_ref_path)["climate_step"]
+        climate_step_period_ref = load(climate_step_period_ref_path)["climate_step_period"]
+        climate_2D_step_ref = load(climate_2D_step_ref_path)["climate_2D_step"]
+
+        @test climate_step == climate_step_ref
+        @test glacier.climate.climate_step == climate_step_period_ref
+        @test climate_2D_step == climate_2D_step_ref
+        @test glacier.climate.climate_2D_step == climate_2D_step_ref
+    finally
+        isnothing(tmpdir) || rm(tmpdir; recursive = true, force = true)
     end
-
-    glacier = initialize_glaciers(rgi_ids, params)[1]
-    @test glacier.climate.climate_data_source == climate_data_source
-
-    step = 1/12
-    t = 2011.0
-    period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
-
-    # Perform climate downscaling
-    climate_step = get_cumulative_climate(glacier.climate.raw_climate)
-    get_cumulative_climate!(glacier.climate, t, step)
-    climate_2D_step = downscale_2D_climate(
-        glacier.climate.climate_step, glacier.S, glacier.Coords)
-    downscale_2D_climate!(glacier)
-
-    JET.@test_opt broken=true target_modules=(Sleipnir,) get_cumulative_climate(glacier.climate.raw_climate)
-    JET.@test_opt broken=false target_modules=(Sleipnir,) get_cumulative_climate!(
-        glacier.climate, t, step)
-    JET.@test_opt broken=false target_modules=(Sleipnir,) downscale_2D_climate!(glacier)
-
-    if save_refs
-        jldsave(climate_step_ref_path; climate_step)
-        climate_step_period = glacier.climate.climate_step
-        jldsave(climate_step_period_ref_path; climate_step_period)
-        jldsave(climate_2D_step_ref_path; climate_2D_step)
-    end
-
-    @test isfile(climate_step_ref_path)
-    @test isfile(climate_step_period_ref_path)
-    @test isfile(climate_2D_step_ref_path)
-
-    climate_step_ref = load(climate_step_ref_path)["climate_step"]
-    climate_step_period_ref = load(climate_step_period_ref_path)["climate_step_period"]
-    climate_2D_step_ref = load(climate_2D_step_ref_path)["climate_2D_step"]
-
-    @test climate_step == climate_step_ref
-    @test glacier.climate.climate_step == climate_step_period_ref
-    @test climate_2D_step == climate_2D_step_ref
-    @test glacier.climate.climate_2D_step == climate_2D_step_ref
 end
 
 function dummy_climate()
