@@ -91,7 +91,7 @@ function compute_surface_topography(
     dSdx, dSdy = _centered_gradients(S_smooth, Δx, Δy)
 
     slope = Sleipnir.Float.(rad2deg.(atan.(sqrt.(dSdx .^ 2 .+ dSdy .^ 2))))
-    aspect = Sleipnir.Float.(mod.(rad2deg.(atan.(-dSdy, -dSdx)), 360))
+    aspect = Sleipnir.Float.(mod.(rad2deg.(atan.(dSdy, -dSdx)), 360))
     return slope, aspect
 end
 
@@ -99,7 +99,7 @@ function compute_surface_topography(
         glacier::Glacier2D;
         window_m::AbstractFloat = 200.0)
     return compute_surface_topography(
-        reshape(glacier.S, size(glacier.S)),
+        glacier.S,
         glacier.Δx,
         glacier.Δy;
         window_m = window_m)
@@ -329,7 +329,6 @@ Build glacier object for a given RGI ID and parameters.
   - `rgi_id::String`: The RGI ID of the glacier.
 
   - `params::Parameters`: A `Parameters` object containing simulation parameters.
-
   - `masking::Union{Int, Nothing, BitMatrix}`: Type of mask applied to the glacier to determine regions with no ice.
 
       + When `masking` is an `Int`, the mask is based on the initial ice thickness `H₀` and it is set to true for
@@ -337,9 +336,7 @@ Build glacier object for a given RGI ID and parameters.
       + When `masking` is set to `nothing`, the mask is set to a `BitMatrix` full of falses.
       + When `masking` is a `BitMatrix`, this matrix is used for the mask.
         Defaults to `2`.
-
   - `smoothing::Bool=false`: Optional; whether to apply smoothing to the initial ice thickness. Default is `false`.
-
   - `test::Bool=false`: Optional; test flag. Default is `false`.
 
 # Returns

@@ -43,7 +43,6 @@ This function generates raw climate files for a specified RGI ID if they do not 
  1. Constructs the path to the RGI directory using the provided `rgi_id` and `simparams`.
 
  2. Checks if the raw climate file for the specified time span already exists.
-
  3. If the file does not exist:
 
       + Retrieves the raw climate data.
@@ -336,8 +335,7 @@ function downscale_2D_climate!(
     climate.climate_2D_step.PDD .= climate.climate_step.temp
     climate.climate_2D_step.snow .= climate.climate_step.prcp
     climate.climate_2D_step.rain .= climate.climate_step.prcp
-    climate.climate_2D_step.elevation_diff .= reshape(glacier.S, size(glacier.S)) .-
-                                              climate.climate_step.ref_hgt
+    climate.climate_2D_step.elevation_diff .= glacier.S .- climate.climate_step.ref_hgt
     if include_topography
         climate.climate_2D_step.slope,
         climate.climate_2D_step.aspect = compute_surface_topography(
@@ -353,7 +351,7 @@ function downscale_2D_climate!(
     climate.climate_2D_step.avg_gradient = climate.climate_step.avg_gradient
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with the RasterStack structure
+    apply_t_cumul_grad!(climate.climate_2D_step, glacier.S)
 end
 
 """
@@ -373,7 +371,6 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
       + `"ref_hgt"`: Reference height.
 
   - `S::Matrix{<: AbstractFloat}`: Surface elevation data.
-
   - `Coords::Dict`: A dictionary with keys `"lon"` and `"lat"` for longitude and latitude coordinates.
 
 # Returns
