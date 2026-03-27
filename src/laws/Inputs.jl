@@ -24,7 +24,7 @@ end
 """
     iTopoAspect{F<:AbstractFloat} <: AbstractInput
 
-Input representing dynamic surface aspect (degrees, [0, 360)) computed from the
+Input representing dynamic smoothed surface aspect (degrees, [0, 360)) computed from the
 current glacier surface topography.
 """
 struct iTopoAspect{F <: AbstractFloat} <: AbstractInput
