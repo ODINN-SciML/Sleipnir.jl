@@ -830,7 +830,7 @@ function plot_glacier(
     end
 end
 
-function min_non_zero(M::Matrix{<: AbstractFloat})
+function lower_bound(M::Matrix{<: AbstractFloat})
     positive_values = M[(!isnan).(M) .& (M .> 0)]
     if !isempty(positive_values)
         return minimum(positive_values)
@@ -921,7 +921,7 @@ function plot_gridded_data(
     current_data_masked[.!mask] .= NaN
 
     if logPlot
-        global_min = min_non_zero(current_data_masked)
+        global_min = lower_bound(current_data_masked)
         global_max = maximum(replace(current_data_masked, NaN => 0.0))
     else
         global_min, global_max = finite_extrema(current_data_masked)

@@ -14,12 +14,10 @@ A mutable struct representing a 2D climate time step with various climate-relate
   - `snow::Matrix{F}`: Snowfall matrix.
   - `rain::Matrix{F}`: Rainfall matrix.
   - `elevation_diff::Matrix{F}`: Elevation difference matrix.
-
-      + `aspect::Matrix{F}`: Surface aspect matrix in degrees.
+  - `aspect::Matrix{F}`: Surface aspect matrix in degrees.
   - `albedo::Matrix{F}`: Albedo matrix.
   - `slhf::Matrix{F}`: Surface latent heat flux matrix.
-
-      + `slope::Matrix{F}`: Surface slope matrix in degrees.
+  - `slope::Matrix{F}`: Surface slope matrix in degrees.
   - `sshf::Matrix{F}`: Surface sensible heat flux matrix.
   - `ssrd::Matrix{F}`: Surface shortwave radiation downwards matrix.
   - `str::Matrix{F}`: Surface net thermal radiation matrix.
