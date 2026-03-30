@@ -775,6 +775,7 @@ Generate various types of plots for glacier data.
       + "evolution statistics": Temporal statistical metrics for a variable, with optional metrics like "average", "median", "min", "max", and "std".
       + "integrated volume": Temporal evolution of the integrated ice volume for a variable.
       + "bias": Scatter plot to visualize the bias between two variables.
+
   - `variables::Vector{Symbol}`: Variables to be plotted, e.g., `:H`.
 
 # Optional Keyword Arguments
@@ -1013,9 +1014,7 @@ function accumulate_gridded_data(
 
     cumulative = zeros(F, size(gridded_data[begin]))
     if isnothing(weights)
-        for M in gridded_data
-            cumulative .+= M
-        end
+        cumulative = sum(gridded_data)
     else
         @assert length(weights) == length(gridded_data) "Length of weights must match gridded_data."
         for i in eachindex(gridded_data)
