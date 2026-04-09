@@ -40,6 +40,7 @@ include("glaciers_construction.jl")
 include("thickness_construction.jl")
 include("surface_velocity.jl")
 include("climate.jl")
+include("topography_and_inputs.jl")
 include("plot_utils.jl")
 include("results.jl")
 include("laws.jl")
@@ -65,8 +66,15 @@ ENV["GKSwstype"]="nul"
     end
 
     @testset "Climate operations" begin
-        @testset "Climate downscale" climate_downscale(save_refs = false)
+        @testset "Climate downscale (W5E5)" climate_downscale(
+            save_refs = false, climate_data_source = :W5E5)
+        @testset "Climate downscale (ERA5)" climate_downscale(
+            save_refs = false, climate_data_source = :ERA5)
         @testset "Dummy climate" dummy_climate()
+    end
+
+    @testset "Topography and Inputs" begin
+        @testset "Topographic inputs and surface computations" topography_and_inputs()
     end
 
     @testset "Misc" begin

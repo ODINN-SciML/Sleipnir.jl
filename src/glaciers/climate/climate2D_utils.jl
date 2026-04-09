@@ -7,6 +7,23 @@ export downscale_2D_climate!, downscale_2D_climate,
        get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
        apply_t_grad!, trim_period, partial_year, get_longterm_temps
 
+function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; reducer = sum)
+    if hasproperty(climate_raw_step, layer)
+        return Sleipnir.Float(round(
+            reducer(getproperty(climate_raw_step, layer)); digits = 8))
+    end
+    return Sleipnir.Float(0.0)
+end
+
+function _slice_climate_between_dates(
+        climate::RasterStack, start_date::Date, end_date::Date)
+    time_axis = collect(dims(climate, Ti))
+    selected = filter(t -> start_date <= Date(t) <= end_date, time_axis)
+    isempty(selected) &&
+        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date)."))
+    return climate[At(selected)]
+end
+
 """
     generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
 
@@ -50,13 +67,13 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         # for variables with a sliding time window
         tspan_date = partial_year(Day, simparams.tspan[1] - 1):Day(1):partial_year(
             Day, simparams.tspan[2])
-        climate = get_raw_climate_data(rgi_path)
+        climate = get_raw_climate_data(rgi_path, simparams.climate_data_source)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
         climTstart = dims(climate, Ti)[begin]
         climTend = dims(climate, Ti)[end]
         if any((climTstart <= period[begin]) & any(climTend >= period[end]))
-            climate = climate[At(period)] # Crop desired time period
+            climate = _slice_climate_between_dates(climate, period[begin], period[end])
         else
             @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
         end
@@ -104,7 +121,8 @@ end
 
 function get_cumulative_climate!(
         climate, period::StepRange{Date, Day}, gradient_bounds = [-0.009, -0.003])
-    climate.climate_raw_step = climate.raw_climate[At(period)]
+    climate.climate_raw_step = _slice_climate_between_dates(
+        climate.raw_climate, period[begin], period[end])
 
     climate.avg_temps = mean(climate.climate_raw_step.temp)
 
@@ -116,6 +134,12 @@ function get_cumulative_climate!(
     climate.climate_step.temp = round(sum(climate.climate_raw_step.temp); digits = 8)
     climate.climate_step.gradient = round(
         sum(climate.climate_raw_step.gradient); digits = 8)
+    climate.climate_step.albedo = _aggregate_raw_layer(
+        climate.climate_raw_step, :fal; reducer = mean)
+    climate.climate_step.slhf = _aggregate_raw_layer(climate.climate_raw_step, :slhf)
+    climate.climate_step.sshf = _aggregate_raw_layer(climate.climate_raw_step, :sshf)
+    climate.climate_step.ssrd = _aggregate_raw_layer(climate.climate_raw_step, :ssrd)
+    climate.climate_step.str = _aggregate_raw_layer(climate.climate_raw_step, :str)
     climate.climate_step.avg_temp = round(climate.avg_temps; digits = 8)
     climate.climate_step.avg_gradient = round(climate.avg_gradients; digits = 8)
     climate.climate_step.ref_hgt = round(climate.ref_hgt; digits = 8)
@@ -164,6 +188,11 @@ function get_cumulative_climate(
         temp = round(sum(copy_climate.temp); digits = 8),
         prcp = round(sum(climate.prcp); digits = 8),
         gradient = round(sum(copy_climate.gradient); digits = 8),
+        albedo = _aggregate_raw_layer(climate, :fal; reducer = mean),
+        slhf = _aggregate_raw_layer(climate, :slhf),
+        sshf = _aggregate_raw_layer(climate, :sshf),
+        ssrd = _aggregate_raw_layer(climate, :ssrd),
+        str = _aggregate_raw_layer(climate, :str),
         avg_temp = round(avg_temp; digits = 8),
         avg_gradient = round(avg_gradient; digits = 8),
         ref_hgt = round(Sleipnir.Float(metadata(climate)["ref_hgt"]); digits = 8)
@@ -184,10 +213,23 @@ Load raw climate data from a specified path.
 
   - `RasterStack`: A `RasterStack` object containing the climate data from the specified file.
 """
-function get_raw_climate_data(rgi_path::String)
-    climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
-    if Sleipnir.doublePrec
-        climate = convertRasterStackToFloat64(climate)
+function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
+    if climate_data_source == :W5E5
+        climate = RasterStack(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
+    elseif climate_data_source == :ERA5
+        monthly_path = joinpath(rgi_path, "climate_historical_monthly_ERA5.nc")
+        daily_path = joinpath(rgi_path, "climate_historical_daily_ERA5.nc")
+        if isfile(monthly_path)
+            climate = RasterStack(monthly_path)
+        elseif isfile(daily_path)
+            climate = RasterStack(daily_path)
+        else
+            throw(ArgumentError(
+                "No ERA5 climate file found in $(rgi_path). Expected climate_historical_monthly_ERA5.nc or climate_historical_daily_ERA5.nc."
+            ))
+        end
+    else
+        throw(ArgumentError("Unsupported climate data source"))
     end
     return climate
 end
@@ -284,19 +326,33 @@ This function updates the 2D climate structure of the given glacier by:
 
   - The function modifies the `glacier` object in place.
 """
-function downscale_2D_climate!(glacier::Glacier2D)
+function downscale_2D_climate!(
+        glacier::Glacier2D;
+        include_topography::Bool = false,
+        topography_window_m::AbstractFloat = 200.0)
     # Update 2D climate structure
     climate = glacier.climate
     climate.climate_2D_step.temp .= climate.climate_step.avg_temp
     climate.climate_2D_step.PDD .= climate.climate_step.temp
     climate.climate_2D_step.snow .= climate.climate_step.prcp
     climate.climate_2D_step.rain .= climate.climate_step.prcp
+    climate.climate_2D_step.elevation_diff .= glacier.S .- climate.climate_step.ref_hgt
+    if include_topography
+        climate.climate_2D_step.slope,
+        climate.climate_2D_step.aspect = compute_surface_topography(
+            glacier; window_m = topography_window_m)
+    end
+    climate.climate_2D_step.albedo .= climate.climate_step.albedo
+    climate.climate_2D_step.slhf .= climate.climate_step.slhf
+    climate.climate_2D_step.sshf .= climate.climate_step.sshf
+    climate.climate_2D_step.ssrd .= climate.climate_step.ssrd
+    climate.climate_2D_step.str .= climate.climate_step.str
     # Update gradients
     climate.climate_2D_step.gradient = climate.climate_step.gradient
     climate.climate_2D_step.avg_gradient = climate.climate_step.avg_gradient
 
     # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate.climate_2D_step, reshape(glacier.S, size(glacier.S))) # Reproject current S with the RasterStack structure
+    apply_t_cumul_grad!(climate.climate_2D_step, glacier.S)
 end
 
 """
@@ -338,7 +394,13 @@ Downscales climate data to a 2D grid based on the provided matrix of surface ele
 This function creates dummy 2D arrays based on the provided surface elevation data and applies the climate step data to these arrays. It then constructs a `Climate2Dstep` object with the downscaled climate data and applies temperature gradients to compute the snow/rain fraction for the selected period.
 """
 function downscale_2D_climate(
-        climate_step::ClimateStep, S::Matrix{<: AbstractFloat}, Coords::Dict)
+        climate_step::ClimateStep,
+        S::Matrix{<: AbstractFloat},
+        Coords::Dict;
+        include_topography::Bool = false,
+        topography_window_m::AbstractFloat = 200.0,
+        Δx::Union{Nothing, AbstractFloat} = nothing,
+        Δy::Union{Nothing, AbstractFloat} = nothing)
     # Create dummy 2D arrays to have a base to apply gradients afterwards
     FT = typeof(S[1])
     dummy_grid = zeros(size(S))
@@ -346,11 +408,44 @@ function downscale_2D_climate(
     PDD_2D = climate_step.temp .+ dummy_grid
     snow_2D = climate_step.prcp .+ dummy_grid
     rain_2D = climate_step.prcp .+ dummy_grid
+    elevation_diff_2D = S .- climate_step.ref_hgt
+    slope_2D = zero(Sleipnir.Float) .+ dummy_grid
+    aspect_2D = zero(Sleipnir.Float) .+ dummy_grid
+    if include_topography
+        Δx === nothing && error("Missing Δx for topography computation")
+        Δy === nothing && error("Missing Δy for topography computation")
+        slope_2D,
+        aspect_2D = compute_surface_topography(
+            S,
+            Δx,
+            Δy;
+            window_m = topography_window_m)
+    end
+    albedo_2D = zero(Sleipnir.Float) .+ dummy_grid
+    slhf_2D = zero(Sleipnir.Float) .+ dummy_grid
+    sshf_2D = zero(Sleipnir.Float) .+ dummy_grid
+    ssrd_2D = zero(Sleipnir.Float) .+ dummy_grid
+    str_2D = zero(Sleipnir.Float) .+ dummy_grid
+
+    albedo_2D .= climate_step.albedo
+    slhf_2D .= climate_step.slhf
+    sshf_2D .= climate_step.sshf
+    ssrd_2D .= climate_step.ssrd
+    str_2D .= climate_step.str
+
     climate_2D_step = Climate2Dstep{Sleipnir.Float}(
         temp = temp_2D,
         PDD = PDD_2D,
         snow = snow_2D,
         rain = rain_2D,
+        elevation_diff = elevation_diff_2D,
+        aspect = aspect_2D,
+        albedo = albedo_2D,
+        slhf = slhf_2D,
+        slope = slope_2D,
+        sshf = sshf_2D,
+        ssrd = ssrd_2D,
+        str = str_2D,
         gradient = Float64(climate_step.gradient),
         avg_gradient = Float64(climate_step.avg_gradient),
         x = Coords["lon"],

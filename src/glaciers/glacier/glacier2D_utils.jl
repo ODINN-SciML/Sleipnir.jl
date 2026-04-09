@@ -2,10 +2,126 @@
 export initialize_glaciers
 export is_in_glacier
 export glacierName
+export compute_surface_topography, compute_surface_slope, compute_surface_aspect
 
 ###############################################
 ############  FUNCTIONS   #####################
 ###############################################
+
+function _window_cell_count(window_m::AbstractFloat, spacing::AbstractFloat)
+    spacing_safe = max(spacing, Sleipnir.Float(eps(Float64)))
+    n_cells = max(1, round(Int, window_m / spacing_safe))
+    isodd(n_cells) ? n_cells : n_cells + 1
+end
+
+function _smoothed_surface(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat;
+        window_m::AbstractFloat = 200.0)
+    wx = _window_cell_count(window_m, Δx)
+    wy = _window_cell_count(window_m, Δy)
+    half_wx = (wx - 1) ÷ 2
+    half_wy = (wy - 1) ÷ 2
+    S_smooth = similar(S, Sleipnir.Float)
+
+    for j in axes(S, 2), i in axes(S, 1)
+
+        i0 = max(1, i - half_wx)
+        i1 = min(size(S, 1), i + half_wx)
+        j0 = max(1, j - half_wy)
+        j1 = min(size(S, 2), j + half_wy)
+        S_smooth[i, j] = Sleipnir.Float(mean(@view S[i0:i1, j0:j1]))
+    end
+
+    return S_smooth
+end
+
+function _centered_gradients(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat)
+    nx, ny = size(S)
+    dSdx = zeros(Sleipnir.Float, nx, ny)
+    dSdy = zeros(Sleipnir.Float, nx, ny)
+
+    if nx > 1
+        dSdx_edges = Sleipnir.Float.(diff(S; dims = 1) ./ Δx)
+        dSdx[1, :] .= dSdx_edges[1, :]
+        dSdx[end, :] .= dSdx_edges[end, :]
+        if nx > 2
+            dSdx[2:(end - 1),
+            :] .= 0.5 .*
+                                    (dSdx_edges[1:(end - 1), :] .+ dSdx_edges[2:end, :])
+        end
+    end
+
+    if ny > 1
+        dSdy_edges = Sleipnir.Float.(diff(S; dims = 2) ./ Δy)
+        dSdy[:, 1] .= dSdy_edges[:, 1]
+        dSdy[:, end] .= dSdy_edges[:, end]
+        if ny > 2
+            dSdy[:,
+            2:(end - 1)] .= 0.5 .*
+                                    (dSdy_edges[:, 1:(end - 1)] .+ dSdy_edges[:, 2:end])
+        end
+    end
+
+    return dSdx, dSdy
+end
+
+"""
+    compute_surface_topography(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat;
+        window_m::AbstractFloat = 200.0,
+    )
+
+Compute dynamic slope and aspect fields from the current glacier surface `S`.
+The surface is spatially smoothed with a square moving window (`window_m`) before
+computing finite-difference gradients to reduce pixel-scale noise.
+"""
+function compute_surface_topography(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat;
+        window_m::AbstractFloat = 200.0)
+    S_smooth = _smoothed_surface(S, Δx, Δy; window_m = window_m)
+    dSdx, dSdy = _centered_gradients(S_smooth, Δx, Δy)
+
+    slope = Sleipnir.Float.(rad2deg.(atan.(sqrt.(dSdx .^ 2 .+ dSdy .^ 2))))
+    aspect = Sleipnir.Float.(mod.(rad2deg.(atan.(dSdy, -dSdx)), 360))
+    return slope, aspect
+end
+
+function compute_surface_topography(
+        glacier::Glacier2D;
+        window_m::AbstractFloat = 200.0)
+    return compute_surface_topography(
+        glacier.S,
+        glacier.Δx,
+        glacier.Δy;
+        window_m = window_m)
+end
+
+function compute_surface_slope(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat;
+        window_m::AbstractFloat = 200.0)
+    slope, _ = compute_surface_topography(S, Δx, Δy; window_m = window_m)
+    return slope
+end
+
+function compute_surface_aspect(
+        S::Matrix{<: AbstractFloat},
+        Δx::AbstractFloat,
+        Δy::AbstractFloat;
+        window_m::AbstractFloat = 200.0)
+    _, aspect = compute_surface_topography(S, Δx, Δy; window_m = window_m)
+    return aspect
+end
 """
     initialize_glaciers(
         rgi_ids::Vector{String},
@@ -258,11 +374,11 @@ function Glacier2D(
     glacier_grid = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))
     # Retrieve initial conditions from OGGM
     # initial ice thickness conditions for forward model
-    if params.simulation.ice_thickness_source == "Millan22" &&
+    if params.simulation.ice_thickness_source == :Millan22 &&
        params.simulation.use_velocities
         H₀ = F.(ifelse.(
             glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
-    elseif params.simulation.ice_thickness_source == "Farinotti19"
+    elseif params.simulation.ice_thickness_source == :Farinotti19
         H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1,
             glacier_gd.consensus_ice_thickness.data, 0.0))
     end

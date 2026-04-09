@@ -9,13 +9,37 @@ A mutable struct representing a 2D climate time step with various climate-relate
 # Keyword arguments
 
   - `temp::Matrix{F}`: Temperature matrix.
+
   - `PDD::Matrix{F}`: Positive Degree Days matrix.
+
   - `snow::Matrix{F}`: Snowfall matrix.
+
   - `rain::Matrix{F}`: Rainfall matrix.
-  - `gradient::F`: Gradient value.
+
+  - `elevation_diff::Matrix{F}`: Elevation difference matrix.
+
+  - `aspect::Matrix{F}`: Surface aspect matrix in degrees.
+
+  - `albedo::Matrix{F}`: Albedo matrix.
+
+  - `slhf::Matrix{F}`: Surface latent heat flux matrix.
+
+  - `slope::Matrix{F}`: Surface slope matrix in degrees.
+
+  - `sshf::Matrix{F}`: Surface sensible heat flux matrix.
+
+  - `ssrd::Matrix{F}`: Surface shortwave radiation downwards matrix.
+
+  - `str::Matrix{F}`: Surface net thermal radiation matrix.
+
+  - `gradient::F`: Altitudinal gradient value.
+
   - `avg_gradient::F`: Average gradient value.
+
   - `x::Vector{F}`: X-coordinates vector.
+
   - `y::Vector{F}`: Y-coordinates vector.
+
   - `ref_hgt::F`: Reference height.
 """
 @kwdef mutable struct Climate2Dstep{F <: AbstractFloat}
@@ -23,6 +47,14 @@ A mutable struct representing a 2D climate time step with various climate-relate
     PDD::Matrix{F}
     snow::Matrix{F}
     rain::Matrix{F}
+    elevation_diff::Matrix{F}
+    aspect::Matrix{F}
+    albedo::Matrix{F}
+    slhf::Matrix{F}
+    slope::Matrix{F}
+    sshf::Matrix{F}
+    ssrd::Matrix{F}
+    str::Matrix{F}
     gradient::F
     avg_gradient::F
     x::Vector{F}
@@ -33,6 +65,10 @@ end
 function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
     a.temp == b.temp && a.PDD == b.PDD &&
         a.snow == b.snow && a.rain == b.rain &&
+        a.elevation_diff == b.elevation_diff && a.aspect == b.aspect &&
+        a.albedo == b.albedo && a.slhf == b.slhf &&
+        a.slope == b.slope && a.sshf == b.sshf &&
+        a.ssrd == b.ssrd && a.str == b.str &&
         a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
         a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
 end
@@ -55,6 +91,11 @@ Mutable struct that represents a climate step before downscaling.
     prcp::F
     temp::F
     gradient::F
+    albedo::F
+    slhf::F
+    sshf::F
+    ssrd::F
+    str::F
     avg_temp::F
     avg_gradient::F
     ref_hgt::F
@@ -62,7 +103,10 @@ end
 
 function Base.:(==)(a::ClimateStep, b::ClimateStep)
     a.prcp == b.prcp && a.temp == b.temp &&
-        a.gradient == b.gradient && a.avg_temp == b.avg_temp &&
+        a.gradient == b.gradient &&
+        a.albedo == b.albedo && a.slhf == b.slhf && a.sshf == b.sshf &&
+        a.ssrd == b.ssrd && a.str == b.str &&
+        a.avg_temp == b.avg_temp &&
         a.avg_gradient == b.avg_gradient && a.ref_hgt == b.ref_hgt
 end
 
@@ -146,6 +190,7 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
     avg_temps::F
     avg_gradients::F
     ref_hgt::F
+    climate_data_source::Symbol
 
     function Climate2D(
             rgi_id::String,
@@ -153,18 +198,24 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             S::Matrix{<: AbstractFloat},
             Coords::Dict
     )
-        dummy_period = partial_year(Day, params.simulation.tspan[1]):Day(1):partial_year(
-            Day, params.simulation.tspan[1] + params.simulation.step_MB)
+        dummy_start = partial_year(Day, params.simulation.tspan[1])
+        dummy_end = partial_year(
+            Day, params.simulation.tspan[1] +
+                 params.simulation.step_MB)
         raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id],
             "raw_climate_$(params.simulation.tspan).nc"))
         if Sleipnir.doublePrec
             raw_climate = convertRasterStackToFloat64(raw_climate)
         end
-        climate_step = get_cumulative_climate(raw_climate[At(dummy_period)])
-        climate_2D_step = downscale_2D_climate(climate_step, S, Coords)
+        climate_raw_step = _slice_climate_between_dates(raw_climate, dummy_start, dummy_end)
+        climate_step = get_cumulative_climate(climate_raw_step)
+        climate_2D_step = downscale_2D_climate(
+            climate_step,
+            S,
+            Coords
+        )
         longterm_temps_scalar,
         longterm_temps_gridded = get_longterm_temps(rgi_id, params, raw_climate, S)
-        climate_raw_step = raw_climate[At(dummy_period)]
         return new{
             typeof(raw_climate),
             typeof(climate_raw_step),
@@ -180,7 +231,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             longterm_temps_gridded,
             mean(climate_raw_step.temp),
             mean(climate_raw_step.gradient),
-            metadata(raw_climate)["ref_hgt"]
+            metadata(raw_climate)["ref_hgt"],
+            params.simulation.climate_data_source
         )
     end
     function Climate2D(
@@ -192,7 +244,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             longterm_temps_gridded::Matrix{<: AbstractFloat},
             avg_temps::AbstractFloat,
             avg_gradients::AbstractFloat,
-            ref_hgt::AbstractFloat
+            ref_hgt::AbstractFloat;
+            climate_data_source::Symbol = :W5E5
     )
         return new{typeof(raw_climate), typeof(climate_raw_step),
             typeof(climate_step), typeof(climate_2D_step), Sleipnir.Float}(
@@ -204,7 +257,8 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             longterm_temps_gridded,
             avg_temps,
             avg_gradients,
-            ref_hgt
+            ref_hgt,
+            climate_data_source
         )
     end
 end
@@ -215,7 +269,8 @@ function Base.:(==)(a::Climate2D, b::Climate2D)
         a.longterm_temps_scalar ≈ b.longterm_temps_scalar &&
         a.longterm_temps_gridded ≈ b.longterm_temps_gridded &&
         a.avg_temps ≈ b.avg_temps &&
-        a.avg_gradients == b.avg_gradients && a.ref_hgt == b.ref_hgt
+        a.avg_gradients == b.avg_gradients && a.ref_hgt == b.ref_hgt &&
+        a.climate_data_source == b.climate_data_source
 end
 
 function diffToDict(a::Climate2D, b::Climate2D)
@@ -228,7 +283,8 @@ function diffToDict(a::Climate2D, b::Climate2D)
         :longterm_temps_gridded => a.longterm_temps_gridded == b.longterm_temps_gridded,
         :avg_temps => a.avg_temps == b.avg_temps,
         :avg_gradients => a.avg_gradients == b.avg_gradients,
-        :ref_hgt => a.ref_hgt == b.ref_hgt
+        :ref_hgt => a.ref_hgt == b.ref_hgt,
+        :climate_data_source => a.climate_data_source == b.climate_data_source
     )
 end
 
@@ -258,6 +314,14 @@ function DummyClimate2D(;
         PDD = dummyMatrix,
         snow = dummyMatrix,
         rain = dummyMatrix,
+        elevation_diff = dummyMatrix,
+        aspect = dummyMatrix,
+        albedo = dummyMatrix,
+        slhf = dummyMatrix,
+        slope = dummyMatrix,
+        sshf = dummyMatrix,
+        ssrd = dummyMatrix,
+        str = dummyMatrix,
         gradient = 0.0,
         avg_gradient = 0.0,
         x = [0.0],
@@ -267,22 +331,44 @@ function DummyClimate2D(;
     climate_step = ClimateStep(
         gradient = 0.0,
         temp = 0.0,
+        albedo = 0.0,
+        slhf = 0.0,
+        sshf = 0.0,
+        ssrd = 0.0,
+        str = 0.0,
         avg_temp = 0.0,
         avg_gradient = 0.0,
         ref_hgt = 0.0,
         prcp = 0.0
     )
     return Climate2D(emptyRasterStack, emptyRasterStack, climate_step, emptyClimate2Dstep,
-        longterm_temps_scalar, longterm_temps_gridded, 0.0, 0.0, 0.0)
+        longterm_temps_scalar, longterm_temps_gridded, 0.0, 0.0, 0.0;
+        climate_data_source = :W5E5)
 end
 
 # TODO: update show with ref_hgt
 # Display setup
+
+"""
+Return true when at least one ERA5-specific field in a ClimateStep/Climate2Dstep
+has a non-zero value — used by standalone show methods that lack parent context.
+"""
+function _era5_fields_present(s::ClimateStep)
+    s.albedo != 0 || s.slhf != 0 || s.sshf != 0 || s.ssrd != 0 || s.str != 0
+end
+function _era5_fields_present(s::Climate2Dstep)
+    any(!iszero, s.albedo) || any(!iszero, s.slhf) || any(!iszero, s.sshf) ||
+        any(!iszero, s.ssrd) || any(!iszero, s.str)
+end
+
 function Base.show(io::IO, type::MIME"text/plain", climate::Climate2D)
     Base.show(io, climate)
 end
 function Base.show(io::IO, climate::Climate2D)
-    printstyled(io, "Climate2D\n"; color = :yellow)
+    printstyled(io, "Climate2D"; color = :yellow)
+    print(io, " (")
+    printstyled(io, climate.climate_data_source; color = :cyan)
+    println(io, ")")
 
     print(io, "  avg_gradients = ")
     printstyled(io, round(climate.avg_gradients; digits = 4); color = :blue)
@@ -329,6 +415,23 @@ function Base.show(io::IO, climate::Climate2D)
     print(io, "    prcp = ")
     printstyled(io, round(climate.climate_step.prcp; digits = 1); color = :blue)
     println(io, " kg/m²")
+    if climate.climate_data_source == :ERA5
+        print(io, "    albedo = ")
+        printstyled(io, round(climate.climate_step.albedo; digits = 4); color = :blue)
+        println(io, " (-)")
+        print(io, "    slhf = ")
+        printstyled(io, round(climate.climate_step.slhf; digits = 1); color = :blue)
+        println(io, " W/m²")
+        print(io, "    sshf = ")
+        printstyled(io, round(climate.climate_step.sshf; digits = 1); color = :blue)
+        println(io, " W/m²")
+        print(io, "    ssrd = ")
+        printstyled(io, round(climate.climate_step.ssrd; digits = 1); color = :blue)
+        println(io, " W/m²")
+        print(io, "    str = ")
+        printstyled(io, round(climate.climate_step.str; digits = 1); color = :blue)
+        println(io, " W/m²")
+    end
 
     print(io, "  longterm_temps_scalar: ")
     printstyled(io, "$(typeof(climate.longterm_temps_scalar))"; color = :yellow)
@@ -417,4 +520,41 @@ function Base.show(io::IO, climate_step::Climate2Dstep)
     printstyled(io,
         "$(round(minimum(climate_step.temp); digits=1)) $(round(mean(climate_step.temp); digits=1)) $(round(maximum(climate_step.temp); digits=1))\n";
         color = :blue)
+
+    print(io, "    aspect: ")
+    printstyled(io,
+        "$(round(minimum(climate_step.aspect); digits=1)) $(round(mean(climate_step.aspect); digits=1)) $(round(maximum(climate_step.aspect); digits=1))\n";
+        color = :blue)
+
+    print(io, "    slope: ")
+    printstyled(io,
+        "$(round(minimum(climate_step.slope); digits=1)) $(round(mean(climate_step.slope); digits=1)) $(round(maximum(climate_step.slope); digits=1))\n";
+        color = :blue)
+
+    if _era5_fields_present(climate_step)
+        print(io, "    albedo: ")
+        printstyled(io,
+            "$(round(minimum(climate_step.albedo); digits=4)) $(round(mean(climate_step.albedo); digits=4)) $(round(maximum(climate_step.albedo); digits=4))\n";
+            color = :blue)
+
+        print(io, "    slhf: ")
+        printstyled(io,
+            "$(round(minimum(climate_step.slhf); digits=1)) $(round(mean(climate_step.slhf); digits=1)) $(round(maximum(climate_step.slhf); digits=1))\n";
+            color = :blue)
+
+        print(io, "    sshf: ")
+        printstyled(io,
+            "$(round(minimum(climate_step.sshf); digits=1)) $(round(mean(climate_step.sshf); digits=1)) $(round(maximum(climate_step.sshf); digits=1))\n";
+            color = :blue)
+
+        print(io, "    ssrd: ")
+        printstyled(io,
+            "$(round(minimum(climate_step.ssrd); digits=1)) $(round(mean(climate_step.ssrd); digits=1)) $(round(maximum(climate_step.ssrd); digits=1))\n";
+            color = :blue)
+
+        print(io, "    str: ")
+        printstyled(io,
+            "$(round(minimum(climate_step.str); digits=1)) $(round(mean(climate_step.str); digits=1)) $(round(maximum(climate_step.str); digits=1))\n";
+            color = :blue)
+    end
 end

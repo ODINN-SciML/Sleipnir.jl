@@ -20,7 +20,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `working_dir::String`: Directory for working files.
   - `test_mode::Bool`: Flag to indicate whether to run in test mode.
   - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
-  - `ice_thickness_source::String`: Source of ice thickness data.
+  - `ice_thickness_source::Symbol`: Source of ice thickness data.
   - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
@@ -42,7 +42,8 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     working_dir::String
     test_mode::Bool
     rgi_paths::Dict{String, String}
-    ice_thickness_source::String
+    ice_thickness_source::Symbol
+    climate_data_source::Symbol
     mapping::VM
     gridScalingFactor::I
 end
@@ -65,7 +66,8 @@ Constructor for `SimulationParameters` type, including default values.
         working_dir::String = "",
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
-        ice_thickness_source::String = "Farinotti19",
+        ice_thickness_source::Symbol = :Farinotti19,
+        climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
     ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
@@ -88,7 +90,8 @@ Constructor for `SimulationParameters` type, including default values.
   - `working_dir::String`: Working directory for the simulation (default: `""`).
   - `test_mode::Bool`: Whether to run in test mode (default: `false`).
   - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths (default: `Dict{String, String}()`).
-  - `ice_thickness_source::String`: Source of ice thickness data, either `"Millan22"` or `"Farinotti19"` (default: `"Farinotti19"`).
+  - `ice_thickness_source::Symbol`: Source of ice thickness data, either `:Millan22` or `:Farinotti19` (default: `:Farinotti19`).
+  - `climate_data_source::Symbol`: Source of climate data (default: `:W5E5`).
   - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
@@ -100,7 +103,7 @@ Constructor for `SimulationParameters` type, including default values.
 
 # Throws
 
-  - `AssertionError`: If `ice_thickness_source` is not `"Millan22"` or `"Farinotti19"`.
+  - `AssertionError`: If `ice_thickness_source` is not `:Millan22` or `:Farinotti19`.
 
 # Notes
 
@@ -125,12 +128,14 @@ function SimulationParameters(;
         working_dir::String = "",
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
-        ice_thickness_source::String = "Farinotti19",
+        ice_thickness_source::Symbol = :Farinotti19,
+        climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
-    @assert ((ice_thickness_source == "Millan22") ||
-             (ice_thickness_source == "Farinotti19")) "Wrong ice thickness source! Should be either `Millan22` or `Farinotti19`."
+    ice_thickness_source_sym = Symbol(ice_thickness_source)
+    @assert ((ice_thickness_source_sym == :Millan22) ||
+             (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source! Should be either `:Millan22` or `:Farinotti19`."
 
     simulation_parameters = SimulationParameters(
         use_MB, use_iceflow, plots,
@@ -138,7 +143,7 @@ function SimulationParameters(;
         overwrite_climate, use_glathida_data,
         Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
         multiprocessing, Sleipnir.Int(workers), working_dir,
-        test_mode, rgi_paths, ice_thickness_source, mapping,
+        test_mode, rgi_paths, ice_thickness_source_sym, climate_data_source, mapping,
         gridScalingFactor
     )
 
@@ -165,6 +170,7 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.test_mode == b.test_mode &&
         a.rgi_paths == b.rgi_paths &&
         a.ice_thickness_source == b.ice_thickness_source &&
+        a.climate_data_source == b.climate_data_source &&
         a.mapping == b.mapping &&
         a.gridScalingFactor == b.gridScalingFactor
 end

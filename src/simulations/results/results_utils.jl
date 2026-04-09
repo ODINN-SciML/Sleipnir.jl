@@ -52,7 +52,9 @@ function create_results(
         glacier_idx::I,
         solution,
         tstops::Vector{F};
-        processVelocity::Union{Nothing, Function} = nothing
+        processVelocity::Union{Nothing, Function} = nothing,
+        MB::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
     tspan = simulation.parameters.simulation.tspan
 
@@ -134,6 +136,8 @@ function create_results(
         nx = glacier.nx,
         ny = glacier.ny,
         t = t,
+        MB = MB,
+        t_MB = t_MB,
         tspan = tspan
     )
 

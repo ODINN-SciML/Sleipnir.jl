@@ -53,6 +53,8 @@ mutable struct Results{F <: AbstractFloat, I <: Integer}
     nx::I
     ny::I
     t::Vector{F}
+    MB::Vector{Matrix{F}}
+    t_MB::Vector{F}
     tspan::Tuple{F, F}
 end
 
@@ -68,6 +70,7 @@ function Base.:(==)(a::Results, b::Results)
         a.Δx == b.Δx && a.Δy == b.Δy &&
         a.lon == b.lon && a.lat == b.lat &&
         a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
+        a.MB == b.MB && a.t_MB == b.t_MB &&
         isequal(a.tspan, b.tspan)
     )
 end
@@ -157,6 +160,8 @@ function Results(glacier::G, ifm::IF;
         nx::I = glacier.nx,
         ny::I = glacier.ny,
         t::Vector{F} = Vector{Sleipnir.Float}([]),
+        MB::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([]),
         tspan::Tuple{F, F} = (NaN, NaN)
 ) where {G <: AbstractGlacier, F <: AbstractFloat, IF <: AbstractModel, I <: Integer}
     x = glacier.Coords["lon"]
@@ -168,7 +173,7 @@ function Results(glacier::G, ifm::IF;
         x, y,
         V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
         date_Vref, date1_Vref, date2_Vref,
-        Δx, Δy, lon, lat, nx, ny, t, tspan
+        Δx, Δy, lon, lat, nx, ny, t, MB, t_MB, tspan
     )
 
     return results
