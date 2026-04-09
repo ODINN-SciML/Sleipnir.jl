@@ -1,7 +1,8 @@
 export plot_glacier, plot_glacier_heatmaps, plot_glacier_quivers,
        plot_glacier_difference_evolution, plot_glacier_statistics_evolution,
        plot_glacier_integrated_volume
-export plot_gridded_data
+export plot_gridded_data, accumulate_gridded_data, plot_cumulative_gridded_data,
+       plot_cumulative_mb, save_figure
 
 using CairoMakie: Axis
 
@@ -830,7 +831,22 @@ function plot_glacier(
     end
 end
 
-min_non_zero(M::Matrix{<: AbstractFloat}) = minimum(M[(!isnan).(M) .& (M .> 0)])
+function lower_bound(M::Matrix{<: AbstractFloat})
+    positive_values = M[(!isnan).(M) .& (M .> 0)]
+    if !isempty(positive_values)
+        return minimum(positive_values)
+    end
+
+    finite_values = filter(isfinite, vec(M))
+    @assert !isempty(finite_values) "There are no finite values to plot."
+    return minimum(finite_values)
+end
+
+function finite_extrema(M::Matrix{<: AbstractFloat})
+    values = filter(isfinite, vec(M))
+    @assert !isempty(values) "There are no finite values to plot."
+    return extrema(values)
+end
 
 """
     plot_gridded_data(
@@ -874,7 +890,9 @@ function plot_gridded_data(
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
         plotContour::Bool = false,
         colormap = :cool,
-        logPlot = false
+        logPlot = false,
+        title::Union{Nothing, String} = nothing,
+        colorbar_label::Union{Nothing, String} = nothing
 ) where {F <: AbstractFloat}
     figKwargs = isnothing(figsize) ? Dict{Symbol, Any}() :
                 Dict{Symbol, Any}(:size => figsize)
@@ -895,22 +913,20 @@ function plot_gridded_data(
     if typeof(gridded_data) <: Vector
         @assert length(gridded_data)>0 "Data is an empty vector"
         @assert (isnothing(timeIdx)) || (size(gridded_data, 1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector which is $(size(gridded_data,1))"
-        min_values = isnothing(timeIdx) ? min_non_zero(gridded_data[end]) :
-                     minimum(
-            map(gridded_data) do M
-            min_non_zero(M)
-        end
-        )
-        max_values = maximum(replace(
-            isnothing(timeIdx) ? gridded_data[end] : gridded_data[timeIdx], NaN => 0.0))
+        current_data = isnothing(timeIdx) ? gridded_data[end] : gridded_data[timeIdx]
     else
-        min_values = min_non_zero(gridded_data)
-        max_values = maximum(replace(gridded_data, NaN => 0.0))
+        current_data = gridded_data
     end
 
-    # Determine global minimum/maximum
-    global_min = isempty(min_values) ? nothing : maximum(min_values)
-    global_max = isempty(max_values) ? nothing : maximum(max_values)
+    current_data_masked = copy(current_data)
+    current_data_masked[.!mask] .= NaN
+
+    if logPlot
+        global_min = lower_bound(current_data_masked)
+        global_max = maximum(replace(current_data_masked, NaN => 0.0))
+    else
+        global_min, global_max = finite_extrema(current_data_masked)
+    end
 
     figKwargs[:layout] = GridLayout(2, 2)
     fig = Figure(; figKwargs...)
@@ -929,15 +945,14 @@ function plot_gridded_data(
 
     nx, ny = size(data)
 
-    mask = results.H[begin] .> 0.0
     data[.!mask] .= NaN
 
     hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap = colormap,
-        colorrange = (logPlot ? global_min*0.85 : 0, global_max),
+        colorrange = (logPlot ? global_min*0.85 : global_min, global_max),
         colorscale = logPlot ? log10 : identity)
-    cb = Colorbar(fig[ax_row, ax_col + 1], hm)
+    cb_kwargs = isnothing(colorbar_label) ? NamedTuple() : (; label = colorbar_label)
+    cb = Colorbar(fig[ax_row, ax_col + 1], hm; cb_kwargs...)
     Observables.connect!(cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
-    # Label(fig[ax_row, ax_col + 1], "$var ($unit)", fontsize=14, valign=:top, padding=(0, -25))
 
     if plotContour
         for curve in ctr.lines
@@ -948,10 +963,10 @@ function plot_gridded_data(
     end
 
     # ax.title = "$title"
-    ax.xlabel = "Longitude"
-    ax.ylabel = "Latitude"
-    ax.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
-    ax.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
+    ax.xlabel = "Longitude (°)"
+    ax.ylabel = "Latitude (°)"
+    ax.xticks=([round(nx/2)], ["$(round(lon;digits=6))"])
+    ax.yticks=([round(ny/2)], ["$(round(lat;digits=6))"])
     ax.yticklabelrotation = π/2
     ax.ylabelpadding = 5
     ax.yticklabelalign = (:center, :bottom)
@@ -967,7 +982,116 @@ function plot_gridded_data(
         position = (nx - round(0.15*nx) + scale_width/16, round(0.075*ny) + scale_width/10),
         fontsize = textsize)
 
-    fig[0, :] = Label(fig, "$rgi_id")
+    fig_title = isnothing(title) ? rgi_id : "$title — $rgi_id"
+    fig[0, :] = Label(fig, fig_title, fontsize = 14, font = :bold)
     resize_to_layout!(fig)
     return fig
+end
+
+"""
+    accumulate_gridded_data(
+        gridded_data::Vector{Matrix{F}};
+        weights::Union{Nothing,AbstractVector{<:Real}}=nothing,
+    ) where {F <: AbstractFloat}
+
+Accumulate a time series of gridded matrices into a single matrix.
+
+# Arguments
+
+  - `gridded_data::Vector{Matrix{F}}`: Sequence of gridded fields to accumulate.
+  - `weights::Union{Nothing,AbstractVector{<:Real}}`: Optional per-step weights. If
+    provided, weighted accumulation is performed as `sum(weights[i] * gridded_data[i])`.
+
+# Returns
+
+  - `Matrix{F}`: The accumulated matrix.
+"""
+function accumulate_gridded_data(
+        gridded_data::Vector{Matrix{F}};
+        weights::Union{Nothing, AbstractVector{<:Real}} = nothing
+) where {F <: AbstractFloat}
+    @assert !isempty(gridded_data) "There is no data to accumulate."
+
+    cumulative = zeros(F, size(gridded_data[begin]))
+    if isnothing(weights)
+        cumulative = sum(gridded_data)
+    else
+        @assert length(weights) == length(gridded_data) "Length of weights must match gridded_data."
+        for i in eachindex(gridded_data)
+            cumulative .+= weights[i] .* gridded_data[i]
+        end
+    end
+
+    return cumulative
+end
+
+"""
+    plot_cumulative_gridded_data(
+        gridded_data::Vector{Matrix{F}},
+        results::Results;
+        weights::Union{Nothing,AbstractVector{<:Real}}=nothing,
+        kwargs...
+    ) where {F <: AbstractFloat}
+
+Plot the cumulative field of a time series of gridded matrices using `plot_gridded_data`.
+This is a thin utility wrapper to avoid duplicating plotting code.
+
+# Arguments
+
+  - `gridded_data::Vector{Matrix{F}}`: Sequence of gridded fields to accumulate.
+  - `results::Results`: Results object with glacier metadata for plotting.
+  - `weights::Union{Nothing,AbstractVector{<:Real}}`: Optional per-step weights.
+  - `kwargs...`: Additional keyword arguments forwarded to `plot_gridded_data`.
+
+# Returns
+
+  - `Figure`: Cumulative field figure.
+"""
+function plot_cumulative_gridded_data(
+        gridded_data::Vector{Matrix{F}},
+        results::Results;
+        weights::Union{Nothing, AbstractVector{<:Real}} = nothing,
+        kwargs...
+) where {F <: AbstractFloat}
+    cumulative = accumulate_gridded_data(gridded_data; weights = weights)
+    return plot_gridded_data(cumulative, results; kwargs...)
+end
+
+"""
+        plot_cumulative_mb(results::Results; kwargs...)
+
+Plot cumulative mass-balance map from MB fields stored at each forward MB callback.
+
+# Arguments
+
+    - `results::Results`: Results containing callback MB maps in `results.MB`.
+    - `kwargs...`: Keyword arguments forwarded to `plot_cumulative_gridded_data`.
+
+# Returns
+
+    - `Figure`: Cumulative MB figure.
+"""
+function plot_cumulative_mb(results::Results;
+        title::String = "Cumulative Mass Balance",
+        colorbar_label::String = "m w.e.",
+        kwargs...)
+    if isempty(results.MB) || isempty(results.MB[begin])
+        @warn "No mass balance callback history in results; skipping cumulative MB plot. " *
+              "Make sure the simulation was run with use_MB=true."
+        return nothing
+    end
+    return plot_cumulative_gridded_data(results.MB, results;
+        title = title, colorbar_label = colorbar_label, kwargs...)
+end
+
+"""
+    save_figure(fig, path)
+
+Save `fig` to `path`, creating any missing parent directories automatically.
+Returns `path`.
+"""
+function save_figure(fig::Figure, path::AbstractString)
+    mkpath(dirname(path))
+    CairoMakie.save(path, fig)
+    return path
 end
