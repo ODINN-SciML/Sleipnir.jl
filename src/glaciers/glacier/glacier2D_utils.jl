@@ -179,17 +179,18 @@ function initialize_glaciers(
         } = Dict{String, String}(),
         velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
+    if !params.simulation.ignore_errors
+        # Generate missing glaciers file
+        missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
+        if !isdir(missing_glaciers_path)
+            mkdir(missing_glaciers_path)
+        end
 
-    # Generate missing glaciers file
-    missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
-    if !isdir(missing_glaciers_path)
-        mkdir(missing_glaciers_path)
-    end
-
-    if !isfile(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))
-        missing_glaciers = Vector([])
-        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
-            missing_glaciers)
+        if !isfile(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2"))
+            missing_glaciers = Vector([])
+            jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+                missing_glaciers)
+        end
     end
     filter_missing_glaciers!(rgi_ids, params)
 
@@ -314,6 +315,100 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
+function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
+    # We filter glacier borders in high elevations to avoid overflow problems
+    dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
+    if params.simulation.gridScalingFactor > 1
+        # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
+        dist_border = block_average_pad_edge(
+            dist_border, params.simulation.gridScalingFactor)
+    end
+
+    # Define mask where ice is constrained to be zero
+    mask = @match masking begin
+        ::Nothing => falses(size(H₀)...)
+        ::Int => is_in_glacier(H₀, -masking)
+        ::BitMatrix => masking
+    end
+
+    # Define mask where losses used for inversion will be evaluated
+    mask_loss = @match masking_loss begin
+        ::Nothing => falses(size(H₀)...)
+        ::Int => is_in_glacier(H₀, masking_loss)
+        ::BitMatrix => masking_loss
+    end
+
+    nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
+
+    # Mercator Projection
+    params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
+    transform(X,
+        Y) = UTMercator(
+        X, Y;
+        k = params_projection["k"],
+        cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
+        x0 = params_projection["x_0"], y0 = params_projection["y_0"]
+    )
+    easting = dims(glacier_gd, 1).val
+    northing = dims(glacier_gd, 2).val
+    latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
+    longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
+    cenlon::Sleipnir.Float = longitudes[Int(round(nx/2))]
+    cenlat::Sleipnir.Float = latitudes[Int(round(ny/2))]
+    if maximum(abs.(latitudes)) > 80
+        @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
+    end
+
+    S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
+    if params.simulation.gridScalingFactor > 1
+        S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
+        longitudes = longitudes[begin:params.simulation.gridScalingFactor:end]
+        latitudes = latitudes[begin:params.simulation.gridScalingFactor:end]
+    end
+    B = S .- H₀ # bedrock
+
+    Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
+
+    if params.simulation.use_velocities
+        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+        fillNaN!(V)
+        fillNaN!(Vx)
+        fillNaN!(Vy)
+    else
+        V = zeros(Sleipnir.Float, size(H₀))
+        Vx = zeros(Sleipnir.Float, size(H₀))
+        Vy = zeros(Sleipnir.Float, size(H₀))
+    end
+    Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
+    Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
+    if params.simulation.gridScalingFactor > 1
+        Δx *= params.simulation.gridScalingFactor
+        Δy *= params.simulation.gridScalingFactor
+    end
+    # Local slope based on smoothed topography
+    slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
+    name = get(get_rgi_names(), rgi_id, "")
+
+    # Initialize glacier climate
+    climate = Climate2D(rgi_id, params, S, Coords)
+
+    return Glacier2D(
+        rgi_id = rgi_id,
+        name = name,
+        climate = climate,
+        H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
+        A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0),
+        n = Sleipnir.Float(3.0), p = Sleipnir.Float(3.0), q = Sleipnir.Float(2.0),
+        slope = slope, dist_border = dist_border,
+        mask = mask, mask_loss = mask_loss,
+        Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
+        cenlon = cenlon, cenlat = cenlat,
+        params_projection = params_projection
+    )
+end
+
 """
     Glacier2D(
         rgi_id::String,
@@ -391,107 +486,23 @@ function Glacier2D(
         H₀ = block_average_pad_edge(H₀, params.simulation.gridScalingFactor)
     end
 
-    try
-        # We filter glacier borders in high elevations to avoid overflow problems
-        dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
-        if params.simulation.gridScalingFactor > 1
-            # Note: this is not mathematically correct and this should be fixed in the future, however since this option is used only in the tests it isn't critical
-            dist_border = block_average_pad_edge(
-                dist_border, params.simulation.gridScalingFactor)
+    if !params.simulation.ignore_errors
+        try
+            return _build_glacier(
+                params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
+
+        catch error
+            @show error
+            missing_glaciers = load(joinpath(
+                params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+            push!(missing_glaciers, rgi_id)
+            jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+                missing_glaciers)
+            @warn "Glacier without data: $rgi_id. Updating list of missing glaciers. Please try again."
         end
-
-        # Define mask where ice is constrained to be zero
-        mask = @match masking begin
-            ::Nothing => falses(size(H₀)...)
-            ::Int => is_in_glacier(H₀, -masking)
-            ::BitMatrix => masking
-        end
-
-        # Define mask where losses used for inversion will be evaluated
-        mask_loss = @match masking_loss begin
-            ::Nothing => falses(size(H₀)...)
-            ::Int => is_in_glacier(H₀, masking_loss)
-            ::BitMatrix => masking_loss
-        end
-
-        nx, ny = params.simulation.gridScalingFactor > 1 ? size(H₀) : glacier_grid["nxny"]
-
-        # Mercator Projection
-        params_projection::Dict{String, Float64} = parse_proj(glacier_grid["proj"])
-        transform(X,
-            Y) = UTMercator(
-            X, Y;
-            k = params_projection["k"],
-            cenlon = params_projection["lon_0"], cenlat = params_projection["lat_0"],
-            x0 = params_projection["x_0"], y0 = params_projection["y_0"]
-        )
-        easting = dims(glacier_gd, 1).val
-        northing = dims(glacier_gd, 2).val
-        latitudes = map(x -> x.lat.val, transform.(Ref(mean(easting)), northing))
-        longitudes = map(x -> x.lon.val, transform.(easting, Ref(mean(northing))))
-        cenlon::Sleipnir.Float = longitudes[Int(round(nx/2))]
-        cenlat::Sleipnir.Float = latitudes[Int(round(ny/2))]
-        if maximum(abs.(latitudes)) > 80
-            @warn "Mercator projection can fail in high-latitude regions. You glacier includes latitudes larger than 80°."
-        end
-
-        S::Matrix{Sleipnir.Float} = glacier_gd.topo.data
-        if params.simulation.gridScalingFactor > 1
-            S = block_average_pad_edge(S, params.simulation.gridScalingFactor)
-            longitudes = longitudes[begin:params.simulation.gridScalingFactor:end]
-            latitudes = latitudes[begin:params.simulation.gridScalingFactor:end]
-        end
-        B = S .- H₀ # bedrock
-
-        Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
-
-        if params.simulation.use_velocities
-            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
-            fillNaN!(V)
-            fillNaN!(Vx)
-            fillNaN!(Vy)
-        else
-            V = zeros(F, size(H₀))
-            Vx = zeros(F, size(H₀))
-            Vy = zeros(F, size(H₀))
-        end
-        Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
-        Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
-        if params.simulation.gridScalingFactor > 1
-            Δx *= params.simulation.gridScalingFactor
-            Δy *= params.simulation.gridScalingFactor
-        end
-        # Local slope based on smoothed topography
-        slope::Matrix{Sleipnir.Float} = glacier_gd.slope.data
-        name = get(get_rgi_names(), rgi_id, "")
-
-        # Initialize glacier climate
-        climate = Climate2D(rgi_id, params, S, Coords)
-
-        return Glacier2D(
-            rgi_id = rgi_id,
-            name = name,
-            climate = climate,
-            H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
-            A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0),
-            n = Sleipnir.Float(3.0), p = Sleipnir.Float(3.0), q = Sleipnir.Float(2.0),
-            slope = slope, dist_border = dist_border,
-            mask = mask, mask_loss = mask_loss,
-            Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
-            cenlon = cenlon, cenlat = cenlat,
-            params_projection = params_projection
-        )
-
-    catch error
-        @show error
-        missing_glaciers = load(joinpath(
-            params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-        push!(missing_glaciers, rgi_id)
-        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
-            missing_glaciers)
-        @warn "Glacier without data: $rgi_id. Updating list of missing glaciers. Please try again."
+    else
+        return _build_glacier(
+            params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
     end
 end
 
@@ -526,18 +537,20 @@ function get_glathida!(
         glaciers::Vector{G}, params::Parameters; force = false) where {G <: Glacier2D}
     gtd_grids = pmap(glacier -> get_glathida_glacier(glacier, params, force), glaciers)
 
-    # Update missing_glaciers list before removing them
-    missing_glaciers = load(joinpath(
-        params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-    for (gtd_grid, glacier) in zip(gtd_grids, glaciers)
-        if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) &&
-           all(glacier.rgi_id .!= missing_glaciers)
-            push!(missing_glaciers, glacier.rgi_id)
-            @info "Glacier with all data at 0: $(glacier.rgi_id). Updating list of missing glaciers..."
+    if !params.simulation.ignore_errors
+        # Update missing_glaciers list before removing them
+        missing_glaciers = load(joinpath(
+            params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+        for (gtd_grid, glacier) in zip(gtd_grids, glaciers)
+            if (length(gtd_grid[gtd_grid .!= 0.0]) == 0) &&
+               all(glacier.rgi_id .!= missing_glaciers)
+                push!(missing_glaciers, glacier.rgi_id)
+                @info "Glacier with all data at 0: $(glacier.rgi_id). Updating list of missing glaciers..."
+            end
         end
+        jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
+            missing_glaciers)
     end
-    jldsave(joinpath(params.simulation.working_dir, "data/missing_glaciers.jld2");
-        missing_glaciers)
 
     # Apply deletion to both gtd_grids and glaciers using the same set of indices
     indices_to_remove = findall(x -> length(x[x .!= 0.0]) == 0, gtd_grids)
@@ -631,17 +644,19 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
         end
     end
 
-    try
-        missing_glaciers = load(joinpath(
-            params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
-        for missing_glacier in missing_glaciers
-            deleteat!(rgi_ids, findall(x->x == missing_glacier, rgi_ids))
+    if !params.simulation.ignore_errors
+        try
+            missing_glaciers = load(joinpath(
+                params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
+            for missing_glacier in missing_glaciers
+                deleteat!(rgi_ids, findall(x->x == missing_glacier, rgi_ids))
+            end
+            if length(missing_glaciers) > 0
+                @info "Filtering out these glaciers from RGI ID list: $missing_glaciers"
+            end
+        catch error
+            @warn "$error: No missing_glaciers.jld file available. Skipping..."
         end
-        if length(missing_glaciers) > 0
-            @info "Filtering out these glaciers from RGI ID list: $missing_glaciers"
-        end
-    catch error
-        @warn "$error: No missing_glaciers.jld file available. Skipping..."
     end
 end
 
