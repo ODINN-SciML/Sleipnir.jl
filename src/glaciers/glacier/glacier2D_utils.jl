@@ -179,7 +179,7 @@ function initialize_glaciers(
         } = Dict{String, String}(),
         velocityFlag::Union{String, <: RasterStack, Nothing} = nothing
 )
-    if !params.simulation.ignore_errors
+    if params.simulation.catch_errors
         # Generate missing glaciers file
         missing_glaciers_path = joinpath(params.simulation.working_dir, "data")
         if !isdir(missing_glaciers_path)
@@ -486,7 +486,7 @@ function Glacier2D(
         H₀ = block_average_pad_edge(H₀, params.simulation.gridScalingFactor)
     end
 
-    if !params.simulation.ignore_errors
+    if params.simulation.catch_errors
         try
             return _build_glacier(
                 params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
@@ -537,7 +537,7 @@ function get_glathida!(
         glaciers::Vector{G}, params::Parameters; force = false) where {G <: Glacier2D}
     gtd_grids = pmap(glacier -> get_glathida_glacier(glacier, params, force), glaciers)
 
-    if !params.simulation.ignore_errors
+    if params.simulation.catch_errors
         # Update missing_glaciers list before removing them
         missing_glaciers = load(joinpath(
             params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
@@ -644,7 +644,7 @@ function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) #
         end
     end
 
-    if !params.simulation.ignore_errors
+    if params.simulation.catch_errors
         try
             missing_glaciers = load(joinpath(
                 params.simulation.working_dir, "data/missing_glaciers.jld2"))["missing_glaciers"]
