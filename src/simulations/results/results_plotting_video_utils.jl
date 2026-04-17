@@ -1,5 +1,12 @@
+###############################################################################
+# Glacier video utilities (CairoMakie)
+###############################################################################
+
 export plot_glacier_vid
 
+"""
+Generate a thickness-evolution video as an MP4 file.
+"""
 function make_thickness_video(
         results::Results,
         glacier::Glacier2D,
@@ -9,7 +16,7 @@ function make_thickness_video(
         colormap::Symbol = :viridis,
         colorrange::Union{Tuple, Nothing} = nothing,
         framerate::Int = 24,
-        baseTitle::String = ""
+        baseTitle::String = "Ice thickness"
 )
     H_plot = results.H
 
@@ -20,7 +27,6 @@ function make_thickness_video(
         lat = glacier.Δy .* collect(1:1:glacier.ny)
         lon = glacier.Δx .* collect(1:1:glacier.nx)
     end
-    X, Y = GR.meshgrid(lon, lat)
     x = results.x
     y = results.y
 
@@ -32,6 +38,8 @@ function make_thickness_video(
     ax = CairoMakie.Axis(fig[1, 1], aspect = DataAspect())
     xlims!(ax, lon[begin], lon[end])
     ylims!(ax, lat[begin], lat[end])
+    ax.xlabel = "Longitude (°)"
+    ax.ylabel = "Latitude (°)"
 
     # Number of frames
     nFrames = size(H, 1)
@@ -43,24 +51,22 @@ function make_thickness_video(
 
     hm = CairoMakie.heatmap!(
         ax,
-        reshape(X, :),
-        reshape(Y, :),
-        reshape(H[1], :),
+        lon,
+        lat,
+        reverseForHeatmap(H[1], x, y),
         colorrange = colorrange,
         colormap = colormap,
         nan_color = :transparent
     )
-    CairoMakie.Colorbar(fig[1, 2], hm, label = "Thickness (m)")
+    CairoMakie.Colorbar(fig[1, 2], hm, label = "Ice thickness (m)")
 
     years = tspan[1] .+ step * collect(1:size(H, 1))
 
     # Function to update the heatmap for each frame
     function _update_heatmap(frame_nb)
-        hm[1] = reshape(X, :)
-        hm[2] = reshape(Y, :)
-        hm[3] = reshape(reverseForHeatmap(H[frame_nb], x, y), :)
+        hm[3] = reverseForHeatmap(H[frame_nb], x, y)
         year = Int(floor(years[frame_nb]))
-        ax.title = baseTitle*" (t = $year)"
+        ax.title = "$baseTitle (t = $year)"
     end
 
     # Record the animation
@@ -114,7 +120,7 @@ function plot_glacier_vid(
         step,
         pathVideo::String;
         framerate::Int = 24,
-        baseTitle::String = ""
+        baseTitle::String = "Ice thickness"
 )
     if plot_type == "thickness"
         make_thickness_video(results, glacier, tspan, step, pathVideo;
