@@ -25,6 +25,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
+  - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
 """
 struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
        AbstractParameters
@@ -46,6 +47,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     climate_data_source::Symbol
     mapping::VM
     gridScalingFactor::I
+    catch_errors::Bool
 end
 
 """
@@ -70,6 +72,7 @@ Constructor for `SimulationParameters` type, including default values.
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
+        catch_errors::Bool = false
     ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
 # Keyword arguments
@@ -96,6 +99,7 @@ Constructor for `SimulationParameters` type, including default values.
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
+  - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
 
 # Returns
 
@@ -131,7 +135,8 @@ function SimulationParameters(;
         ice_thickness_source::Symbol = :Farinotti19,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
-        gridScalingFactor::I = 1
+        gridScalingFactor::I = 1,
+        catch_errors::Bool = false
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
     ice_thickness_source_sym = Symbol(ice_thickness_source)
     @assert ((ice_thickness_source_sym == :Millan22) ||
@@ -144,7 +149,7 @@ function SimulationParameters(;
         Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
         multiprocessing, Sleipnir.Int(workers), working_dir,
         test_mode, rgi_paths, ice_thickness_source_sym, climate_data_source, mapping,
-        gridScalingFactor
+        gridScalingFactor, catch_errors
     )
 
     if !ispath(working_dir)
@@ -172,5 +177,6 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.ice_thickness_source == b.ice_thickness_source &&
         a.climate_data_source == b.climate_data_source &&
         a.mapping == b.mapping &&
-        a.gridScalingFactor == b.gridScalingFactor
+        a.gridScalingFactor == b.gridScalingFactor &&
+        a.catch_errors == b.catch_errors
 end
