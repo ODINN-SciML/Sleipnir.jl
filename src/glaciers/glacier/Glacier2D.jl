@@ -17,7 +17,7 @@ providing `nothing` as the default value.
 /!\\ WARNING /!\\ `Glacier` objects should not be constructed
 manually, but rather through the `initialize_glaciers` function.
 
-`Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{<: ThicknessData, Nothing}, SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing}}`
+`Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D, THICKDATA <: Union{<:ThicknessData, Nothing}, SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing}, DHDTDATA <: Union{<:DhdtData, Nothing}} <: AbstractGlacier`
 
 # Fields
 
@@ -50,10 +50,12 @@ manually, but rather through the `initialize_glaciers` function.
   - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
   - `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
   - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
+  - `dhdtData::DHDTDATA`: Structure that is used to store the reference values of the mean glacier surface elevation change.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     THICKDATA <: Union{<:ThicknessData, Nothing},
-    SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing}} <: AbstractGlacier
+    SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing},
+    DHDTDATA <: Union{<:DhdtData, Nothing}} <: AbstractGlacier
     rgi_id::String
     name::String
     climate::CLIM
@@ -83,6 +85,7 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     params_projection::Dict{String, Float64}
     thicknessData::THICKDATA
     velocityData::SURFVELDATA
+    dhdtData::DHDTDATA
 end
 
 """
@@ -116,11 +119,13 @@ end
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
         thicknessData::THICKDATA = nothing,
         velocityData::SURFVELDATA = nothing,
+        dhdtData::DHDTDATA = nothing,
     ) where {
         F <: AbstractFloat,
         I <: Integer,
         THICKDATA <: Union{<: ThicknessData, Nothing},
         SURFVELDATA <: Union{<: SurfaceVelocityData, Nothing},
+        DHDTDATA <: Union{<:DhdtData, Nothing},
     }
 
 Constructs a `Glacier2D` object with the given parameters, including default ones.
@@ -156,6 +161,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
   - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
   - `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
   - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
+  - `dhdtData::DHDTDATA`: Structure that is used to store the reference values of the mean glacier surface elevation change.
 
 # Returns
 
@@ -191,21 +197,23 @@ function Glacier2D(;
         cenlat::F = NaN,
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
         thicknessData::THICKDATA = nothing,
-        velocityData::SURFVELDATA = nothing
+        velocityData::SURFVELDATA = nothing,
+        dhdtData::DHDTDATA = nothing
 ) where {
         F <: AbstractFloat,
         I <: Integer,
         THICKDATA <: Union{<:ThicknessData, Nothing},
-        SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing}
+        SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing},
+        DHDTDATA <: Union{<:DhdtData, Nothing}
 }
     return Glacier2D{Sleipnir.Float, Sleipnir.Int, typeof(climate),
-        typeof(thicknessData), typeof(velocityData)}(
+        typeof(thicknessData), typeof(velocityData), typeof(dhdtData)}(
         rgi_id, name, climate, H₀, H_glathida,
         S, B, V, Vx, Vy, A, C, n, p, q,
         slope, dist_border, mask, mask_loss, Coords,
         Δx, Δy, nx, ny,
         cenlon, cenlat, params_projection,
-        thicknessData, velocityData
+        thicknessData, velocityData, dhdtData
     )
 end
 
@@ -214,6 +222,7 @@ end
         glacier::Glacier2D;
         thicknessData::Union{<: ThicknessData, Nothing} = nothing,
         velocityData::Union{<: SurfaceVelocityData, Nothing} = nothing,
+        dhdtData::Union{<: DhdtData, Nothing} = nothing,
     )
 
 Copies a `Glacier2D` object and updates the thickness and/or surface velocity data.
@@ -223,21 +232,24 @@ Copies a `Glacier2D` object and updates the thickness and/or surface velocity da
   - `glacier::Glacier2D`: The original glacier struct.
   - `thicknessData::Union{<: ThicknessData, Nothing}`: Thickness data structure that is used to store the reference values. Default is `nothing` which keeps the existing thickness data.
   - `velocityData::Union{<: SurfaceVelocityData, Nothing}`: Surface velocity data structure that is used to store the reference values. Default is `nothing` which keeps the existing surface velocity data.
+  - `dhdtData::Union{<: DhdtData, Nothing}`: Structure that is used to store the reference values of the mean glacier surface elevation change. Default is `nothing` which keeps the existing mean glacier surface elevation change.
 
 # Returns
 
-  - A `Glacier2D` object that is a copy of the original one with the thickness and/or surface velocity data updated.
+  - A `Glacier2D` object that is a copy of the original one with the thickness, surface velocity and/or elevation change data updated.
 """
 function Glacier2D(
         glacier::Glacier2D;
         thicknessData::Union{<:ThicknessData, Nothing} = nothing,
-        velocityData::Union{<:SurfaceVelocityData, Nothing} = nothing
+        velocityData::Union{<:SurfaceVelocityData, Nothing} = nothing,
+        dhdtData::Union{<:DhdtData, Nothing} = nothing
 )
     thicknessData = isnothing(thicknessData) ? glacier.thicknessData : thicknessData
     velocityData = isnothing(velocityData) ? glacier.velocityData : velocityData
+    dhdtData = isnothing(dhdtData) ? glacier.dhdtData : dhdtData
     return Glacier2D{
         Sleipnir.Float, Sleipnir.Int,
-        typeof(glacier.climate), typeof(thicknessData), typeof(velocityData)
+        typeof(glacier.climate), typeof(thicknessData), typeof(velocityData), typeof(dhdtData)
     }(
         glacier.rgi_id, glacier.name, glacier.climate, glacier.H₀, glacier.H_glathida,
         glacier.S, glacier.B, glacier.V, glacier.Vx, glacier.Vy,
@@ -245,7 +257,7 @@ function Glacier2D(
         glacier.slope, glacier.dist_border, glacier.mask, glacier.mask_loss, glacier.Coords,
         glacier.Δx, glacier.Δy, glacier.nx, glacier.ny,
         glacier.cenlon, glacier.cenlat, glacier.params_projection,
-        thicknessData, velocityData
+        thicknessData, velocityData, dhdtData
     )
 end
 
@@ -265,7 +277,8 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.ny == b.ny &&
         a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
         a.params_projection == b.params_projection &&
-        a.thicknessData == b.thicknessData && a.velocityData == b.velocityData
+        a.thicknessData == b.thicknessData && a.velocityData == b.velocityData &&
+        a.dhdtData == b.dhdtData
 end
 
 function Base.:(≈)(a::Glacier2D, b::Glacier2D)
@@ -282,7 +295,8 @@ function Base.:(≈)(a::Glacier2D, b::Glacier2D)
         safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
         safe_approx(a.params_projection, b.params_projection) &&
         safe_approx(a.thicknessData, b.thicknessData) &&
-        safe_approx(a.velocityData, b.velocityData)
+        safe_approx(a.velocityData, b.velocityData) &&
+        safe_approx(a.dhdtData, b.dhdtData)
 end
 
 function diffToDict(a::Glacier2D, b::Glacier2D)
@@ -312,7 +326,9 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :cenlat => a.cenlat == b.cenlat,
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
-        :velocityData => a.velocityData == b.velocityData
+        :velocityData => a.velocityData ==
+                         b.velocityData
+        :dhdtData => a.dhdtData == b.dhdtData
     )
 end
 
@@ -379,6 +395,12 @@ function Base.show(io::IO, glacier::Glacier2D)
         printstyled(io, "   w/"; color = :blue)
     end
     print(io, " velocity data")
+    if isnothing(glacier.dhdtData)
+        printstyled(io, "   w/o"; color = :red)
+    else
+        printstyled(io, "   w/"; color = :blue)
+    end
+    print(io, " dhdt data")
 end
 
 # Vectorial form

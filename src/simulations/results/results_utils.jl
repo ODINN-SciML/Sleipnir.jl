@@ -21,6 +21,34 @@ function yearfrac(p::Month)
 end
 
 """
+    indFromT(tspan, tstops, t)
+
+Find indices in time vector `t` corresponding to target times in `tstops`.
+
+# Arguments
+
+  - `tspan`: Tuple of simulation start and end times
+  - `tstops`: Vector of target times for which to find corresponding indices
+  - `t`: Solution time vector containing all time steps
+
+# Returns
+
+Vector of indices such that `t[indices]` are the times in `t` closest to each value in `tstops`.
+
+# Details
+
+  - For the initial time step (`tspan[1]`), returns the first matching index to avoid out-of-range interpolation
+  - For subsequent time steps, returns the last matching index to capture state after potential callbacks
+  - Uses approximate equality with relative tolerance `rtol=1e-7` to handle numerical rounding
+"""
+function indFromT(tspan, tstops, t)
+    return [val==tspan[1] ?
+            findfirst(_t->(isapprox(_t, val, rtol = 1e-7)), t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
+            findlast(_t->(isapprox(_t, val, rtol = 1e-7)), t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
+            for val in tstops] # We use isapprox because of potential numerical roundings
+end
+
+"""
     create_results(
         simulation::SIM,
         glacier_idx::I,
@@ -60,14 +88,7 @@ function create_results(
 
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
-    solStepIndices = Zygote.@ignore_derivatives [val==tspan[1] ?
-                                                 findfirst(
-                                                     t->(isapprox(t, val, rtol = 1e-7)),
-                                                     solution.t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
-                                                 findlast(
-                                                     t->(isapprox(t, val, rtol = 1e-7)),
-                                                     solution.t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
-                                                 for val in tstops] # We use isapprox because of potential numerical roundings
+    solStepIndices = Zygote.@ignore_derivatives indFromT(tspan, tstops, solution.t)
     t = Zygote.@ignore_derivatives solution.t[solStepIndices]
     H = solution.u[solStepIndices]
 
@@ -113,6 +134,14 @@ function create_results(
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
+    if !isnothing(glacier.dhdtData)
+        dhdt_ref = glacier.dhdtData.dhdt
+        t_dhdt = glacier.dhdtData.t
+    else
+        dhdt_ref = Sleipnir.Float(0.0)
+        t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
+    end
+
     results = Results(
         glacier,
         iceflow_cache;
@@ -129,6 +158,8 @@ function create_results(
         date_Vref = date_Vref,
         date1_Vref = date1_Vref,
         date2_Vref = date2_Vref,
+        t_dhdt = t_dhdt,
+        dhdt_ref = dhdt_ref,
         Δx = glacier.Δx,
         Δy = glacier.Δy,
         lon = glacier.cenlon,
