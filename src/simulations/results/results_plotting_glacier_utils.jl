@@ -1,13 +1,26 @@
+###############################################################################
+# Glacier-level plotting utilities (CairoMakie)
+#
+# Layout:
+#   1. Orientation helper:   reverseForHeatmap
+#   2. Internal helpers:     _resolve_temporal_snapshot, _results_plot_metadata,
+#                            _overlay_contour!, _decorate_geo_axis!
+#   3. Public plot functions: plot_glacier_heatmaps, plot_glacier_quivers,
+#                             plot_glacier_difference_evolution,
+#                             plot_glacier_statistics_evolution,
+#                             plot_glacier_integrated_volume, plot_bias
+#   4. Router:               plot_glacier (dispatches on plot_type string/Symbol)
+###############################################################################
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Orientation helper
+# ─────────────────────────────────────────────────────────────────────────────
 
 """
-    reverseForHeatmap(
-        inp::Matrix{F},
-        x::Vector{F},
-        y::Vector{F}
-    ) where {F <: AbstractFloat}
+    reverseForHeatmap(inp, x, y) -> Matrix
 
-Out-of-place reverse of a matrix based on the values of the x and y axes.
-This function corrects the orientation so that the heatmap is displayed correctly.
+Out-of-place reverse of a matrix so that the heatmap is displayed in the correct
+geographic orientation. Flips along each axis whose coordinate vector is descending.
 
 # Arguments
 
@@ -35,6 +48,121 @@ function reverseForHeatmap(
     end
     return data
 end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Internal helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+    _resolve_temporal_snapshot(data, timeIdx) -> Matrix
+
+If `data` is a vector of matrices, pick element `timeIdx` (or the last one when
+`timeIdx` is `nothing`). Otherwise return `data` as-is.
+"""
+function _resolve_temporal_snapshot(
+        data,
+        timeIdx::Union{Nothing, Int64};
+        varname::String = "Data"
+)
+    if data isa AbstractVector
+        @assert !isempty(data) "$(varname) is an empty vector"
+        @assert isnothing(timeIdx) || length(data) >= timeIdx "The provided index=$(timeIdx) is greater than the size of the vector for $(varname) which is $(length(data))"
+        return isnothing(timeIdx) ? data[end] : data[timeIdx]
+    end
+    return data
+end
+
+"""
+    _results_plot_metadata(results; plotContour) -> NamedTuple
+
+Extract common metadata (lon, lat, x, y, rgi_id, Δx, mask, contour) from a
+`Results` object. The glacier mask is derived from the initial thickness field.
+"""
+function _results_plot_metadata(results::Results; plotContour::Bool = false)
+    mask = results.H[begin] .> 0.0
+    nx, ny = size(results.H[begin])
+    ctr = plotContour ? Contour.contour(collect(1:nx), 1+ny .- collect(1:ny), mask, 0.5) :
+          nothing
+    return (
+        lon = results.lon,
+        lat = results.lat,
+        x = results.x,
+        y = results.y,
+        rgi_id = results.rgi_id,
+        Δx = results.Δx,
+        mask = mask,
+        contour = ctr
+    )
+end
+
+"""
+    _overlay_contour!(ax, ctr)
+
+Draw glacier-boundary contour lines on an existing axis. No-op when `ctr` is `nothing`.
+"""
+function _overlay_contour!(ax::Axis, ctr)
+    isnothing(ctr) && return
+    for curve in ctr.lines
+        xs = first.(curve.vertices)
+        ys = last.(curve.vertices)
+        lines!(ax, xs, ys, color = :black, linewidth = 1)
+    end
+end
+
+"""
+    _decorate_geo_axis!(ax, nx, ny, lon, lat, Δx; scale_text_size, num_vars)
+
+Add geographic labels (central lon/lat tick), axis styling, and a Δx-based
+scale bar to a glacier heatmap axis. Shared by heatmap, difference-evolution,
+and gridded-data plotting functions.
+"""
+function _decorate_geo_axis!(ax::Axis, nx, ny, lon, lat, Δx;
+        scale_text_size::Union{Nothing, Float64} = nothing,
+        num_vars::Int = 1)
+    ax.xlabel = "Longitude"
+    ax.ylabel = "Latitude"
+    ax.xticks = ([round(nx / 2)], ["$(round(lon; digits=6)) °"])
+    ax.yticks = ([round(ny / 2)], ["$(round(lat; digits=6)) °"])
+    ax.yticklabelrotation = π / 2
+    ax.ylabelpadding = 5
+    ax.yticklabelalign = (:center, :bottom)
+
+    # Scale bar
+    scale_width = 0.10 * nx
+    scale_number = round(Δx * scale_width / 1000; digits = 1)
+    if isnothing(scale_text_size)
+        textsize = if num_vars <= 1
+            1.2 * scale_width
+        elseif num_vars == 2
+            0.9 * scale_width
+        else
+            0.5 * scale_width
+        end
+    else
+        textsize = scale_text_size
+    end
+    poly!(
+        ax, Rect(nx - round(0.15 * nx), round(0.075 * ny), scale_width, scale_width / 10),
+        color = :black)
+    text!(ax, "$scale_number km",
+        position = (nx - round(0.15 * nx) + scale_width / 16,
+            round(0.075 * ny) + scale_width / 10),
+        fontsize = textsize)
+end
+
+function _fixed_colorbar_ticks(lower::Real, upper::Real; count::Int = 5)
+    if !isfinite(lower) || !isfinite(upper)
+        return [0.0, 1.0]
+    end
+    if upper <= lower
+        return [float(lower)]
+    end
+    return collect(range(float(lower), float(upper), length = count))
+end
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Public plot functions
+# ─────────────────────────────────────────────────────────────────────────────
 
 """
     plot_glacier_heatmaps(
@@ -82,16 +210,11 @@ function plot_glacier_heatmaps(
     colormap_mapping = Dict(key => value[3] for (key, value) in title_mapping)
 
     # Extract metadata about the glacier
-    lon = results.lon
-    lat = results.lat
-    x = results.x
-    y = results.y
-    rgi_id = results.rgi_id
-    Δx = results.Δx
-    mask = results.H[begin] .> 0.0
-    nx, ny = size(results.H[begin])
-    ctr = plotContour ? Contour.contour(collect(1:nx), 1+ny .- collect(1:ny), mask, 0.5) :
-          nothing
+    meta = _results_plot_metadata(results; plotContour = plotContour)
+    lon, lat = meta.lon, meta.lat
+    x, y = meta.x, meta.y
+    rgi_id, Δx = meta.rgi_id, meta.Δx
+    mask = meta.mask
 
     ice_thickness_vars = [:H, :H₀, :H_glathida, :H_ref] # Ice thickness variables
     velocity_vars = [:V, :Vx, :Vy, :V_ref] # Velocity variables, excluding V_diff
@@ -104,16 +227,11 @@ function plot_glacier_heatmaps(
         if hasproperty(results, var)
             current_matrix = getfield(results, var)
             if !isnothing(current_matrix) && !isempty(current_matrix)
-                if typeof(current_matrix) <: Vector
-                    @assert length(current_matrix)>0 "Variable $(var) is an empty vector"
-                    @assert (isnothing(timeIdx)) || (size(current_matrix, 1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(current_matrix,1))"
-                    maxval = maximum(replace(
-                        isnothing(timeIdx) ? current_matrix[end] : current_matrix[timeIdx],
-                        NaN => 0.0))
-                    # maxval = maximum([maximum(replace(M, NaN => 0.)) for M in current_matrix])
-                else
-                    maxval = maximum(replace(current_matrix, NaN => 0.0))
-                end
+                current_snapshot = _resolve_temporal_snapshot(current_matrix, timeIdx; varname = string(var))
+                current_snapshot = copy(current_snapshot)
+                current_snapshot[.!mask] .= NaN
+                finite_vals = filter(isfinite, vec(current_snapshot))
+                maxval = isempty(finite_vals) ? 0.0 : maximum(finite_vals)
                 if var in ice_thickness_vars
                     push!(max_values_ice, maxval)
                 elseif var in velocity_vars
@@ -123,10 +241,13 @@ function plot_glacier_heatmaps(
         end
     end
 
-    # Determine global maximum for ice and velocity separately
-    global_max_ice = isempty(max_values_ice) ? nothing : maximum(max_values_ice)
+    # Determine global maximum for ice and velocity separately.
+    # Guard against zero or NaN maxima (e.g. fully masked snapshots) so that
+    # CairoMakie never receives a degenerate colorrange like (0, 0).
+    global_max_ice = isempty(max_values_ice) ? nothing :
+                     max(maximum(max_values_ice), eps(Float64))
     global_max_velocity = isempty(max_values_velocity) ? nothing :
-                          maximum(max_values_velocity)
+                          max(maximum(max_values_velocity), eps(Float64))
 
     num_vars = length(variables)
     rows, cols = if num_vars == 1
@@ -145,19 +266,13 @@ function plot_glacier_heatmaps(
         ax_row = div(i - 1, 2) + 1
         ax_col = 2 * (rem(i - 1, 2)) + 1
         ax = Axis(fig[ax_row, ax_col], aspect = DataAspect())
-        data = deepcopy(getfield(results, var))
+        data = _resolve_temporal_snapshot(getfield(results, var), timeIdx; varname = string(var))
         title, unit = get(title_mapping, string(var), (string(var), ""))
-
-        if typeof(data) <: Vector
-            @assert length(data)>0 "Variable $(var) is an empty vector"
-            @assert (isnothing(timeIdx)) || (size(data, 1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(data,1))"
-            data = isnothing(timeIdx) ? data[end] : data[timeIdx]
-        end
+        data = copy(data)
 
         nx, ny = size(data)
         colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
 
-        mask = results.H[begin] .> 0.0
         if (var in ice_thickness_vars) || (var in velocity_vars)
             data[.!mask] .= NaN
         end
@@ -167,59 +282,36 @@ function plot_glacier_heatmaps(
         end
 
         # Apply global_max_ice to ice thickness variables and global_max_velocity to velocity variables
+        cb_ticks = nothing
         if var in ice_thickness_vars
+            colorrange = (0.0, global_max_ice)
             hm = heatmap!(ax, reverseForHeatmap(data, x, y),
-                colormap = colormap, colorrange = (0, global_max_ice))
+                colormap = colormap, colorrange = colorrange)
+            cb_ticks = _fixed_colorbar_ticks(colorrange[1], colorrange[2])
         elseif var in velocity_vars
+            colorrange = (0.0, global_max_velocity)
             hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap = colormap,
-                colorrange = (0, global_max_velocity))
+                colorrange = colorrange)
+            cb_ticks = _fixed_colorbar_ticks(colorrange[1], colorrange[2])
         else
             hm = heatmap!(ax, reverseForHeatmap(data, x, y), colormap = colormap)
+            finite_vals = filter(isfinite, vec(data))
+            if !isempty(finite_vals)
+                lower, upper = extrema(finite_vals)
+                cb_ticks = _fixed_colorbar_ticks(lower, upper)
+            end
         end
-        cb = Colorbar(fig[ax_row, ax_col + 1], hm)
+        cb_kwargs = isnothing(cb_ticks) ? NamedTuple() : (; ticks = cb_ticks)
+        cb = Colorbar(fig[ax_row, ax_col + 1], hm; cb_kwargs...)
         Observables.connect!(
             cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
         Label(fig[ax_row, ax_col + 1], "$var ($unit)",
             fontsize = 14, valign = :top, padding = (0, -25))
 
-        if plotContour
-            for curve in ctr.lines
-                xs = first.(curve.vertices)
-                ys = last.(curve.vertices)
-                lines!(ax, xs, ys, color = :black, linewidth = 1)
-            end
-        end
-
+        _overlay_contour!(ax, meta.contour)
         ax.title = "$title"
-        ax.xlabel = "Longitude"
-        ax.ylabel = "Latitude"
-        ax.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
-        ax.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
-        ax.yticklabelrotation = π/2
-        ax.ylabelpadding = 5
-        ax.yticklabelalign = (:center, :bottom)
-
-        scale_width = 0.10*nx
-        scale_number = round(Δx * scale_width / 1000; digits = 1) # Convert to km
-        if scale_text_size === nothing
-            textsize = if num_vars == 1
-                1.2*scale_width
-            elseif num_vars == 2
-                0.9*scale_width
-            else
-                0.5*scale_width
-            end
-        else
-            textsize = scale_text_size
-        end
-
-        poly!(ax, Rect(nx - round(0.15*nx), round(0.075*ny), scale_width, scale_width/10),
-            color = :black)
-        text!(ax,
-            "$scale_number km",
-            position = (
-                nx - round(0.15*nx) + scale_width/16, round(0.075*ny) + scale_width/10),
-            fontsize = textsize)
+        _decorate_geo_axis!(ax, nx, ny, lon, lat, Δx;
+            scale_text_size = scale_text_size, num_vars = num_vars)
     end
 
     fig[0, :] = Label(fig, "$rgi_id")
@@ -269,27 +361,8 @@ function plot_glacier_quivers(
                 Dict{Symbol, Any}(:size => figsize)
 
     # Extract metadata about the glacier
-    lon = results.lon
-    lat = results.lat
-    x = results.x
-    y = results.y
-    rgi_id = results.rgi_id
-    Δx = results.Δx
-
-    velocity_vars = [:V, :V_ref] # Velocity variables
-
-    for var in intersect(velocity_vars, variables)  # Check only given vars for maximum
-        if hasproperty(results, var)
-            current_matrix = getfield(results, var)
-            if !isnothing(current_matrix) && !isempty(current_matrix)
-                if typeof(current_matrix) <: Vector
-                    @assert length(current_matrix)>0 "Variable $(var) is an empty vector"
-                    @assert (isnothing(timeIdx)) || (size(current_matrix, 1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(current_matrix,1))"
-                else
-                end
-            end
-        end
-    end
+    meta = _results_plot_metadata(results; plotContour = false)
+    x, y = meta.x, meta.y
 
     num_vars = length(variables)
     rows, cols = if num_vars == 1
@@ -304,23 +377,17 @@ function plot_glacier_quivers(
     fig = Figure(; figKwargs...)
     for (ax_col, var) in enumerate(variables)
         ax = Axis(fig[1, ax_col], aspect = DataAspect())
-        data = getfield(results, var)
-        title, unit = get(title_mapping, string(var), (string(var), ""))
+        title = get(title_mapping, string(var), (string(var), ""))[1]
 
-        if typeof(data) <: Vector
-            @assert length(data)>0 "Variable $(var) is an empty vector"
-            @assert (isnothing(timeIdx)) || (size(data, 1)>=timeIdx) "The provided index=$(timeIdx) is greater than the size of the vector for $(var) which is $(size(data,1))"
-            data = isnothing(timeIdx) ? data[end] : data[timeIdx]
-            Vx = getfield(results, var == :V ? :Vx : :Vx_ref)
-            Vy = getfield(results, var == :V ? :Vy : :Vy_ref)
-            dataVx = isnothing(timeIdx) ? Vx[end] : Vx[timeIdx]
-            dataVy = isnothing(timeIdx) ? Vy[end] : Vy[timeIdx]
-        end
+        Vx = _resolve_temporal_snapshot(getfield(results, var == :V ? :Vx : :Vx_ref),
+            timeIdx; varname = string(var) * "x")
+        Vy = _resolve_temporal_snapshot(getfield(results, var == :V ? :Vy : :Vy_ref),
+            timeIdx; varname = string(var) * "y")
 
-        X, Y=Sleipnir.meshgrid(x, y)
+        X, Y = meshgrid(x, y)
 
         positions = Point2f.(reshape(X, :), reshape(Y, :))
-        directions = Vec2f.(dataVx, -dataVy)
+        directions = Vec2f.(Vx, -Vy)
         arrows2d!(
             ax, positions, directions; tiplength = tiplength, lengthscale = lengthscale)
 
@@ -396,7 +463,7 @@ function plot_glacier_difference_evolution(
     Δx = results.Δx
 
     # Check the shape of the extracted data
-    @assert typeof(data) == Vector{Matrix{Float64}} "Only temporal quantities can be used in this function."
+    @assert data isa AbstractVector{<:AbstractMatrix{<:AbstractFloat}} "Only temporal quantities can be used in this function."
 
     # Print plot information
     variable_title = get(title_mapping, variables[1], variables[1])
@@ -450,32 +517,9 @@ function plot_glacier_difference_evolution(
                 ax_diff, reverseForHeatmap(data_diff, x, y), colormap = :redsblues,
                 colorrange = (-max_abs_value, max_abs_value))
 
-            ax_diff.xlabel = "Longitude"
-            ax_diff.ylabel = "Latitude"
-            ax_diff.xticks=([round(nx/2)], ["$(round(lon;digits=6)) °"])
-            ax_diff.yticks=([round(ny/2)], ["$(round(lat;digits=6)) °"])
-            ax_diff.yticklabelrotation = π/2
-            ax_diff.ylabelpadding = 5
-            ax_diff.yticklabelalign = (:center, :bottom)
+            _decorate_geo_axis!(ax_diff, nx, ny, lon, lat, Δx;
+                num_vars = length(metrics))
 
-            # Width of the scale division in heatmap data units
-            scale_width = 0.10*nx
-            scale_number = round(Δx * scale_width / 1000; digits = 1)#to km
-
-            if metrics == ["difference"]
-                textsize=1.2*scale_width
-            else
-                textsize=0.9*scale_width
-            end
-
-            # Position and draw the scale division rectangle
-            poly!(ax_diff,
-                Rect(nx - round(0.15*nx), round(0.075*ny), scale_width, scale_width/10),
-                color = :black)
-            text!(ax_diff, "$scale_number km",
-                position = (
-                    nx - round(0.15*nx)+scale_width/16, round(0.075*ny)+scale_width/10),
-                fontsize = textsize)
             cb = Colorbar(fig[1, 2], hm_diff)
             Observables.connect!(
                 cb.height, @lift CairoMakie.Fixed($(viewport(ax_diff.scene)).widths[2]))
@@ -535,9 +579,7 @@ function plot_glacier_statistics_evolution(
     data = getfield(results, variables[1])
 
     # Check the shape of the extracted data
-    if typeof(data) ≠ Vector{Matrix{Float64}}
-        error("Only temporal quantities can be used in this function.")
-    end
+    @assert data isa AbstractVector{<:AbstractMatrix{<:AbstractFloat}} "Only temporal quantities can be used in this function."
 
     # Check for valid metrics
     valid_metrics = ["average", "median", "max", "std", "min"]
@@ -563,9 +605,13 @@ function plot_glacier_statistics_evolution(
 
     # If "average" or "std" is in metrics, calculate them
     if "average" in metrics || "std" in metrics
-        avg_vals = [mean(filter(x -> !(isnan(x)) && x >= threshold, matrix[:]))
+        avg_vals = [let v = filter(x -> !isnan(x) && x >= threshold, matrix[:])
+                        isempty(v) ? NaN : mean(v)
+                    end
                     for matrix in data]
-        std_vals = [std(filter(x -> !(isnan(x)) && x >= threshold, matrix[:]))
+        std_vals = [let v = filter(x -> !isnan(x) && x >= threshold, matrix[:])
+                        isempty(v) ? NaN : std(v)
+                    end
                     for matrix in data]
     end
 
@@ -578,15 +624,21 @@ function plot_glacier_statistics_evolution(
             end
             lines!(ax, t, avg_vals, label = "Average")
         elseif metric == "median"
-            median_vals = [median(filter(x -> !isnan(x) && x >= threshold, matrix[:]))
+            median_vals = [let v = filter(x -> !isnan(x) && x >= threshold, matrix[:])
+                               isempty(v) ? NaN : median(v)
+                           end
                            for matrix in data]
             lines!(ax, t, median_vals, label = "Median")
         elseif metric == "min"
-            min_vals = [minimum(filter(x -> !isnan(x) && x >= threshold, matrix[:]))
+            min_vals = [let v = filter(x -> !isnan(x) && x >= threshold, matrix[:])
+                            isempty(v) ? NaN : minimum(v)
+                        end
                         for matrix in data]
             lines!(ax, t, min_vals, linestyle = :dot, label = "Min")
         elseif metric == "max"
-            max_vals = [maximum(filter(x -> !isnan(x) && x >= threshold, matrix[:]))
+            max_vals = [let v = filter(x -> !isnan(x) && x >= threshold, matrix[:])
+                            isempty(v) ? NaN : maximum(v)
+                        end
                         for matrix in data]
             lines!(ax, t, max_vals, linestyle = :dot, label = "Max")
         end
@@ -649,9 +701,7 @@ function plot_glacier_integrated_volume(
     data = getfield(results, variables[1])
 
     # Check the shape of the extracted data
-    if typeof(data) ≠ Vector{Matrix{Float64}}
-        error("Only temporal quantities can be used in this function.")
-    end
+    @assert data isa AbstractVector{<:AbstractMatrix{<:AbstractFloat}} "Only temporal quantities can be used in this function."
 
     # Calculate integrated ice volume for each time step
     integrated_ice_volume = [sum(matrix) * area for matrix in data]/(10^9)  # Multiply by area and convert to km^3
@@ -752,45 +802,29 @@ function plot_bias(
     return fig
 end
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Router
+# ─────────────────────────────────────────────────────────────────────────────
+
 """
-    plot_glacier(results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...) -> Figure
+    plot_glacier(results, plot_type, variables; kwargs...) -> Figure
 
-Generate various types of plots for glacier data.
+High-level entry point that dispatches to specific glacier plotting functions
+based on `plot_type`:
 
-# Arguments
-
-  - `results::Results`: The results object containing the data to be plotted.
-
-  - `plot_type::String`: Type of plot to generate. Options are:
-
-      + "heatmaps": Heatmaps for glacier variables like `:H`, `:H₀`, `:S`, `:B`, `:V`, `:Vx`, `:Vy`, `:V_ref`.
-      + "evolution difference": Temporal difference metrics (between start and end) for a variable, with optional metrics like "hist" (histogram) and "difference".
-      + "evolution statistics": Temporal statistical metrics for a variable, with optional metrics like "average", "median", "min", "max", and "std".
-      + "integrated volume": Temporal evolution of the integrated ice volume for a variable.
-      + "bias": Scatter plot to visualize the bias between two variables.
-      + "dem": Glacier surface elevation DEM (`results.S`) with contour overlay.
-
-  - `variables::Vector{Symbol}`: Variables to be plotted, e.g., `:H`.
-
-# Optional Keyword Arguments
-
-  - `tspan`: A tuple representing the start and end time for the simulation.
-  - `metrics`: Metrics to visualize, e.g., `["average"]` for statistics, `["difference"]` for difference.
-  - `scale_text_size::Union{Nothing,Float64}`: Optional argument to scale the text size for heatmaps.
-  - `threshold::Vector{F}`: Threshold values for filtering data in bias plots.
-  - `figsize::Tuple{Int64, Int64}`: Size of the figure.
-
-# Returns
-
-  - A `Figure` object containing the desired visualization.
-
-# Notes
-
-  - Ensure the `variables` and `kwargs` match the requirements of the specified `plot_type`.
-  - The function routes requests to specific plotting functions based on `plot_type`.
+  - `"heatmaps"` → `plot_glacier_heatmaps`
+  - `"quivers"` → `plot_glacier_quivers`
+  - `"evolution difference"` → `plot_glacier_difference_evolution`
+  - `"evolution statistics"` → `plot_glacier_statistics_evolution`
+  - `"integrated volume"` → `plot_glacier_integrated_volume`
+  - `"bias"` → `plot_bias`
+  - `"dem"` → `plot_glacier_dem`
 """
 function plot_glacier(
-        results::Results, plot_type::String, variables::Vector{Symbol}; kwargs...)
+        results::Results,
+        plot_type::Union{String, Symbol},
+        variables::Vector{Symbol};
+        kwargs...)
     title_mapping = Dict(
         "H" => ("Predicted ice thickness", "m", :YlGnBu),
         "H₀" => ("Ice thickness", "m", :YlGnBu),
@@ -806,23 +840,25 @@ function plot_glacier(
         "V_diff" => ("Ice surface velocity difference", "m/y", :RdBu)
     )
 
-    if plot_type == "heatmaps"
+    plot_type_s = plot_type isa Symbol ? String(plot_type) : plot_type
+
+    if plot_type_s == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "quivers"
+    elseif plot_type_s == "quivers"
         return plot_glacier_quivers(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "evolution difference"
+    elseif plot_type_s == "evolution difference"
         return plot_glacier_difference_evolution(
             results, variables, title_mapping; kwargs...)
-    elseif plot_type == "evolution statistics"
+    elseif plot_type_s == "evolution statistics"
         return plot_glacier_statistics_evolution(
             results, variables, title_mapping; kwargs...)
-    elseif plot_type == "integrated volume"
+    elseif plot_type_s == "integrated volume"
         return plot_glacier_integrated_volume(results, variables, title_mapping; kwargs...)
-    elseif plot_type == "bias"
+    elseif plot_type_s == "bias"
         return plot_bias(results, variables; kwargs...)
-    elseif plot_type == "dem"
+    elseif plot_type_s == "dem"
         return plot_glacier_dem(results; kwargs...)
     else
-        error("Invalid plot_type: $plot_type")
+        error("Invalid plot_type: $plot_type_s")
     end
 end
