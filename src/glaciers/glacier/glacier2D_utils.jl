@@ -370,12 +370,22 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
     if params.simulation.use_velocities
-        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
-        fillNaN!(V)
-        fillNaN!(Vx)
-        fillNaN!(Vy)
+        if params.simulation.gridScalingFactor > 1
+            Vx = block_average_pad_edge_masked(
+                glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
+                params.simulation.gridScalingFactor; empty_value = 0.0)
+            Vy = block_average_pad_edge_masked(
+                glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
+                params.simulation.gridScalingFactor; empty_value = 0.0)
+            V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
+        else
+            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+            fillNaN!(V)
+            fillNaN!(Vx)
+            fillNaN!(Vy)
+        end
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
@@ -917,6 +927,50 @@ function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: Abst
     else
         return .!B_bool
     end
+end
+
+"""
+    block_average_pad_edge_masked(
+        mat::Matrix{F},
+        mask::BitMatrix,
+        n::Int;
+        empty_value::F = F(NaN),
+    ) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging `n x n` blocks intersecting with a mask, using
+edge-replication padding when the matrix dimensions are not divisible by `n`.
+Edge padding replicates the last row/column values to expand the matrix so that both
+dimensions are divisible by `n`.
+Returns a matrix of averaged values with size `(ceil(Int, X/n), ceil(Int, Y/n))`.
+The average discards values where mask is false.
+If the mask is full of falses for a given block, the average is replaced by the
+prescribed empty value.
+
+Arguments
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `mask::BitMatrix`: Mask of valid data to average.
+  - `n::Int`: Block size for downsampling.
+  - `empty_value::F`: Fallback value for blocks that do not have valid values. Defaults to NaN.
+"""
+function block_average_pad_edge_masked(
+        mat::Matrix{F},
+        mask::BitMatrix,
+        n::Int;
+        empty_value::F = F(NaN)
+) where {F <: AbstractFloat}
+    @assert size(mat) == size(mask) "mat and mask must have the same size"
+
+    mask_F = F.(mask)
+
+    sum_values = block_average_pad_edge(mat .* mask_F, n)
+    valid_frac = block_average_pad_edge(mask_F, n)
+
+    out = sum_values ./ valid_frac
+
+    out[valid_frac .== 0] .= empty_value
+
+    return out
 end
 
 """
