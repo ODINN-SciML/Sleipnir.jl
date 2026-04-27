@@ -63,7 +63,10 @@ function glacier_grid_downscaling()
     )
     )
     glacier = initialize_glaciers(["RGI60-07.00042"], params)[1]
-    @test glacier.nx==22
-    @test glacier.ny==30
-    @test size(glacier.H₀)==(glacier.nx, glacier.ny)
+    expected_size = (22, 30)
+    @test expected_size == (glacier.nx, glacier.ny)
+    @test size(glacier.H₀) == expected_size
+    @test size(glacier.V) == expected_size
+    @test size(glacier.Vx) == expected_size
+    @test size(glacier.Vy) == expected_size
 end
