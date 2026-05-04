@@ -27,8 +27,9 @@ A structure to hold simulation parameters for a simulation in ODINN.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
 """
-struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
-       AbstractParameters
+mutable struct SimulationParameters{
+    I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
+               AbstractParameters
     use_MB::Bool
     use_iceflow::Bool
     plots::Bool

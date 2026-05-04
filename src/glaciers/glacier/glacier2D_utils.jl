@@ -394,12 +394,26 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     # Initialize glacier climate
     climate = Climate2D(rgi_id, params, S, Coords)
 
+    C_init = Sleipnir.Float(0.0)
+    # Seed C once at glacier initialization for C-targeted inversions.
+    # Keep historical default (C=0) for all other targets/workflows.
+    if hasproperty(params, :UDE) && hasproperty(params.UDE, :target) &&
+       params.UDE.target == :C
+        minC = params.physical.minC
+        maxC = params.physical.maxC
+        if minC < maxC
+            C_init = Sleipnir.Float((minC + maxC) / 2)
+        else
+            @warn "initialize_glacier: expected minC < maxC for target=:C. Falling back to C=0." minC maxC
+        end
+    end
+
     return Glacier2D(
         rgi_id = rgi_id,
         name = name,
         climate = climate,
         H₀ = H₀, S = S, B = B, V = V, Vx = Vx, Vy = Vy,
-        A = Sleipnir.Float(4e-17), C = Sleipnir.Float(0.0),
+        A = Sleipnir.Float(4e-17), C = C_init,
         n = Sleipnir.Float(3.0), p = Sleipnir.Float(3.0), q = Sleipnir.Float(2.0),
         slope = slope, dist_border = dist_border,
         mask = mask, mask_loss = mask_loss,
