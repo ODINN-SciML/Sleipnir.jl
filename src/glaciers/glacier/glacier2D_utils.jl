@@ -122,6 +122,81 @@ function compute_surface_aspect(
     _, aspect = compute_surface_topography(S, Δx, Δy; window_m = window_m)
     return aspect
 end
+
+const _HUGONNET_PERIOD = "2000-01-01_2020-01-01"
+const _hugonnet_dhdt_cache =
+    Ref{Union{Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
+
+function _default_hugonnet_dhdt_path()
+    candidates = (
+        joinpath(
+            homedir(),
+            "OGGM",
+            "download_cache",
+            "cluster.klima.uni-bremen.de",
+            "~oggm",
+            "geodetic_ref_mb",
+            "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
+    )
+
+    for path in candidates
+        if isfile(path)
+            return path
+        end
+    end
+
+    return nothing
+end
+
+function _parse_hugonnet_period(period::AbstractString)
+    bounds = split(period, '_')
+    length(bounds) == 2 || return nothing
+
+    start_year = tryparse(Sleipnir.Float, first(split(bounds[1], '-')))
+    end_year = tryparse(Sleipnir.Float, first(split(bounds[2], '-')))
+
+    if isnothing(start_year) || isnothing(end_year)
+        return nothing
+    end
+
+    return (start_year, end_year)
+end
+
+function _load_hugonnet_dhdt_cache()
+    if !isnothing(_hugonnet_dhdt_cache[])
+        return _hugonnet_dhdt_cache[]
+    end
+
+    path = _default_hugonnet_dhdt_path()
+    if isnothing(path)
+        cache = Dict{String, DhdtData{Sleipnir.Float}}()
+        _hugonnet_dhdt_cache[] = cache
+        return cache
+    end
+
+    cache = Dict{String, DhdtData{Sleipnir.Float}}()
+    for row in CSV.File(path)
+        period_str = string(row.period)
+        period_str == _HUGONNET_PERIOD || continue
+        ismissing(row.dmdtda) && continue
+
+        period = _parse_hugonnet_period(period_str)
+        isnothing(period) && continue
+
+        mb = Sleipnir.Float(row.dmdtda)
+        isfinite(mb) || continue
+
+        cache[string(row.rgiid)] = DhdtData(period, mb)
+    end
+
+    _hugonnet_dhdt_cache[] = cache
+    return cache
+end
+
+function _default_hugonnet_dhdt(rgi_id::String)
+    return get(_load_hugonnet_dhdt_cache(), rgi_id, nothing)
+end
+
 """
     initialize_glaciers(
         rgi_ids::Vector{String},
@@ -405,7 +480,8 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         mask = mask, mask_loss = mask_loss,
         Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
         cenlon = cenlon, cenlat = cenlat,
-        params_projection = params_projection
+        params_projection = params_projection,
+        dhdtData = _default_hugonnet_dhdt(rgi_id)
     )
 end
 
