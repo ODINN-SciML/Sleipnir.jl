@@ -131,7 +131,7 @@ Construct a `Results` object for a glacier simulation.
   - `date1_Vref::Vector{F}`: First date of velocity acquisition. Defaults to an empty vector.
   - `date2_Vref::Vector{F}`: Second date of velocity acquisition. Defaults to an empty vector.
   - `t_dhdt::Union{Tuple{F, F}, Nothing}`: Time window of the mean surface elevation change. Defaults to `nothing` in which case if `glacier.dhdtData` exists, `glacier.dhdtData.t` is used instead.
-  - `dhdt_ref::Union{F, Nothing}`: Mean surface elevation change. Defaults to `nothing` in which case if `glacier.dhdtData` exists, `glacier.dhdtData.dhdt` is used instead.
+    - `dhdt_ref::Union{F, Nothing}`: Mean surface elevation change. Defaults to `nothing` in which case `glacier.geodetic_MB` is used when available, otherwise `glacier.dhdtData.dhdt` is used.
   - `Δx::F`: Grid spacing in the x-direction. Defaults to `glacier.Δx`.
   - `Δy::F`: Grid spacing in the y-direction. Defaults to `glacier.Δy`.
   - `lon::F`: Longitude of the glacier grid center. Defaults to `glacier.cenlon`.
@@ -179,11 +179,10 @@ function Results(glacier::G, ifm::IF;
     y = glacier.Coords["lat"]
 
     if isnothing(t_dhdt)
-        t_dhdt = isnothing(glacier.dhdtData) ?
-                 Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0)) : glacier.dhdtData.t
+        t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
     end
     if isnothing(dhdt_ref)
-        dhdt_ref = isnothing(glacier.dhdtData) ? Sleipnir.Float(0.0) : glacier.dhdtData.dhdt
+        dhdt_ref = glacier.geodetic_MB
     end
 
     # Build the results struct based on input values

@@ -51,6 +51,8 @@ manually, but rather through the `initialize_glaciers` function.
   - `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
   - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
   - `dhdtData::DHDTDATA`: Structure that is used to store the reference values of the mean glacier surface elevation change.
+    - `geodetic_MB::F`: Glacier-wide mean geodetic mass balance.
+    - `geodetic_MB_uncertainty::F`: Uncertainty associated with the geodetic mass balance.
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     THICKDATA <: Union{<:ThicknessData, Nothing},
@@ -86,6 +88,8 @@ mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     thicknessData::THICKDATA
     velocityData::SURFVELDATA
     dhdtData::DHDTDATA
+    geodetic_MB::F
+    geodetic_MB_uncertainty::F
 end
 
 """
@@ -198,7 +202,9 @@ function Glacier2D(;
         params_projection::Dict{String, Float64} = Dict{String, Float64}(),
         thicknessData::THICKDATA = nothing,
         velocityData::SURFVELDATA = nothing,
-        dhdtData::DHDTDATA = nothing
+        dhdtData::DHDTDATA = nothing,
+        geodetic_MB::F = NaN,
+        geodetic_MB_uncertainty::F = NaN
 ) where {
         F <: AbstractFloat,
         I <: Integer,
@@ -213,7 +219,8 @@ function Glacier2D(;
         slope, dist_border, mask, mask_loss, Coords,
         Δx, Δy, nx, ny,
         cenlon, cenlat, params_projection,
-        thicknessData, velocityData, dhdtData
+        thicknessData, velocityData, dhdtData,
+        geodetic_MB, geodetic_MB_uncertainty
     )
 end
 
@@ -242,11 +249,16 @@ function Glacier2D(
         glacier::Glacier2D;
         thicknessData::Union{<:ThicknessData, Nothing} = nothing,
         velocityData::Union{<:SurfaceVelocityData, Nothing} = nothing,
-        dhdtData::Union{<:DhdtData, Nothing} = nothing
+            dhdtData::Union{<:DhdtData, Nothing} = nothing,
+            geodetic_MB::Union{Sleipnir.Float, Nothing} = nothing,
+            geodetic_MB_uncertainty::Union{Sleipnir.Float, Nothing} = nothing
 )
     thicknessData = isnothing(thicknessData) ? glacier.thicknessData : thicknessData
     velocityData = isnothing(velocityData) ? glacier.velocityData : velocityData
     dhdtData = isnothing(dhdtData) ? glacier.dhdtData : dhdtData
+        geodetic_MB = isnothing(geodetic_MB) ? glacier.geodetic_MB : geodetic_MB
+        geodetic_MB_uncertainty = isnothing(geodetic_MB_uncertainty) ?
+            glacier.geodetic_MB_uncertainty : geodetic_MB_uncertainty
     return Glacier2D{
         Sleipnir.Float, Sleipnir.Int,
         typeof(glacier.climate), typeof(thicknessData), typeof(velocityData), typeof(dhdtData)
@@ -257,7 +269,8 @@ function Glacier2D(
         glacier.slope, glacier.dist_border, glacier.mask, glacier.mask_loss, glacier.Coords,
         glacier.Δx, glacier.Δy, glacier.nx, glacier.ny,
         glacier.cenlon, glacier.cenlat, glacier.params_projection,
-        thicknessData, velocityData, dhdtData
+        thicknessData, velocityData, dhdtData,
+        geodetic_MB, geodetic_MB_uncertainty
     )
 end
 
@@ -278,7 +291,9 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
         a.params_projection == b.params_projection &&
         a.thicknessData == b.thicknessData && a.velocityData == b.velocityData &&
-        a.dhdtData == b.dhdtData
+        a.dhdtData == b.dhdtData &&
+        a.geodetic_MB == b.geodetic_MB &&
+        a.geodetic_MB_uncertainty == b.geodetic_MB_uncertainty
 end
 
 function Base.:(≈)(a::Glacier2D, b::Glacier2D)
@@ -326,9 +341,10 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :cenlat => a.cenlat == b.cenlat,
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
-        :velocityData => a.velocityData ==
-                         b.velocityData
-        :dhdtData => a.dhdtData == b.dhdtData
+        :velocityData => a.velocityData == b.velocityData,
+        :dhdtData => a.dhdtData == b.dhdtData,
+        :geodetic_MB => a.geodetic_MB == b.geodetic_MB,
+        :geodetic_MB_uncertainty => a.geodetic_MB_uncertainty == b.geodetic_MB_uncertainty
     )
 end
 

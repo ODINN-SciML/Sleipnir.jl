@@ -134,13 +134,8 @@ function create_results(
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
-    if !isnothing(glacier.dhdtData)
-        dhdt_ref = glacier.dhdtData.dhdt
-        t_dhdt = glacier.dhdtData.t
-    else
-        dhdt_ref = Sleipnir.Float(0.0)
-        t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
-    end
+    dhdt_ref = glacier.geodetic_MB
+    t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
 
     results = Results(
         glacier,
