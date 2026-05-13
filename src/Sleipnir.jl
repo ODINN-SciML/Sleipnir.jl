@@ -69,6 +69,9 @@ include("glaciers/glacier/Glacier.jl")
 # defined since they depend on each other. This is why we import them afterwards
 include("glaciers/data/SurfaceVelocityData_utils.jl")
 include("glaciers/data/SurfaceVelocityMapping_utils.jl")
+include("glaciers/glacier/glacier2D_topography.jl")
+include("glaciers/glacier/glacier2D_projection.jl")
+include("glaciers/glacier/glacier2D_geodata.jl")
 include("glaciers/glacier/glacier2D_utils.jl")
 include("glaciers/climate/climate2D_utils.jl")
 
