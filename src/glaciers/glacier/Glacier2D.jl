@@ -326,9 +326,8 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :cenlat => a.cenlat == b.cenlat,
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
-        :velocityData => a.velocityData ==
-                         b.velocityData
-        :dhdtData => a.dhdtData == b.dhdtData
+        :velocityData => a.velocityData == b.velocityData,
+        :dhdtData => a.dhdtData == b.dhdtData,
     )
 end
 
