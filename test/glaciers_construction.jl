@@ -68,6 +68,6 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
             end
         end
     end
-    @test all(glaciers ≈ glaciers_ref) # Test approximate equality
-    @test all(glaciers == glaciers_ref) # Test exact equality
+    @test all(glaciers .≈ glaciers_ref) # Test approximate equality
+    @test all(glaciers .== glaciers_ref) # Test exact equality
 end
