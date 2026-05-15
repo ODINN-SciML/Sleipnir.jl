@@ -18,7 +18,7 @@ const AbstractEmptyParams = Union{AbstractParameters, Nothing}
 
 """
     mutable struct Parameters{PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
-        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
+        PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams}
 
 A mutable struct that holds various parameter sets for different aspects of a simulation or model.
 
@@ -29,7 +29,6 @@ A mutable struct that holds various parameter sets for different aspects of a si
   - `hyper::PHY`: Hyperparameters.
   - `solver::PSOL`: Solver parameters.
   - `UDE::PUDE`: Universal Differential Equation (UDE) parameters.
-  - `inversion::PINV`: Inversion parameters.
 
 # Type Parameters
 
@@ -38,17 +37,15 @@ A mutable struct that holds various parameter sets for different aspects of a si
   - `PHY`: Type of the hyperparameters, must be a subtype of `AbstractEmptyParams`.
   - `PSOL`: Type of the solver parameters, must be a subtype of `AbstractEmptyParams`.
   - `PUDE`: Type of the UDE parameters, must be a subtype of `AbstractEmptyParams`.
-  - `PINV`: Type of the inversion parameters, must be a subtype of `AbstractEmptyParams`.
 """
 mutable struct Parameters{
     PPHY <: AbstractEmptyParams, PSIM <: AbstractEmptyParams, PHY <: AbstractEmptyParams,
-    PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams, PINV <: AbstractEmptyParams}
+    PSOL <: AbstractEmptyParams, PUDE <: AbstractEmptyParams}
     physical::PPHY
     simulation::PSIM
     hyper::PHY
     solver::PSOL
     UDE::PUDE
-    inversion::PINV
 end
 
 include("PhysicalParameters.jl")
@@ -80,7 +77,7 @@ function Parameters(;
     # Build the parameters based on all the subtypes of parameters
     parameters = Parameters(
         physical, simulation,
-        nothing, nothing, nothing, nothing)
+        nothing, nothing, nothing)
 
     enable_multiprocessing(parameters.simulation.multiprocessing ?
                            parameters.simulation.workers : 0)
@@ -91,7 +88,7 @@ end
 function Base.:(==)(a::Parameters, b::Parameters)
     a.physical == b.physical && a.simulation == b.simulation &&
         a.solver == b.solver && a.hyper == b.hyper &&
-        a.UDE == b.UDE && a.inversion == b.inversion
+        a.UDE == b.UDE
 end
 
 # Display setup
