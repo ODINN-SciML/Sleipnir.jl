@@ -1,4 +1,9 @@
 
+function glaciers2D_simple_constructor()
+    glacier = Glacier2D()
+    println(glacier)
+end
+
 function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bool = false)
     rgi_paths = get_rgi_paths()
     if use_glathida_data
@@ -63,5 +68,6 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
             end
         end
     end
-    @test all(glaciers == glaciers_ref)
+    @test all(glaciers ≈ glaciers_ref) # Test approximate equality
+    @test all(glaciers == glaciers_ref) # Test exact equality
 end
