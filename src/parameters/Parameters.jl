@@ -93,3 +93,124 @@ function Base.:(==)(a::Parameters, b::Parameters)
         a.solver == b.solver && a.hyper == b.hyper &&
         a.UDE == b.UDE && a.inversion == b.inversion
 end
+
+# Display setup
+Base.show(io::IO, ::MIME"text/plain", params::Parameters) = Base.show(io, params)
+function Base.show(io::IO, params::Parameters)
+    label(s) = printstyled(io, rpad(s, 14); color = :light_black)
+    sep() = printstyled(io, " · "; color = :light_black)
+    field(s) = printstyled(io, s; color = :light_black)
+    val(s) = print(io, s)
+    hint(s) = printstyled(io, s; color = :light_black)
+    check(b) = b ? "\e[32m✓\e[0m" : "\e[31m✗\e[0m"
+
+    println(io, "Parameters")
+
+    # Physical
+    label("  physical")
+    if isnothing(params.physical)
+        hint("(nothing)")
+    else
+        p = params.physical
+        field("ρ");
+        print(io, " = ");
+        val("$(p.ρ)")
+        sep()
+        field("A");
+        print(io, " ∈ [");
+        val("$(p.minA)");
+        print(io, ", ");
+        val("$(p.maxA)");
+        print(io, "]")
+        sep()
+        field("C");
+        print(io, " ∈ [");
+        val("$(p.minC)");
+        print(io, ", ");
+        val("$(p.maxC)");
+        print(io, "]")
+    end
+    println(io)
+
+    # Simulation
+    label("  simulation")
+    if isnothing(params.simulation)
+        hint("(nothing)")
+    else
+        s = params.simulation
+        field("tspan");
+        print(io, " = ");
+        val("$(s.tspan)")
+        sep()
+        print(io, check(s.use_iceflow));
+        field("iceflow")
+        print(io, " ")
+        print(io, check(s.use_MB));
+        field("MB")
+        print(io, " ")
+        print(io, check(s.use_velocities));
+        field("velocities")
+    end
+    println(io)
+
+    # Solver
+    label("  solver")
+    if isnothing(params.solver)
+        hint("(nothing)")
+    else
+        sv = params.solver
+        val("$(nameof(typeof(sv.solver)))")
+        sep()
+        field("reltol");
+        print(io, " = ");
+        val("$(sv.reltol)")
+        sep()
+        field("maxiters");
+        print(io, " = ");
+        val("$(sv.maxiters)")
+    end
+    println(io)
+
+    # Hyper
+    label("  hyper")
+    if isnothing(params.hyper)
+        hint("(nothing)")
+    else
+        h = params.hyper
+        field("epochs");
+        print(io, " = ");
+        val("$(h.epochs)")
+        sep()
+        field("batch_size");
+        print(io, " = ");
+        val("$(h.batch_size)")
+        sep()
+        if h.optimizer isa Vector
+            opt_names = join([nameof(typeof(o)) for o in h.optimizer], ", ")
+            val("[$(opt_names)]")
+        else
+            val("$(nameof(typeof(h.optimizer)))")
+        end
+    end
+    println(io)
+
+    # UDE
+    label("  UDE")
+    if isnothing(params.UDE)
+        hint("(nothing)")
+    else
+        u = params.UDE
+        field("target");
+        print(io, " = ")
+        isnothing(u.target) ? hint("(nothing)") : val(":$(u.target)")
+        sep()
+        val("\"$(u.optimization_method)\"")
+        sep()
+        isnothing(u.grad) ? hint("(nothing)") : val("$(nameof(typeof(u.grad)))")
+        sep()
+        field("loss");
+        print(io, " = ");
+        val("$(nameof(typeof(u.empirical_loss_function)))")
+    end
+    println(io)
+end

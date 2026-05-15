@@ -180,3 +180,109 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.gridScalingFactor == b.gridScalingFactor &&
         a.catch_errors == b.catch_errors
 end
+
+# Display setup
+Base.show(io::IO, ::MIME"text/plain", params::SimulationParameters) = Base.show(io, params)
+function Base.show(io::IO, params::SimulationParameters)
+    # Helpers
+    check(b) = b ? "\e[32m✓\e[0m" : "\e[31m✗\e[0m"
+    label(s) = printstyled(io, rpad(s, 10); color = :light_black)
+    sep() = printstyled(io, " · "; color = :light_black)
+    field(s) = printstyled(io, s; color = :light_black)
+    val(s) = print(io, s)
+    hint(s) = printstyled(io, s; color = :light_black)
+
+    println(io, "SimulationParameters")
+
+    # Time
+    label("  Time")
+    field("tspan");
+    print(io, " = ");
+    val("$(params.tspan)")
+    sep()
+    field("step_MB");
+    print(io, " = ");
+    val("$(round(params.step_MB; digits=4))")
+    hint(" yr")
+    println(io)
+
+    # Physics
+    label("  Physics")
+    print(io, check(params.use_iceflow));
+    field("iceflow")
+    sep()
+    print(io, check(params.use_MB));
+    field("mass balance")
+    sep()
+    print(io, check(params.use_velocities));
+    field("velocities")
+    sep()
+    field("f_surf");
+    print(io, " = ");
+    val("$(params.f_surface_velocity_factor)")
+    sep()
+    print(io, check(params.plots));
+    field("plots")
+    println(io)
+
+    # Data
+    label("  Data")
+    field("ice_thickness");
+    print(io, " = ");
+    val(":$(params.ice_thickness_source)")
+    sep()
+    field("climate");
+    print(io, " = ");
+    val(":$(params.climate_data_source)")
+    sep()
+    field("mapping");
+    print(io, " = ");
+    val("$(typeof(params.mapping))")
+    println(io)
+
+    # Compute
+    label("  Compute")
+    print(io, check(params.multiprocessing));
+    field("multiprocessing")
+    if params.multiprocessing
+        hint(" ($(params.workers) workers)")
+    end
+    sep()
+    field("gridScalingFactor");
+    print(io, " = ");
+    val("$(params.gridScalingFactor)")
+    if params.gridScalingFactor > 1
+        hint(" (downscaled)")
+    end
+    println(io)
+
+    # Paths
+    label("  Paths")
+    field("working_dir");
+    print(io, " = ")
+    val(isempty(params.working_dir) ? "(empty)" : "\"$(params.working_dir)\"")
+    sep()
+    field("rgi_paths");
+    print(io, " = ")
+    n = length(params.rgi_paths)
+    n == 0 ? hint("(empty)") : hint("$n $(n == 1 ? "entry" : "entries")")
+    println(io)
+
+    # Flags (only when non-default)
+    extra_flags = filter(((name, val),) -> val,
+        [
+            "test_mode" => params.test_mode,
+            "catch_errors" => params.catch_errors,
+            "use_glathida_data" => params.use_glathida_data,
+            "overwrite_climate" => params.overwrite_climate
+        ])
+    if !isempty(extra_flags)
+        label("  Flags")
+        for (i, (name, _)) in enumerate(extra_flags)
+            i > 1 && sep()
+            print(io, check(true));
+            field(name)
+        end
+        println(io)
+    end
+end

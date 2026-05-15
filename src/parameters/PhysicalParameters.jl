@@ -95,3 +95,75 @@ function Base.:(==)(a::PhysicalParameters, b::PhysicalParameters)
         a.maxTlaw == b.maxTlaw &&
         a.noise_A_magnitude == b.noise_A_magnitude
 end
+
+# Display setup
+Base.show(io::IO, ::MIME"text/plain", params::PhysicalParameters) = Base.show(io, params)
+function Base.show(io::IO, params::PhysicalParameters)
+    label(s) = printstyled(io, rpad(s, 12); color = :light_black)
+    sep() = printstyled(io, " · "; color = :light_black)
+    field(s) = printstyled(io, s; color = :light_black)
+    val(s) = print(io, s)
+    hint(s) = printstyled(io, s; color = :light_black)
+
+    println(io, "PhysicalParameters")
+
+    # Constants
+    label("  Constants")
+    field("ρ");
+    print(io, " = ");
+    val("$(params.ρ)");
+    hint(" kg m⁻³")
+    sep()
+    field("g");
+    print(io, " = ");
+    val("$(params.g)");
+    hint(" m s⁻²")
+    sep()
+    field("η₀");
+    print(io, " = ");
+    val("$(params.η₀)")
+    println(io)
+
+    # Glen A
+    label("  Glen A")
+    field("min");
+    print(io, " = ");
+    val("$(params.minA)")
+    sep()
+    field("max");
+    print(io, " = ");
+    val("$(params.maxA)");
+    hint(" Pa⁻³ s⁻¹")
+    println(io)
+
+    # Sliding C
+    label("  Sliding C")
+    field("min");
+    print(io, " = ");
+    val("$(params.minC)")
+    sep()
+    field("max");
+    print(io, " = ");
+    val("$(params.maxC)")
+    println(io)
+
+    # Temp T
+    label("  Temp T")
+    field("min");
+    print(io, " = ");
+    val("$(params.minTlaw)");
+    hint(" °C")
+    sep()
+    field("max");
+    print(io, " = ");
+    val("$(params.maxTlaw)");
+    hint(" °C")
+    println(io)
+
+    # Numerics
+    label("  Numerics")
+    field("ϵ");
+    print(io, " = ");
+    val("$(params.ϵ)")
+    println(io)
+end
