@@ -320,6 +320,7 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :mask_loss => a.mask_loss == b.mask_loss,
         :Coords => a.Coords == b.Coords,
         :Δx => a.Δx == b.Δx,
+        :Δy => a.Δy == b.Δy,
         :nx => a.nx == b.nx,
         :ny => a.ny == b.ny,
         :cenlon => a.cenlon == b.cenlon,
@@ -327,7 +328,7 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
         :velocityData => a.velocityData == b.velocityData,
-        :dhdtData => a.dhdtData == b.dhdtData,
+        :dhdtData => a.dhdtData == b.dhdtData
     )
 end
 
