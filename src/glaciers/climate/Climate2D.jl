@@ -281,9 +281,9 @@ function diffToDict(a::Climate2D, b::Climate2D)
         :climate_raw_step => a.climate_raw_step == b.climate_raw_step,
         :climate_step => a.climate_step == b.climate_step,
         :climate_2D_step => a.climate_2D_step == b.climate_2D_step,
-        :longterm_temps_scalar => a.longterm_temps_scalar == b.longterm_temps_scalar,
-        :longterm_temps_gridded => a.longterm_temps_gridded == b.longterm_temps_gridded,
-        :avg_temps => a.avg_temps == b.avg_temps,
+        :longterm_temps_scalar => a.longterm_temps_scalar ≈ b.longterm_temps_scalar,
+        :longterm_temps_gridded => a.longterm_temps_gridded ≈ b.longterm_temps_gridded,
+        :avg_temps => a.avg_temps ≈ b.avg_temps,
         :avg_gradients => a.avg_gradients == b.avg_gradients,
         :ref_hgt => a.ref_hgt == b.ref_hgt,
         :climate_data_source => a.climate_data_source == b.climate_data_source
