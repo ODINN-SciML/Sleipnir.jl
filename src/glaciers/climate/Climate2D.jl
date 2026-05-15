@@ -266,6 +266,8 @@ end
 function Base.:(==)(a::Climate2D, b::Climate2D)
     a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
         a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
+        # Some properties are checked approximatively because of numerical rounding
+        # varying depending on the platform, which results in different values
         a.longterm_temps_scalar ≈ b.longterm_temps_scalar &&
         a.longterm_temps_gridded ≈ b.longterm_temps_gridded &&
         a.avg_temps ≈ b.avg_temps &&
@@ -290,7 +292,8 @@ end
 
 """
     DummyClimate2D(;
-        longterm_temps::Vector{F} = []
+        longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
+        longterm_temps_gridded::Matrix{F} = Matrix{Sleipnir.Float}(zeros(0, 0))
     ) where {F <: AbstractFloat}
 
 Dummy climate initialization for very specific use cases where we don't have climate
@@ -300,7 +303,8 @@ It returns a minimalistic Climate2D instance.
 
 Arguments:
 
-  - `longterm_temps::Vector{F}`: Long term temperatures.
+  - `longterm_temps_scalar::Vector{F}`: Scalar long term temperatures.
+  - `longterm_temps_gridded::Matrix{F}`: Distributed long term temperatures (matrix).
 """
 function DummyClimate2D(;
         longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
