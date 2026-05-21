@@ -75,7 +75,7 @@ function Parameters(;
 )
 
     # Build the parameters based on all the subtypes of parameters
-    parameters = Parameters(
+    parameters = Parameters{typeof(physical), typeof(simulation), Nothing, Nothing, Nothing}(
         physical, simulation,
         nothing, nothing, nothing)
 
@@ -94,120 +94,121 @@ end
 # Display setup
 Base.show(io::IO, ::MIME"text/plain", params::Parameters) = Base.show(io, params)
 function Base.show(io::IO, params::Parameters)
-    label(s) = printstyled(io, rpad(s, 14); color = :light_black)
-    sep() = printstyled(io, " · "; color = :light_black)
-    field(s) = printstyled(io, s; color = :light_black)
-    val(s) = print(io, s)
-    hint(s) = printstyled(io, s; color = :light_black)
-    check(b) = b ? "\e[32m✓\e[0m" : "\e[31m✗\e[0m"
+    pad = 14
 
     println(io, "Parameters")
 
     # Physical
-    label("  physical")
+    label(io, "  physical", pad)
     if isnothing(params.physical)
-        hint("(nothing)")
+        hint(io, "(nothing)")
     else
         p = params.physical
-        field("ρ");
+        field(io, "ρ");
         print(io, " = ");
-        val("$(p.ρ)")
-        sep()
-        field("A");
+        val(io, "$(p.ρ)")
+        sep(io)
+        field(io, "A");
         print(io, " ∈ [");
-        val("$(p.minA)");
+        val(io, "$(p.minA)");
         print(io, ", ");
-        val("$(p.maxA)");
+        val(io, "$(p.maxA)");
         print(io, "]")
-        sep()
-        field("C");
+        sep(io)
+        field(io, "C");
         print(io, " ∈ [");
-        val("$(p.minC)");
+        val(io, "$(p.minC)");
         print(io, ", ");
-        val("$(p.maxC)");
+        val(io, "$(p.maxC)");
         print(io, "]")
     end
     println(io)
 
     # Simulation
-    label("  simulation")
+    label(io, "  simulation", pad)
     if isnothing(params.simulation)
-        hint("(nothing)")
+        hint(io, "(nothing)")
     else
         s = params.simulation
-        field("tspan");
+        field(io, "tspan");
         print(io, " = ");
-        val("$(s.tspan)")
-        sep()
+        val(io, "$(s.tspan)")
+        sep(io)
         print(io, check(s.use_iceflow));
-        field("iceflow")
+        field(io, "iceflow")
         print(io, " ")
         print(io, check(s.use_MB));
-        field("MB")
+        field(io, "MB")
         print(io, " ")
         print(io, check(s.use_velocities));
-        field("velocities")
+        field(io, "velocities")
     end
     println(io)
 
     # Solver
-    label("  solver")
+    label(io, "  solver", pad)
     if isnothing(params.solver)
-        hint("(nothing)")
+        hint(io, "(nothing)")
     else
         sv = params.solver
-        val("$(nameof(typeof(sv.solver)))")
-        sep()
-        field("reltol");
+        val(io, "$(nameof(typeof(sv.solver)))")
+        sep(io)
+        field(io, "reltol");
         print(io, " = ");
-        val("$(sv.reltol)")
-        sep()
-        field("maxiters");
+        val(io, "$(sv.reltol)")
+        sep(io)
+        field(io, "maxiters");
         print(io, " = ");
-        val("$(sv.maxiters)")
+        val(io, "$(sv.maxiters)")
     end
     println(io)
 
     # Hyper
-    label("  hyper")
+    label(io, "  hyper", pad)
     if isnothing(params.hyper)
-        hint("(nothing)")
+        hint(io, "(nothing)")
     else
         h = params.hyper
-        field("epochs");
+        field(io, "epochs");
         print(io, " = ");
-        val("$(h.epochs)")
-        sep()
-        field("batch_size");
+        val(io, "$(h.epochs)")
+        sep(io)
+        field(io, "batch_size");
         print(io, " = ");
-        val("$(h.batch_size)")
-        sep()
+        val(io, "$(h.batch_size)")
+        sep(io)
         if h.optimizer isa Vector
-            opt_names = join([nameof(typeof(o)) for o in h.optimizer], ", ")
-            val("[$(opt_names)]")
+            val(io, "[")
+            first = true
+            for o in h.optimizer
+                first || val(io, ", ")
+                first = false
+                val(io, nameof(typeof(o)))
+            end
+            val(io, "]")
         else
-            val("$(nameof(typeof(h.optimizer)))")
+            val(io, "$(nameof(typeof(h.optimizer)))")
         end
     end
     println(io)
 
     # UDE
-    label("  UDE")
+    label(io, "  UDE", pad)
     if isnothing(params.UDE)
-        hint("(nothing)")
+        hint(io, "(nothing)")
     else
         u = params.UDE
-        field("target");
+        field(io, "target");
         print(io, " = ")
-        isnothing(u.target) ? hint("(nothing)") : val(":$(u.target)")
-        sep()
-        val("\"$(u.optimization_method)\"")
-        sep()
-        isnothing(u.grad) ? hint("(nothing)") : val("$(nameof(typeof(u.grad)))")
-        sep()
-        field("loss");
+        isnothing(u.target) ? hint(io, "(nothing)") : val(io, ":$(u.target)")
+        sep(io)
+        val(io, "\"$(u.optimization_method)\"")
+        sep(io)
+        isnothing(u.grad) ? hint(io, "(nothing)") : val(io, "$(nameof(typeof(u.grad)))")
+        sep(io)
+        field(io, "loss");
         print(io, " = ");
-        val("$(nameof(typeof(u.empirical_loss_function)))")
+        val(io, "$(nameof(typeof(u.empirical_loss_function)))")
     end
     println(io)
 end

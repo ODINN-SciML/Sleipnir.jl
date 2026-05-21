@@ -92,78 +92,84 @@ function Base.:(==)(a::PhysicalParameters, b::PhysicalParameters)
         a.ϵ == b.ϵ && a.η₀ == b.η₀ &&
         a.maxA == b.maxA && a.minA == b.minA &&
         a.minC == b.minC && a.maxC == b.maxC &&
-        a.maxTlaw == b.maxTlaw &&
+        a.minTlaw == b.minTlaw && a.maxTlaw == b.maxTlaw &&
         a.noise_A_magnitude == b.noise_A_magnitude
 end
+
+# Show helpers
+# Don't define them as closures over io, otherwise serialization with multiprocessing will fail
+label(io, s, pad) = printstyled(io, rpad(s, pad); color = :light_black)
+sep(io) = printstyled(io, " · "; color = :light_black)
+field(io, s) = printstyled(io, s; color = :light_black)
+val(io, s) = print(io, s)
+hint(io, s) = printstyled(io, s; color = :light_black)
+check(b) = b ? "\e[32m✓\e[0m" : "\e[31m✗\e[0m"
+nullable(io, x) = isnothing(x) ? hint(io, "(nothing)") : val(io, "$(nameof(typeof(x)))")
 
 # Display setup
 Base.show(io::IO, ::MIME"text/plain", params::PhysicalParameters) = Base.show(io, params)
 function Base.show(io::IO, params::PhysicalParameters)
-    label(s) = printstyled(io, rpad(s, 12); color = :light_black)
-    sep() = printstyled(io, " · "; color = :light_black)
-    field(s) = printstyled(io, s; color = :light_black)
-    val(s) = print(io, s)
-    hint(s) = printstyled(io, s; color = :light_black)
+    pad = 12
 
     println(io, "PhysicalParameters")
 
     # Constants
-    label("  Constants")
-    field("ρ");
+    label(io, "  Constants", pad)
+    field(io, "ρ");
     print(io, " = ");
-    val("$(params.ρ)");
-    hint(" kg m⁻³")
-    sep()
-    field("g");
+    val(io, "$(params.ρ)");
+    hint(io, " kg m⁻³")
+    sep(io)
+    field(io, "g");
     print(io, " = ");
-    val("$(params.g)");
-    hint(" m s⁻²")
-    sep()
-    field("η₀");
+    val(io, "$(params.g)");
+    hint(io, " m s⁻²")
+    sep(io)
+    field(io, "η₀");
     print(io, " = ");
-    val("$(params.η₀)")
+    val(io, "$(params.η₀)")
     println(io)
 
     # Glen A
-    label("  Glen A")
-    field("min");
+    label(io, "  Glen A", pad)
+    field(io, "min");
     print(io, " = ");
-    val("$(params.minA)")
-    sep()
-    field("max");
+    val(io, "$(params.minA)")
+    sep(io)
+    field(io, "max");
     print(io, " = ");
-    val("$(params.maxA)");
-    hint(" Pa⁻³ s⁻¹")
+    val(io, "$(params.maxA)");
+    hint(io, " Pa⁻³ s⁻¹")
     println(io)
 
     # Sliding C
-    label("  Sliding C")
-    field("min");
+    label(io, "  Sliding C", pad)
+    field(io, "min");
     print(io, " = ");
-    val("$(params.minC)")
-    sep()
-    field("max");
+    val(io, "$(params.minC)")
+    sep(io)
+    field(io, "max");
     print(io, " = ");
-    val("$(params.maxC)")
+    val(io, "$(params.maxC)")
     println(io)
 
     # Temp T
-    label("  Temp T")
-    field("min");
+    label(io, "  Temp T", pad)
+    field(io, "min");
     print(io, " = ");
-    val("$(params.minTlaw)");
-    hint(" °C")
-    sep()
-    field("max");
+    val(io, "$(params.minTlaw)");
+    hint(io, " °C")
+    sep(io)
+    field(io, "max");
     print(io, " = ");
-    val("$(params.maxTlaw)");
-    hint(" °C")
+    val(io, "$(params.maxTlaw)");
+    hint(io, " °C")
     println(io)
 
     # Numerics
-    label("  Numerics")
-    field("ϵ");
+    label(io, "  Numerics", pad)
+    field(io, "ϵ");
     print(io, " = ");
-    val("$(params.ϵ)")
+    val(io, "$(params.ϵ)")
     println(io)
 end
