@@ -58,6 +58,8 @@ ENV["GKSwstype"]="nul"
             use_glathida_data = false, save_refs = false)
         @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(
             use_glathida_data = true, save_refs = false)
+        @testset "Glaciers 2D constructors Farinotti19 ice thickness source" glaciers2D_thickness_source(:Farinotti19)
+        @testset "Glaciers 2D constructors Millan22 ice thickness source" glaciers2D_thickness_source(:Millan22)
         @testset "Surface velocity datacube" surface_velocity_data()
         @testset "Thickness data constructor" thickness_construction()
         @testset "Results instantiation w/o velocity datacube" results_default(save_refs = false)
