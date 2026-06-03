@@ -70,11 +70,17 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         climate = get_raw_climate_data(rgi_path, simparams.climate_data_source)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
-        climTstart = dims(climate, Ti)[begin]
-        climTend = dims(climate, Ti)[end]
+        climTstart = Date(dims(climate, Ti)[begin])
+        climTend = Date(dims(climate, Ti)[end])
+
         if any((climTstart <= period[begin]) & any(climTend >= period[end]))
             climate = _slice_climate_between_dates(climate, period[begin], period[end])
         else
+            slice_start = max(period[begin], climTstart)
+            slice_end = min(period[end], climTend)
+            if slice_start <= slice_end
+                climate = _slice_climate_between_dates(climate, slice_start, slice_end)
+            end
             @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
         end
         # Save raw gdir climate on disk

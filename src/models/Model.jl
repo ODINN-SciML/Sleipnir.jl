@@ -40,12 +40,12 @@ Initialize Model (no machine learning model).
 mutable struct Model{
     IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
     iceflow::IFM
-    mass_balance::MBM
+    mass_balance::Union{MBM, Vector{MBM}}
     trainable_components::TC
 
     function Model(
             iceflow::IFM,
-            mass_balance::MBM,
+            mass_balance::Union{MBM, Vector{MBM}},
             trainable_components::TC
     ) where {
             IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
