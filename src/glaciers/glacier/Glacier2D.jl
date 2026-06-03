@@ -92,7 +92,7 @@ end
     Glacier2D(;
         rgi_id::String = "",
         name::String = "",
-        climate::Climate2D = nothing,
+        climate::Union{Climate2D, Nothing} = nothing,
         H₀::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         H_glathida::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
         S::Matrix{F} = Matrix{Sleipnir.Float}([;;]),
@@ -134,7 +134,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 
   - `rgi_id::String`: The RGI identifier for the glacier.
   - `name::String`: The name of the glacier if available.
-  - `climate::Climate2D`: The climate data associated with the glacier.
+  - `climate::Union{Climate2D, Nothing}`: The climate data associated with the glacier. Defaults to `nothing` which falls back to `DummyClimate2D()`.
   - `H₀::Matrix{F}`: Initial ice thickness matrix.
   - `H_glathida::Matrix{F}`: Ice thickness matrix from GLATHIDA.
   - `S::Matrix{F}`: Surface elevation matrix.
@@ -170,7 +170,7 @@ Constructs a `Glacier2D` object with the given parameters, including default one
 function Glacier2D(;
         rgi_id::String = "",
         name::String = "",
-        climate::Climate2D = nothing,
+        climate::Union{Climate2D, Nothing} = nothing,
         H₀::Matrix{F} = Matrix{Sleipnir.Float}(undef, 0, 0),
         H_glathida::Matrix{F} = Matrix{Sleipnir.Float}(undef, 0, 0),
         S::Matrix{F} = Matrix{Sleipnir.Float}(undef, 0, 0),
@@ -206,6 +206,9 @@ function Glacier2D(;
         SURFVELDATA <: Union{<:SurfaceVelocityData, Nothing},
         DHDTDATA <: Union{<:DhdtData, Nothing}
 }
+    if isnothing(climate)
+        climate = DummyClimate2D()
+    end
     return Glacier2D{Sleipnir.Float, Sleipnir.Int, typeof(climate),
         typeof(thicknessData), typeof(velocityData), typeof(dhdtData)}(
         rgi_id, name, climate, H₀, H_glathida,
@@ -320,14 +323,14 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :mask_loss => a.mask_loss == b.mask_loss,
         :Coords => a.Coords == b.Coords,
         :Δx => a.Δx == b.Δx,
+        :Δy => a.Δy == b.Δy,
         :nx => a.nx == b.nx,
         :ny => a.ny == b.ny,
         :cenlon => a.cenlon == b.cenlon,
         :cenlat => a.cenlat == b.cenlat,
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
-        :velocityData => a.velocityData ==
-                         b.velocityData
+        :velocityData => a.velocityData == b.velocityData,
         :dhdtData => a.dhdtData == b.dhdtData
     )
 end
@@ -335,7 +338,8 @@ end
 # Display setup
 Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D) = Base.show(io, glacier)
 function Base.show(io::IO, glacier::Glacier2D)
-    if !isnothing(glacier.H₀)
+    validGrid = !isnothing(glacier.H₀) && length(glacier.H₀) > 0
+    if validGrid
         H = round.(255 * glacier.H₀ / maximum(glacier.H₀))
         display(Gray.(Int.(H') / 255))
     end
@@ -363,14 +367,16 @@ function Base.show(io::IO, glacier::Glacier2D)
     end
     println(io, " glathida elevation")
 
-    print(io, "Min,mean,max bedrock elevation S : ")
-    printstyled(io,
-        "$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";
-        color = :blue)
-    print(io, "Mean,max ice thickness H₀ : ")
-    printstyled(io,
-        "$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";
-        color = :blue)
+    if validGrid
+        print(io, "Min,mean,max bedrock elevation S : ")
+        printstyled(io,
+            "$(round(minimum(glacier.S[glacier.H₀.>0]);digits=1)) $(round(mean(glacier.S[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.S[glacier.H₀.>0]);digits=1))\n";
+            color = :blue)
+        print(io, "Mean,max ice thickness H₀ : ")
+        printstyled(io,
+            "$(round(mean(glacier.H₀[glacier.H₀.>0]);digits=1)) $(round(maximum(glacier.H₀[glacier.H₀.>0]);digits=1))\n";
+            color = :blue)
+    end
 
     print(io, "A = ")
     printstyled(io, @sprintf("%.3e", glacier.A); color = :blue)
