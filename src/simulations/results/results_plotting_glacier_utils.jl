@@ -385,11 +385,7 @@ function plot_glacier_quivers(
             timeIdx; varname = string(var) * "y")
 
         X, Y = meshgrid(x, y)
-
         positions = Point2f.(reshape(X, :), reshape(Y, :))
-        directions = Vec2f.(Vx, -Vy)
-        arrows2d!(
-            ax, positions, directions; tiplength = tiplength, lengthscale = lengthscale)
 
         ax.title = "$title"
         ax.xlabel = "Longitude"
@@ -397,6 +393,19 @@ function plot_glacier_quivers(
         ax.yticklabelrotation = π/2
         ax.ylabelpadding = 5
         ax.yticklabelalign = (:center, :bottom)
+
+        # Some glaciers have no mapped reference (observed) velocity, leaving
+        # Vx_ref/Vy_ref empty. Skip drawing arrows in that case instead of letting
+        # arrows2d! fail with a DimensionMismatch against the full grid of positions.
+        if length(Vx) != length(positions) || length(Vy) != length(positions)
+            @warn "No velocity data available for `$(var)`; skipping its quiver panel (got $(length(Vx)) samples for $(length(positions)) grid points)."
+            ax.title = "$title (no data)"
+            continue
+        end
+
+        directions = Vec2f.(vec(Vx), vec(-Vy))
+        arrows2d!(
+            ax, positions, directions; tiplength = tiplength, lengthscale = lengthscale)
     end
 
     resize_to_layout!(fig)

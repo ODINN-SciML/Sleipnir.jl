@@ -5,7 +5,9 @@
 export plot_glacier_vid
 
 """
-Generate a thickness-evolution video as an MP4 file.
+Generate a thickness-evolution animation. The output format (e.g. MP4 or GIF) is
+inferred from the extension of `pathVideo`, since Makie's `record` selects the
+encoder from the file extension.
 """
 function make_thickness_video(
         results::Results,
@@ -104,7 +106,8 @@ Generate various types of videos for glacier data. For now only the evolution of
 
   - `step`: Time step to use to retrieve the results and generate the video.
 
-  - `pathVideo`: Path of the mp4 file to generate.
+  - `pathVideo`: Path of the output animation. The format is inferred from the file
+    extension — e.g. `.mp4` for a video or `.gif` for an animated GIF.
 
 # Optional Keyword Arguments
 
