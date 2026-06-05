@@ -73,6 +73,28 @@ function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
         a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
 end
 
+function diffToDict(a::Climate2Dstep, b::Climate2Dstep)
+    Dict{Symbol, Bool}(
+        :temp => a.temp == b.temp,
+        :PDD => a.PDD == b.PDD,
+        :snow => a.snow == b.snow,
+        :rain => a.rain == b.rain,
+        :elevation_diff => a.elevation_diff == b.elevation_diff,
+        :aspect => a.aspect == b.aspect,
+        :albedo => a.albedo == b.albedo,
+        :slhf => a.slhf == b.slhf,
+        :slope => a.slope == b.slope,
+        :sshf => a.sshf == b.sshf,
+        :ssrd => a.ssrd == b.ssrd,
+        :str => a.str == b.str,
+        :gradient => a.gradient == b.gradient,
+        :avg_gradient => a.avg_gradient == b.avg_gradient,
+        :x => a.x == b.x,
+        :y => a.y == b.y,
+        :ref_hgt => a.ref_hgt == b.ref_hgt
+    )
+end
+
 """
     ClimateStep{F <: AbstractFloat}
 
