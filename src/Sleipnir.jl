@@ -26,7 +26,6 @@ import NCDatasets
 using Unitful: m, rad, °
 using CoordRefSystems
 using Dates, DateFormats
-using GR
 using DataStructures
 using ImageInTerminal
 using ImageCore
@@ -35,6 +34,9 @@ using CFTime
 using MLStyle
 using FFTW
 using Zygote # To skip some lines in Sleipnir/src/simulations/results/results_utils.jl that causes an error with SciMLSensitivity
+
+# Local meshgrid replacement (formerly from GR)
+meshgrid(x, y) = (repeat(x, 1, length(y)), repeat(y', length(x), 1))
 
 ##############################################
 ############    PARAMETERS     ###############
