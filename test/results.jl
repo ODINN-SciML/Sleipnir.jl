@@ -54,5 +54,10 @@ function results_default(; save_refs::Bool = false, useDatacube::Bool = false)
     results_ref = load(joinpath(
         Sleipnir.root_dir, string("test/data/results/results$(prefix).jld2")))["results"]
 
+    if !all(results == results_ref)
+        println("Variables results and results_ref are different")
+        println("Results fields identical: ",
+            Sleipnir.diffToDict(results, results_ref))
+    end
     @test all(results == results_ref)
 end
