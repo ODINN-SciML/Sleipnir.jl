@@ -133,12 +133,12 @@ function make_thickness_video_test()
     # The output format is inferred from the file extension.
     mp4Path = mktempdir() * ".mp4"
     plot_glacier_vid("thickness", results, glaciers[1], params.simulation.tspan,
-        δt, mp4Path; baseTitle = "Aletsch glacier")
+        δt, mp4Path; baseTitle = "Bossons glacier")
     @test isfile(mp4Path) && filesize(mp4Path) > 0
 
     gifPath = mktempdir() * ".gif"
     plot_glacier_vid("thickness", results, glaciers[1], params.simulation.tspan,
-        δt, gifPath; baseTitle = "Aletsch glacier")
+        δt, gifPath; baseTitle = "Bossons glacier")
     @test isfile(gifPath)
     @test startswith(String(read(gifPath)[1:6]), "GIF8")
 end
