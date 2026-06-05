@@ -64,6 +64,11 @@ function params_constructor_specified(; save_refs::Bool = false)
         simulation = simulation_params
     )
 
+    # Test prints
+    println(physical_params)
+    println(simulation_params)
+    println(params)
+
     if save_refs
         jldsave(
             joinpath(

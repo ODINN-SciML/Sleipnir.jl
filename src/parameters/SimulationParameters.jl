@@ -180,3 +180,103 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.gridScalingFactor == b.gridScalingFactor &&
         a.catch_errors == b.catch_errors
 end
+
+# Display setup
+Base.show(io::IO, ::MIME"text/plain", params::SimulationParameters) = Base.show(io, params)
+function Base.show(io::IO, params::SimulationParameters)
+    pad = 10
+
+    println(io, "SimulationParameters")
+
+    # Time
+    label(io, "  Time", pad)
+    field(io, "tspan");
+    print(io, " = ");
+    val(io, "$(params.tspan)")
+    sep(io)
+    field(io, "step_MB");
+    print(io, " = ");
+    val(io, "$(round(params.step_MB; digits=4))")
+    hint(io, " yr")
+    println(io)
+
+    # Physics
+    label(io, "  Physics", pad)
+    print(io, check(params.use_iceflow));
+    field(io, "iceflow")
+    sep(io)
+    print(io, check(params.use_MB));
+    field(io, "mass balance")
+    sep(io)
+    print(io, check(params.use_velocities));
+    field(io, "velocities")
+    sep(io)
+    field(io, "f_surf");
+    print(io, " = ");
+    val(io, "$(params.f_surface_velocity_factor)")
+    sep(io)
+    print(io, check(params.plots));
+    field(io, "plots")
+    println(io)
+
+    # Data
+    label(io, "  Data", pad)
+    field(io, "ice_thickness");
+    print(io, " = ");
+    val(io, ":$(params.ice_thickness_source)")
+    sep(io)
+    field(io, "climate");
+    print(io, " = ");
+    val(io, ":$(params.climate_data_source)")
+    sep(io)
+    field(io, "mapping");
+    print(io, " = ");
+    val(io, "$(typeof(params.mapping))")
+    println(io)
+
+    # Compute
+    label(io, "  Compute", pad)
+    print(io, check(params.multiprocessing));
+    field(io, "multiprocessing")
+    if params.multiprocessing
+        hint(io, " ($(params.workers) workers)")
+    end
+    sep(io)
+    field(io, "gridScalingFactor");
+    print(io, " = ");
+    val(io, "$(params.gridScalingFactor)")
+    if params.gridScalingFactor > 1
+        hint(io, " (downscaled)")
+    end
+    println(io)
+
+    # Paths
+    label(io, "  Paths", pad)
+    field(io, "working_dir");
+    print(io, " = ")
+    val(io, isempty(params.working_dir) ? "(empty)" : "\"$(params.working_dir)\"")
+    sep(io)
+    field(io, "rgi_paths");
+    print(io, " = ")
+    n = length(params.rgi_paths)
+    n == 0 ? hint(io, "(empty)") : hint(io, "$n $(n == 1 ? "entry" : "entries")")
+    println(io)
+
+    # # Flags (only when non-default)
+    # extra_flags = filter(((name, val),) -> val,
+    #     [
+    #         "test_mode" => params.test_mode,
+    #         "catch_errors" => params.catch_errors,
+    #         "use_glathida_data" => params.use_glathida_data,
+    #         "overwrite_climate" => params.overwrite_climate
+    #     ])
+    # if !isempty(extra_flags)
+    #     label(io, "  Flags", pad)
+    #     for (i, (name, _)) in enumerate(extra_flags)
+    #         i > 1 && sep(io)
+    #         print(io, check(true));
+    #         field(io, name)
+    #     end
+    #     println(io)
+    # end
+end
