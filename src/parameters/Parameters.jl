@@ -177,6 +177,8 @@ function Base.show(io::IO, params::Parameters)
         print(io, " = ");
         val(io, "$(h.batch_size)")
         sep(io)
+        field(io, "optimizer");
+        print(io, " = ")
         if h.optimizer isa Vector
             val(io, "[")
             first = true

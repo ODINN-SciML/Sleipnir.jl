@@ -98,12 +98,12 @@ end
 
 # Show helpers
 # Don't define them as closures over io, otherwise serialization with multiprocessing will fail
-label(io, s, pad) = printstyled(io, rpad(s, pad); color = :light_black)
+label(io, s, pad) = printstyled(io, rpad(s, pad); color = 183)
 sep(io) = printstyled(io, " · "; color = :light_black)
 field(io, s) = printstyled(io, s; color = :light_black)
 val(io, s) = print(io, s)
 hint(io, s) = printstyled(io, s; color = :light_black)
-check(b) = b ? "\e[32m✓\e[0m" : "\e[31m✗\e[0m"
+check(b) = b ? "\e[32m✓\e[0m " : "\e[31m✗\e[0m "
 nullable(io, x) = isnothing(x) ? hint(io, "(nothing)") : val(io, "$(nameof(typeof(x)))")
 
 # Display setup
