@@ -1,7 +1,7 @@
 name = "Sleipnir"
 uuid = "f5e6c550-199f-11ee-3608-394420200519"
-authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>", "Alban Gossard <alban.paul.gossard@gmail.com>", "Mathieu Le Séac'h"]
 version = "0.13.2"
+authors = ["Jordi Bolibar <jordi.bolibar@gmail.com>", "Facundo Sapienza <fsapienza@berkeley.edu>", "Alban Gossard <alban.paul.gossard@gmail.com>", "Mathieu Le Séac'h"]
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
@@ -72,7 +72,7 @@ NaNStatistics = "0.6"
 Observables = "0.5"
 Pkg = "1.10, 1.11"
 Printf = "1.10, 1.11"
-Rasters = "0.13, 0.14"
+Rasters = "0.13, 0.14, 0.15"
 Revise = "3"
 Statistics = "1"
 Tar = "1"
