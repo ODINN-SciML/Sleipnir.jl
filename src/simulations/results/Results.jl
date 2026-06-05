@@ -66,7 +66,9 @@ function Base.:(==)(a::Results, b::Results)
     (
         a.rgi_id == b.rgi_id && a.H == b.H &&
         a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
-        a.S == b.S && a.B == b.B && a.x == b.x && a.y == b.y &&
+        # Some properties are checked approximatively because of numerical rounding
+        # varying depending on the platform, which results in different values
+        a.S == b.S && a.B == b.B && a.x ≈ b.x && a.y ≈ b.y &&
         a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
         a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
         a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref &&
@@ -77,6 +79,40 @@ function Base.:(==)(a::Results, b::Results)
         a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
         a.MB == b.MB && a.t_MB == b.t_MB &&
         isequal(a.tspan, b.tspan)
+    )
+end
+
+function diffToDict(a::Results, b::Results)
+    Dict{Symbol, Bool}(
+        :rgi_id => a.rgi_id == b.rgi_id,
+        :H => a.H == b.H,
+        :H_glathida => a.H_glathida == b.H_glathida,
+        :H_ref => a.H_ref == b.H_ref,
+        :S => a.S == b.S,
+        :B => a.B == b.B,
+        :x => a.x ≈ b.x,
+        :y => a.y ≈ b.y,
+        :V => a.V == b.V,
+        :Vx => a.Vx == b.Vx,
+        :Vy => a.Vy == b.Vy,
+        :V_ref => a.V_ref == b.V_ref,
+        :Vx_ref => a.Vx_ref == b.Vx_ref,
+        :Vy_ref => a.Vy_ref == b.Vy_ref,
+        :date_Vref => a.date_Vref == b.date_Vref,
+        :date1_Vref => a.date1_Vref == b.date1_Vref,
+        :date2_Vref => a.date2_Vref == b.date2_Vref,
+        :t_dhdt => a.t_dhdt == b.t_dhdt,
+        :dhdt_ref => a.dhdt_ref == b.dhdt_ref,
+        :Δx => a.Δx == b.Δx,
+        :Δy => a.Δy == b.Δy,
+        :lon => a.lon == b.lon,
+        :lat => a.lat == b.lat,
+        :nx => a.nx == b.nx,
+        :ny => a.ny == b.ny,
+        :t => a.t == b.t,
+        :MB => a.MB == b.MB,
+        :t_MB => a.t_MB == b.t_MB,
+        :tspan => isequal(a.tspan, b.tspan)
     )
 end
 
