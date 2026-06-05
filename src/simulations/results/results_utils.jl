@@ -114,6 +114,14 @@ function create_results(
             date_Vref = datetime_to_floatyear.(glacier.velocityData.date)
             date1_Vref = datetime_to_floatyear.(glacier.velocityData.date1)
             date2_Vref = datetime_to_floatyear.(glacier.velocityData.date2)
+        elseif simulation.parameters.simulation.use_velocities && !isempty(glacier.Vx)
+            # Fall back to the static (Millan) velocity as a single-frame reference for plotting.
+            Vx_ref = [glacier.Vx]
+            Vy_ref = [glacier.Vy]
+            V_ref = [glacier.V]
+            date_Vref = Vector{Sleipnir.Float}([])
+            date1_Vref = Vector{Sleipnir.Float}([])
+            date2_Vref = Vector{Sleipnir.Float}([])
         else
             Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
             Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
