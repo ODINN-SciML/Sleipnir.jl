@@ -296,18 +296,44 @@ function plot_cumulative_gridded_data(
 end
 
 """
-        plot_cumulative_mb(results::Results; kwargs...)
+    plot_cumulative_mb(results::Results; kwargs...)
 
-Plot cumulative mass-balance map from MB fields stored at each forward MB callback.
+Plot a spatial map of the **cumulative** surface mass balance accumulated over the
+simulation period from the per-callback MB fields stored in `results.MB`.
+
+Each entry of `results.MB` is the gridded mass-balance increment produced at one MB
+callback (one per MB time step). The function sums these increments cell-by-cell
+(via `accumulate_gridded_data`) to obtain the total mass balance over the period
+`results.tspan = (t0, t1)`.
+
+# Modes (`annual_MB`)
+
+  - `annual_MB = false` (default): plots the raw cumulative MB over the whole period,
+    i.e. `Σᵢ MBᵢ`, in `m w.e.`.
+  - `annual_MB = true`: divides every increment by the period length `T = t1 - t0`
+    (in years) before summing, i.e. `Σᵢ (MBᵢ / T) = (Σᵢ MBᵢ) / T`. Since `Σᵢ MBᵢ` is the
+    total over `T` years, this is the **mean annual mass-balance rate** (the
+    "annually-averaged equivalent"), in `m w.e. yr⁻¹`.
+
+Returns `nothing` (with a warning) when `results.MB` is empty — e.g. when the
+simulation was run without `use_MB = true`.
 
 # Arguments
 
-    - `results::Results`: Results containing callback MB maps in `results.MB`.
-    - `kwargs...`: Keyword arguments forwarded to `plot_cumulative_gridded_data`.
+  - `results::Results`: results carrying the per-callback MB maps in `results.MB`.
+
+# Keyword arguments
+
+  - `title::String`: figure title prefix (the period `(t0–t1)` is appended automatically).
+  - `colorbar_label::Union{Nothing,String}`: colorbar label; defaults to `m w.e.`
+    (or `m w.e. yr⁻¹` when `annual_MB = true`).
+  - `annual_MB::Bool = false`: switch between cumulative total and mean annual rate.
+  - `colormap`: diverging colormap (red→white→blue by default).
+  - `kwargs...`: forwarded to [`plot_gridded_data`](@ref).
 
 # Returns
 
-    - `Figure`: Cumulative MB figure.
+  - `Figure`, or `nothing` if there is no MB history.
 """
 function plot_cumulative_mb(results::Results;
         title::String = "Cumulative Mass Balance",
