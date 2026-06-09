@@ -102,8 +102,8 @@ end
 function params_constructor_default(; save_refs::Bool = false)
     physical_params = PhysicalParameters()
     JET.@test_opt PhysicalParameters()
-    @test check_concrete_types(simulation_params; show = false)
-    @test check_field_types(typeof(simulation_params); show = false)
+    @test check_concrete_types(physical_params; show = false)
+    @test check_field_types(typeof(physical_params); show = false)
 
     simulation_params = SimulationParameters()
     JET.@test_opt SimulationParameters()
