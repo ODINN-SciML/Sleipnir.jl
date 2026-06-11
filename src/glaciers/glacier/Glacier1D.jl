@@ -48,7 +48,7 @@ nx::I = 0,
 ny::I = 0,
 ) where {F <: AbstractFloat, I <: Integer}
 
-Constructor for empty 2D Glacier object.
+Constructor for empty 1D Glacier object.
 """
 function Glacier1D(;
         rgi_id::String = "",
@@ -72,7 +72,7 @@ function Glacier1D(;
         ny::I = 0
 ) where {F <: AbstractFloat, I <: Integer}
     return Glacier1D{Sleipnir.Float, Sleipnir.Int}(
-        rgi_id, gdir, climate, H₀, S, B, V, A, C, n, w₀,
+        rgi_id, climate, H₀, S, B, V, A, C, n, w₀,
         λ, slope, dist_border, Coords, Δx, Δy, nx, ny)
 end
 
@@ -81,7 +81,7 @@ end
 ###############################################
 
 function Base.:(==)(a::Glacier1D, b::Glacier1D)
-    a.rgi_id == b.rgi_id && a.gdir == b.gdir && a.climate == b.climate &&
+    a.rgi_id == b.rgi_id && a.climate == b.climate &&
         a.H₀ == b.H₀ && a.S == b.S && a.B == b.B && a.V == b.V &&
         a.A == b.A && a.C == b.C && a.n == b.n && a.w₀ == b.w₀ && a.λ == b.λ &&
         a.slope == b.slope && a.dist_border == b.dist_border && a.rgi_id == b.rgi_id &&
