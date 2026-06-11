@@ -27,6 +27,8 @@ function params_constructor_specified(; save_refs::Bool = false)
         minTlaw = -25.0,
         noise_A_magnitude = 5e-18
     )
+    @test check_concrete_types(physical_params; show = false)
+    @test check_field_types(typeof(physical_params); show = false)
 
     simulation_params = SimulationParameters(
         use_MB = true,
@@ -54,6 +56,8 @@ function params_constructor_specified(; save_refs::Bool = false)
         working_dir = "",
         rgi_paths = rgi_paths
     )
+    @test check_concrete_types(simulation_params; show = false)
+    @test check_field_types(typeof(simulation_params); show = false)
 
     params = Parameters(
         physical = physical_params,
@@ -63,6 +67,8 @@ function params_constructor_specified(; save_refs::Bool = false)
         physical = physical_params,
         simulation = simulation_params
     )
+    @test check_concrete_types(params; show = false)
+    @test check_field_types(typeof(params); show = false)
 
     # Test prints
     println(physical_params)
@@ -96,9 +102,13 @@ end
 function params_constructor_default(; save_refs::Bool = false)
     physical_params = PhysicalParameters()
     JET.@test_opt PhysicalParameters()
+    @test check_concrete_types(physical_params; show = false)
+    @test check_field_types(typeof(physical_params); show = false)
 
     simulation_params = SimulationParameters()
     JET.@test_opt SimulationParameters()
+    @test check_concrete_types(simulation_params; show = false)
+    @test check_field_types(typeof(simulation_params); show = false)
 
     params = Parameters(
         simulation = simulation_params,
@@ -108,6 +118,8 @@ function params_constructor_default(; save_refs::Bool = false)
         simulation = simulation_params,
         physical = physical_params
     )
+    @test check_concrete_types(params; show = false)
+    @test check_field_types(typeof(params); show = false)
 
     if save_refs
         jldsave(
