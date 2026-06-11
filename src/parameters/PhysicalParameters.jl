@@ -98,7 +98,7 @@ end
 
 # Show helpers
 # Don't define them as closures over io, otherwise serialization with multiprocessing will fail
-label(io, s, pad) = printstyled(io, rpad(s, pad); color = 183)
+label(io, s, pad) = printstyled(io, rpad(s, pad); color = 57)
 sep(io) = printstyled(io, " · "; color = :light_black)
 field(io, s) = printstyled(io, s; color = :light_black)
 val(io, s) = print(io, s)
