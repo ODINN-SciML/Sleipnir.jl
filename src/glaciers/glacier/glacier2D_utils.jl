@@ -545,4 +545,3 @@ Replace all zero elements in the array `A` with the specified `fill` value.
 function fillZeros(A, fill = NaN)
     return @. ifelse(iszero(A), fill, A)
 end
-
