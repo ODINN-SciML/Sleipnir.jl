@@ -5,7 +5,8 @@
 
 export downscale_2D_climate!, downscale_2D_climate,
        get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
-       apply_t_grad!, trim_period, partial_year, get_longterm_temps
+       apply_t_grad!, trim_period, partial_year, get_longterm_temps,
+       get_winter_prcp_factor
 
 function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; reducer = sum)
     if hasproperty(climate_raw_step, layer)
@@ -133,11 +134,13 @@ function get_cumulative_climate!(
     climate.avg_temps = mean(climate.climate_raw_step.temp)
 
     climate.avg_gradients = mean(climate.climate_raw_step.gradient)
-    climate.climate_raw_step.temp.data .= max.(climate.climate_raw_step.temp.data, 0.0) # get PDDs
     climate.climate_raw_step.gradient.data .= clamp.(
         climate.climate_raw_step.gradient.data, gradient_bounds[1], gradient_bounds[2]) # Clip gradients within plausible values
     climate.climate_step.prcp = round(sum(climate.climate_raw_step.prcp); digits = 8)
-    climate.climate_step.temp = round(sum(climate.climate_raw_step.temp); digits = 8)
+    # Sum daily PDDs without overwriting temp so original per-day temperatures
+    # remain available for the daily snow/PDD downscaling in downscale_2D_climate!.
+    climate.climate_step.temp = round(
+        sum(max.(climate.climate_raw_step.temp.data, 0)); digits = 8)
     climate.climate_step.gradient = round(
         sum(climate.climate_raw_step.gradient); digits = 8)
     climate.climate_step.albedo = _aggregate_raw_layer(
@@ -265,8 +268,9 @@ function apply_t_cumul_grad!(
     climate_2D_step.PDD .= ifelse.(climate_2D_step.PDD .< 0.0, 0.0, climate_2D_step.PDD) # Crop negative PDD values
 
     # We adjust the rain/snow fractions with the updated temperature
-    climate_2D_step.snow .= ifelse.(climate_2D_step.temp .> 0.0, 0.0, climate_2D_step.snow)
-    climate_2D_step.rain .= ifelse.(climate_2D_step.temp .< 0.0, 0.0, climate_2D_step.rain)
+    f = clamp.((2 .- climate_2D_step.temp) ./ 2, 0, 1)
+    climate_2D_step.rain .= (1 .- f) .* climate_2D_step.snow
+    climate_2D_step.snow .*= f
 end
 
 """
@@ -335,14 +339,10 @@ This function updates the 2D climate structure of the given glacier by:
 function downscale_2D_climate!(
         glacier::Glacier2D;
         include_topography::Bool = false,
-        topography_window_m::AbstractFloat = 200.0)
-    # Update 2D climate structure
+        topography_window_m::AbstractFloat = 200.0,
+        temp_bias::AbstractFloat = 0.0)
     climate = glacier.climate
-    climate.climate_2D_step.temp .= climate.climate_step.avg_temp
-    climate.climate_2D_step.PDD .= climate.climate_step.temp
-    climate.climate_2D_step.snow .= climate.climate_step.prcp
-    climate.climate_2D_step.rain .= climate.climate_step.prcp
-    climate.climate_2D_step.elevation_diff .= glacier.S .- climate.climate_step.ref_hgt
+    @. climate.climate_2D_step.elevation_diff = glacier.S - climate.climate_step.ref_hgt
     if include_topography
         climate.climate_2D_step.slope,
         climate.climate_2D_step.aspect = compute_surface_topography(
@@ -353,12 +353,27 @@ function downscale_2D_climate!(
     climate.climate_2D_step.sshf .= climate.climate_step.sshf
     climate.climate_2D_step.ssrd .= climate.climate_step.ssrd
     climate.climate_2D_step.str .= climate.climate_step.str
-    # Update gradients
     climate.climate_2D_step.gradient = climate.climate_step.gradient
     climate.climate_2D_step.avg_gradient = climate.climate_step.avg_gradient
 
-    # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate.climate_2D_step, glacier.S)
+    # Per-day snow/PDD with per-day elevation gradient (daily TI model).
+    # climate_raw_step.temp holds original daily temperatures; gradient is clamped.
+    temp_vec = vec(climate.climate_raw_step.temp.data)
+    prcp_vec = vec(climate.climate_raw_step.prcp.data)
+    grad_vec = vec(climate.climate_raw_step.gradient.data)
+    ΔS = climate.climate_2D_step.elevation_diff
+    fill!(climate.climate_2D_step.snow, 0)
+    fill!(climate.climate_2D_step.PDD, 0)
+    for d in eachindex(temp_vec)
+        T_d, g_d, p_d = temp_vec[d], grad_vec[d], prcp_vec[d]
+        T_eff = T_d + temp_bias
+        @. climate.climate_2D_step.snow += p_d * clamp((2 - T_eff - g_d * ΔS) / 2, 0, 1)
+        @. climate.climate_2D_step.PDD += max(0, T_eff + g_d * ΔS)
+    end
+    climate.climate_2D_step.rain .= climate.climate_step.prcp .-
+                                    climate.climate_2D_step.snow
+    climate.climate_2D_step.temp .= climate.climate_step.avg_temp .+ temp_bias .+
+                                    climate.climate_2D_step.avg_gradient .* ΔS
 end
 
 """
@@ -401,20 +416,20 @@ This function creates dummy 2D arrays based on the provided surface elevation da
 """
 function downscale_2D_climate(
         climate_step::ClimateStep,
+        climate_raw_step,
         S::Matrix{<: AbstractFloat},
         Coords::Dict;
         include_topography::Bool = false,
         topography_window_m::AbstractFloat = 200.0,
         Δx::Union{Nothing, AbstractFloat} = nothing,
-        Δy::Union{Nothing, AbstractFloat} = nothing)
-    # Create dummy 2D arrays to have a base to apply gradients afterwards
-    FT = typeof(S[1])
+        Δy::Union{Nothing, AbstractFloat} = nothing,
+        temp_bias::AbstractFloat = 0.0)
     dummy_grid = zeros(size(S))
     temp_2D = climate_step.avg_temp .+ dummy_grid
-    PDD_2D = climate_step.temp .+ dummy_grid
-    snow_2D = climate_step.prcp .+ dummy_grid
-    rain_2D = climate_step.prcp .+ dummy_grid
     elevation_diff_2D = S .- climate_step.ref_hgt
+    PDD_2D = zeros(Sleipnir.Float, size(S))
+    snow_2D = zeros(Sleipnir.Float, size(S))
+    rain_2D = zeros(Sleipnir.Float, size(S))
     slope_2D = zero(Sleipnir.Float) .+ dummy_grid
     aspect_2D = zero(Sleipnir.Float) .+ dummy_grid
     if include_topography
@@ -459,8 +474,18 @@ function downscale_2D_climate(
         ref_hgt = Float64(climate_step.ref_hgt)
     )
 
-    # Apply temperature gradients and compute snow/rain fraction for the selected period
-    apply_t_cumul_grad!(climate_2D_step, reshape(S, size(S))) # Reproject current S with xarray structure
+    temp_vec = vec(climate_raw_step.temp.data)
+    prcp_vec = vec(climate_raw_step.prcp.data)
+    grad_vec = vec(climate_raw_step.gradient.data)
+    ΔS = elevation_diff_2D
+    for d in eachindex(temp_vec)
+        T_d, g_d, p_d = temp_vec[d], grad_vec[d], prcp_vec[d]
+        T_eff = T_d + temp_bias
+        @. climate_2D_step.snow += p_d * clamp((2 - T_eff - g_d * ΔS) / 2, 0, 1)
+        @. climate_2D_step.PDD += max(0, T_eff + g_d * ΔS)
+    end
+    climate_2D_step.rain .= climate_step.prcp .- climate_2D_step.snow
+    climate_2D_step.temp .+= temp_bias .+ climate_2D_step.avg_gradient .* ΔS
 
     return climate_2D_step
 end
@@ -560,6 +585,7 @@ function get_longterm_temps(rgi_id::String, params::Parameters,
         climate::RasterStack, S::Matrix{<: AbstractFloat})
     glacier_gd = RasterStack(joinpath(
         prepro_dir, params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
+    temp_orig = copy(climate.temp.data)  # avoid corrupting temp in-place
     apply_t_grad!(climate, glacier_gd.topo)
     temps_2D = apply_t_grad_gridded(climate, S)
 
@@ -568,5 +594,59 @@ function get_longterm_temps(rgi_id::String, params::Parameters,
     # Gridded long-term temps
     longterm_temps_gridded = mean(temps_2D, dims = 1)[1]
 
+    climate.temp.data .= temp_orig
     return longterm_temps_scalar, longterm_temps_gridded
+end
+
+"""
+    get_winter_prcp_factor(glacier::AbstractGlacier, params::Parameters; prcp_fac_bounds) -> Float
+
+Compute a glacier-specific precipitation correction factor from mean winter precipitation,
+following OGGM's `decide_winter_precip_factor`.
+
+# Arguments
+
+  - `glacier::AbstractGlacier`: Glacier providing `rgi_id`, `cenlat` (hemisphere) and
+    `climate.climate_data_source` (`:W5E5` or `:ERA5`).
+  - `params::Parameters`: Simulation parameters, used to locate the climate file.
+  - `prcp_fac_bounds`: Lower/upper clip bounds (default `(0.1, 10.0)`, matching OGGM).
+
+# Description
+
+Reads the full daily climate record (1979–2019, the window OGGM's coefficients were fit on),
+averages winter daily precipitation (NH: Oct–Apr, SH: Apr–Oct) in kg/m²/day, and maps it to a
+precipitation factor: log fit for W5E5, linear fit for ERA5. If the daily file is missing, falls
+back to 2.5. Note: we average daily values directly (OGGM averages monthly daily-rates; equivalent
+within noise).
+"""
+function get_winter_prcp_factor(glacier::AbstractGlacier, params::Parameters;
+        prcp_fac_bounds::Tuple{<: Real, <: Real} = (0.1, 10.0))
+    source = glacier.climate.climate_data_source
+    fpath = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id],
+        "climate_historical_daily_$(source).nc")
+    if !isfile(fpath)
+        @warn "get_winter_prcp_factor: daily climate file not found for $(glacier.rgi_id) " *
+              "($(fpath)). Falling back to prcp_fac = 2.5."
+        return Sleipnir.Float(2.5)
+    end
+    clim = RasterStack(fpath)
+
+    # Winter months by hemisphere; restrict to the 1979–2019 coefficient-fit window
+    winter = glacier.cenlat >= 0 ? (10, 11, 12, 1, 2, 3, 4) : (4, 5, 6, 7, 8, 9, 10)
+    dates = Date.(collect(dims(clim, Ti)))
+    sel = [(month(d) in winter) && (Date(1979, 1, 1) <= d <= Date(2019, 12, 31))
+           for d in dates]
+    w_prcp = mean(clim.prcp.data[sel])  # kg/m²/day
+
+    # OGGM winter-precip relationships (Nov 2025 refit; t_melt=-1, cte lapse, monthly)
+    prcp_fac = if source == :W5E5
+        -1.0614 * log(w_prcp) + 3.9200          # log fit
+    elseif source == :ERA5
+        -0.09078476 * w_prcp + 2.43505368       # linear fit
+    else
+        throw(ArgumentError(
+            "get_winter_prcp_factor: unsupported climate_data_source $(source)."))
+    end
+
+    return Sleipnir.Float(clamp(prcp_fac, prcp_fac_bounds[1], prcp_fac_bounds[2]))
 end

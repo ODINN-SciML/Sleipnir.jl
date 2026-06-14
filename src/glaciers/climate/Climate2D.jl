@@ -211,6 +211,7 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
         climate_step = get_cumulative_climate(climate_raw_step)
         climate_2D_step = downscale_2D_climate(
             climate_step,
+            climate_raw_step,
             S,
             Coords
         )
