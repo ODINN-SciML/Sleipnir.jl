@@ -891,6 +891,7 @@ function plot_gridded_data(
         plotContour::Bool = false,
         colormap = :cool,
         logPlot = false,
+        center_zero::Bool = false,
         title::Union{Nothing, String} = nothing,
         colorbar_label::Union{Nothing, String} = nothing
 ) where {F <: AbstractFloat}
@@ -926,6 +927,11 @@ function plot_gridded_data(
         global_max = maximum(replace(current_data_masked, NaN => 0.0))
     else
         global_min, global_max = finite_extrema(current_data_masked)
+        if center_zero
+            # Symmetric range around 0 so a diverging colormap maps 0 → midpoint
+            absmax = max(abs(global_min), abs(global_max))
+            global_min, global_max = -absmax, absmax
+        end
     end
 
     figKwargs[:layout] = GridLayout(2, 2)
@@ -1073,15 +1079,19 @@ Plot cumulative mass-balance map from MB fields stored at each forward MB callba
 """
 function plot_cumulative_mb(results::Results;
         title::String = "Cumulative Mass Balance",
-        colorbar_label::String = "m w.e.",
+        colorbar_label::String = "m w.e. yr⁻¹",
+        colormap = :RdBu,
+        center_zero::Bool = true,
         kwargs...)
     if isempty(results.MB) || isempty(results.MB[begin])
         @warn "No mass balance callback history in results; skipping cumulative MB plot. " *
               "Make sure the simulation was run with use_MB=true."
         return nothing
     end
+    # Diverging colormap centred at zero: blue = positive MB, red = negative, white ≈ 0
     return plot_cumulative_gridded_data(results.MB, results;
-        title = title, colorbar_label = colorbar_label, kwargs...)
+        title = title, colorbar_label = colorbar_label,
+        colormap = colormap, center_zero = center_zero, kwargs...)
 end
 
 """

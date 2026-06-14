@@ -1,5 +1,5 @@
 
-export AbstractModel
+export AbstractModel, Model
 
 """
     AbstractModel
@@ -49,8 +49,9 @@ mutable struct Model{
             trainable_components::TC
     ) where {
             IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
-        new{typeof(iceflow), typeof(mass_balance), typeof(trainable_components)}(
-            iceflow, mass_balance, trainable_components)
+        # Keep the element type `MBM` as the type parameter so the field type
+        # `Union{MBM, Vector{MBM}}` absorbs both a single model and a per-glacier vector.
+        new{IFM, MBM, TC}(iceflow, mass_balance, trainable_components)
     end
 end
 Model(; iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
@@ -97,7 +98,18 @@ function Base.show(io::IO, type::MIME"text/plain", model::Model)
     println(io)
     Base.show(io, type, model.iceflow)
     println(io)
-    Base.show(io, type, model.mass_balance)
+    if model.mass_balance isa AbstractVector
+        # Per-glacier mass balance models (e.g. calibrated TImodel1): show a
+        # summary plus the first model as a representative sample.
+        n = length(model.mass_balance)
+        println(io, "Per-glacier mass balance models ($n × $(nameof(eltype(model.mass_balance))))")
+        if n > 0
+            Base.show(io, type, first(model.mass_balance))
+            println(io)
+        end
+    else
+        Base.show(io, type, model.mass_balance)
+    end
     println(io)
     if isnothing(model.trainable_components)
         println(io, "No learnable components")
