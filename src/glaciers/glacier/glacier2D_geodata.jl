@@ -5,21 +5,19 @@
 # ── Hugonnet 2021 geodetic mass balance ──────────────────────
 
 const _HUGONNET_PERIOD = "2000-01-01_2020-01-01"
-const _hugonnet_dhdt_cache =
-    Ref{Union{Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
-const _hugonnet_mb_uncertainty_cache =
-    Ref{Union{Nothing, Dict{String, Sleipnir.Float}}}(nothing)
+const _hugonnet_dhdt_cache = Ref{Union{Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
+const _hugonnet_mb_uncertainty_cache = Ref{Union{Nothing, Dict{String, Sleipnir.Float}}}(nothing)
 
 function _default_hugonnet_dhdt_path()
     candidates = (
         joinpath(
-            homedir(),
-            "OGGM",
-            "download_cache",
-            "cluster.klima.uni-bremen.de",
-            "~oggm",
-            "geodetic_ref_mb",
-            "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
+        homedir(),
+        "OGGM",
+        "download_cache",
+        "cluster.klima.uni-bremen.de",
+        "~oggm",
+        "geodetic_ref_mb",
+        "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
     )
 
     for path in candidates
