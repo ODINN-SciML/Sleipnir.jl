@@ -31,6 +31,7 @@ import NCDatasets
 using DimensionalData
 using Dates
 using DateFormats
+using Statistics
 using JET
 using Aqua
 
@@ -71,6 +72,7 @@ ENV["GKSwstype"]="nul"
         @testset "Climate downscale (ERA5)" climate_downscale(
             save_refs = false, climate_data_source = :ERA5)
         @testset "Dummy climate" dummy_climate()
+        @testset "Winter precipitation factor" winter_prcp_factor_test()
     end
 
     @testset "Topography and Inputs" begin

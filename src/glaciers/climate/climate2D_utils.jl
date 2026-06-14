@@ -61,20 +61,13 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         @error "RGI path not found for: $rgi_id"
     end
 
-    # When calibrating MB with winter precipitation factor, ensure we have data from 1979+
-    # (the window OGGM's winter-precip coefficients were fit on)
-    climate_tspan = simparams.tspan
-    if simparams.calibrate_MB && simparams.tspan[1] > 1979.0
-        climate_tspan = (1979.0, simparams.tspan[2])
-    end
-
-    raw_climate_clipped_file = "raw_climate_$(climate_tspan).nc"
+    raw_climate_clipped_file = "raw_climate_$(simparams.tspan).nc"
     if !isfile(joinpath(rgi_path, raw_climate_clipped_file))
         println("Getting raw climate data for: ", rgi_id)
-        # Get raw climate data for gdir. We start a year before the climate tspan to ensure we have enough data
+        # Get raw climate data for gdir. We start a year before the simulation tspan to ensure we have enough data
         # for variables with a sliding time window
-        tspan_date = partial_year(Day, climate_tspan[1] - 1):Day(1):partial_year(
-            Day, climate_tspan[2])
+        tspan_date = partial_year(Day, simparams.tspan[1] - 1):Day(1):partial_year(
+            Day, simparams.tspan[2])
         climate = get_raw_climate_data(rgi_path, simparams.climate_data_source)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)
