@@ -19,5 +19,5 @@ end
 Base.:(==)(a::DhdtData, b::DhdtData) = a.t == b.t && a.dhdt == b.dhdt
 
 function Base.:(≈)(a::DhdtData, b::DhdtData)
-    safe_approx(a.t, b.t) && safe_approx(a.dhdt, b.dhdt)
+    a.t == b.t && safe_approx(a.dhdt, b.dhdt)
 end
