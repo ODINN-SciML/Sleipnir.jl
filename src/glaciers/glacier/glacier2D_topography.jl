@@ -120,36 +120,7 @@ function compute_surface_aspect(
     return aspect
 end
 
-"""
-    smooth!(A)
-
-Smooths the interior of a 2D array `A` using a simple averaging method. The function modifies the array `A` in place.
-
-# Arguments
-
-  - `A::AbstractMatrix`: A 2D array to be smoothed.
-
-# Details
-
-The function updates the interior elements of `A` (excluding the boundary elements) by adding a weighted average of the second differences along both dimensions. The boundary elements are then set to the values of their nearest interior neighbors to maintain the boundary conditions.
-"""
-@views function smooth!(A)
-    A[2:(end - 1),
-    2:(end - 1)] .= A[2:(end - 1), 2:(end - 1)] .+
-                                   1.0 ./ 4.1 .*
-                                   (diff(diff(A[:, 2:(end - 1)], dims = 1), dims = 1) .+
-                                    diff(diff(A[2:(end - 1), :], dims = 2), dims = 2))
-    A[1, :]=A[2, :];
-    A[end, :]=A[end - 1, :];
-    A[:, 1]=A[:, 2];
-    A[:, end]=A[:, end - 1]
-end
-
-# function smooth(A)
-#     A_smooth = A[2:end-1,2:end-1] .+ 1.0./4.1.*(diff(diff(A[:,2:end-1], dims=1), dims=1) .+ diff(diff(A[2:end-1,:], dims=2), dims=2))
-#     @tullio A_smooth_pad[i,j] := A_smooth[pad(i-1,1,1),pad(j-1,1,1)] # Fill borders 
-#     return A_smooth_pad
-# end
+# `smooth!` is defined in glacier2D_utils.jl (same module) and reused here.
 
 """
     is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}

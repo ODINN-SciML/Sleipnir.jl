@@ -11,13 +11,18 @@ const _hugonnet_mb_uncertainty_cache = Ref{Union{Nothing, Dict{String, Sleipnir.
 function _default_hugonnet_dhdt_path()
     candidates = (
         joinpath(
-        homedir(),
-        "OGGM",
-        "download_cache",
-        "cluster.klima.uni-bremen.de",
-        "~oggm",
-        "geodetic_ref_mb",
-        "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
+            homedir(),
+            "OGGM",
+            "download_cache",
+            "cluster.klima.uni-bremen.de",
+            "~oggm",
+            "geodetic_ref_mb",
+            "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
+        # Bundled fallback (reference glaciers only) so tests/CI have geodetic data
+        # when the full worldwide file is not available locally.
+        normpath(joinpath(
+            @__DIR__, "..", "..", "..", "data",
+            "hugonnet_2021_geodetic_test_subset.csv"))
     )
 
     for path in candidates

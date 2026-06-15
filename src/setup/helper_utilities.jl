@@ -1,17 +1,20 @@
 export safe_approx
 export check_concrete_types, check_field_types
 
-# Function to override "≈" to handle nothing values and dict
-function safe_approx(a, b)
+# Function to override "≈" to handle nothing values and dict.
+# `rtol` is forwarded to `isapprox` for fields whose values vary slightly across
+# platforms (e.g. projection-derived coordinates); when `nothing`, the default `≈` is used.
+function safe_approx(a, b; rtol = nothing)
+    _approx(x, y) = isnothing(rtol) ? (x ≈ y) : isapprox(x, y; rtol = rtol)
     if isnothing(a) && isnothing(b)
         return true
     elseif isnothing(a) || isnothing(b)
         return false
     elseif (a isa Dict) && (b isa Dict)
         keys(a) == keys(b) || return false
-        return all(a[k] ≈ b[k] for k in keys(a))
+        return all(_approx(a[k], b[k]) for k in keys(a))
     else
-        return a ≈ b
+        return _approx(a, b)
     end
 end
 

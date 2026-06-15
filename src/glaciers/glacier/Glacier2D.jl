@@ -289,9 +289,12 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
         a.slope == b.slope && a.dist_border == b.dist_border &&
         a.mask == b.mask && a.mask_loss == b.mask_loss &&
-        a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
+        # Coords, cenlon and cenlat are projection-derived and vary slightly across platforms
+        safe_approx(a.Coords, b.Coords; rtol = 1e-5) &&
+        a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
         a.ny == b.ny &&
-        a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
+        safe_approx(a.cenlon, b.cenlon; rtol = 1e-5) &&
+        safe_approx(a.cenlat, b.cenlat; rtol = 1e-5) &&
         a.params_projection == b.params_projection &&
         a.thicknessData == b.thicknessData && a.velocityData == b.velocityData &&
         a.dhdtData == b.dhdtData &&
@@ -308,9 +311,11 @@ function Base.:(≈)(a::Glacier2D, b::Glacier2D)
         isapprox(a.slope, b.slope; rtol = 1e-3) &&
         safe_approx(a.dist_border, b.dist_border) &&
         a.mask == b.mask && a.mask_loss == b.mask_loss &&
-        safe_approx(a.Coords, b.Coords) && a.Δx == b.Δx && a.Δy == b.Δy &&
+        safe_approx(a.Coords, b.Coords; rtol = 1e-5) &&
+        a.Δx == b.Δx && a.Δy == b.Δy &&
         a.nx == b.nx && a.ny == b.ny &&
-        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
+        safe_approx(a.cenlon, b.cenlon; rtol = 1e-5) &&
+        safe_approx(a.cenlat, b.cenlat; rtol = 1e-5) &&
         safe_approx(a.params_projection, b.params_projection) &&
         safe_approx(a.thicknessData, b.thicknessData) &&
         safe_approx(a.velocityData, b.velocityData) &&

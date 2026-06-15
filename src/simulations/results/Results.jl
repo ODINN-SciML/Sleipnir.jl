@@ -68,14 +68,15 @@ function Base.:(==)(a::Results, b::Results)
         a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
         # Some properties are checked approximatively because of numerical rounding
         # varying depending on the platform, which results in different values
-        a.S == b.S && a.B == b.B && a.x ≈ b.x && a.y ≈ b.y &&
+        a.S == b.S && a.B == b.B &&
+        safe_approx(a.x, b.x; rtol = 1e-5) && safe_approx(a.y, b.y; rtol = 1e-5) &&
         a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
         a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
         a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref &&
         a.date2_Vref == b.date2_Vref &&
         a.t_dhdt == b.t_dhdt && a.dhdt_ref == b.dhdt_ref &&
         a.Δx == b.Δx && a.Δy == b.Δy &&
-        a.lon == b.lon && a.lat == b.lat &&
+        safe_approx(a.lon, b.lon; rtol = 1e-5) && safe_approx(a.lat, b.lat; rtol = 1e-5) &&
         a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
         a.MB == b.MB && a.t_MB == b.t_MB &&
         isequal(a.tspan, b.tspan)

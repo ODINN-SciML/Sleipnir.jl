@@ -70,7 +70,9 @@ function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
         a.slope == b.slope && a.sshf == b.sshf &&
         a.ssrd == b.ssrd && a.str == b.str &&
         a.gradient == b.gradient && a.avg_gradient == b.avg_gradient &&
-        a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
+        # x and y are projection-derived coordinates that vary slightly across platforms
+        safe_approx(a.x, b.x; rtol = 1e-5) && safe_approx(a.y, b.y; rtol = 1e-5) &&
+        a.ref_hgt == b.ref_hgt
 end
 
 function diffToDict(a::Climate2Dstep, b::Climate2Dstep)
