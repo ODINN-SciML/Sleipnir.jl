@@ -1,6 +1,8 @@
 
 export initialize_glaciers
 export glacierName
+export compute_surface_topography, compute_surface_slope, compute_surface_aspect
+export farinotti19_thickness, millan22_thickness
 
 ###############################################################
 ########  GLACIER INITIALIZATION  ############################
@@ -254,12 +256,22 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
     if params.simulation.use_velocities
-        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
-        fillNaN!(V)
-        fillNaN!(Vx)
-        fillNaN!(Vy)
+        if params.simulation.gridScalingFactor > 1
+            Vx = block_average_pad_edge_masked(
+                glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
+                params.simulation.gridScalingFactor; empty_value = 0.0)
+            Vy = block_average_pad_edge_masked(
+                glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
+                params.simulation.gridScalingFactor; empty_value = 0.0)
+            V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
+        else
+            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+            fillNaN!(V)
+            fillNaN!(Vx)
+            fillNaN!(Vy)
+        end
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
@@ -297,6 +309,31 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         end,
         geodetic_MB_uncertainty = _default_hugonnet_mb_uncertainty(rgi_id)
     )
+end
+
+function farinotti19_thickness(rgi_id::String, params::Parameters)
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    if Sleipnir.doublePrec
+        glacier_gd = convertRasterStackToFloat64(glacier_gd)
+    end
+    return farinotti19_thickness(glacier_gd)
+end
+function farinotti19_thickness(glacier_gd::RasterStack)
+    return Sleipnir.Float.(ifelse.(
+        glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
+end
+function millan22_thickness(rgi_id::String, params::Parameters)
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    if Sleipnir.doublePrec
+        glacier_gd = convertRasterStackToFloat64(glacier_gd)
+    end
+    return millan22_thickness(glacier_gd)
+end
+function millan22_thickness(glacier_gd::RasterStack)
+    return Sleipnir.Float.(ifelse.(
+        glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
 end
 
 """
@@ -361,11 +398,9 @@ function Glacier2D(
     # initial ice thickness conditions for forward model
     if params.simulation.ice_thickness_source == :Millan22 &&
        params.simulation.use_velocities
-        H₀ = F.(ifelse.(
-            glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+        H₀ = millan22_thickness(glacier_gd)
     elseif params.simulation.ice_thickness_source == :Farinotti19
-        H₀ = F.(ifelse.(glacier_gd.glacier_mask.data .== 1,
-            glacier_gd.consensus_ice_thickness.data, 0.0))
+        H₀ = farinotti19_thickness(glacier_gd)
     end
     fillNaN!(H₀) # Fill NaNs with 0s to have real boundary conditions
     if smoothing
@@ -544,4 +579,285 @@ Replace all zero elements in the array `A` with the specified `fill` value.
 """
 function fillZeros(A, fill = NaN)
     return @. ifelse(iszero(A), fill, A)
+end
+
+"""
+    parse_proj(proj::String)
+
+Parses the string containing the information of the projection to filter for important information
+"+proj=tmerc +lat_0=0 +lon_0=6.985 +k=0.9996 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+"""
+function parse_proj(proj::String)
+    res = Dict()
+    ℓ = split(proj, (' ', '+', '='))
+    ℓ = ℓ[ℓ .!= ""]
+    for (i, key) in enumerate(ℓ)
+        if key ∈ ["lat_0", "lon_0", "k", "x_0", "y_0", "zone"]
+            res[key] = parse(Float64, ℓ[i + 1])
+        end
+    end
+    return res
+end
+
+"""
+    UTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
+
+Transverse Mercator Projection.
+This function reprojects northing/easting coordinates into latitude/longitude.
+
+# Keyword arguments
+
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
+"""
+function UTMercator(x::F, y::F; k = 0.9996, cenlon = 0.0, cenlat = 0.0,
+        x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
+        hemisphere = nothing) where {F <: AbstractFloat}
+    if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x, y)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}(x, y)
+    end
+
+    return convert(LatLon, projection)
+end
+
+"""
+    ReverseUTMercator(x::F, y::F; k=0.9996, cenlon=0.0, cenlat=0.0, x0=0.0, y0=0.0, zone::Union{Nothing, Int}=nothing, hemisphere=nothing) where {F <: AbstractFloat}
+
+Transverse Mercator Projection.
+This function reprojects latitude/longitude into northing/easting coordinates.
+
+# Keyword arguments
+
+    - `k`: scale factor of the projection
+    - `cenlon`: Central longitude used in the projection
+    - `cenlat`: Central latitude used in the projection
+    - `x0`: Shift in easting
+    - `y0`: Shift in northing
+    - `zone` : Zone of the projection
+    - `hemisphere`: Either :north or :south
+"""
+function ReverseUTMercator(lat::F, lon::F; k = 0.9996, cenlon = 0.0, cenlat = 0.0,
+        x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
+        hemisphere = nothing) where {F <: AbstractFloat}
+    if !isnothing(zone)
+        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
+        projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
+    else
+        # Convert to right units
+        lonₒ = cenlon * 1.0°
+        latₒ = cenlat * 1.0°
+        xₒ = x0 * 1.0m
+        yₒ = y0 * 1.0m
+        # Define shift in new coordinate system
+        S = CoordRefSystems.Shift(; lonₒ, xₒ, yₒ)
+        # Define custom projection
+        projection = TransverseMercator{k, latₒ, WGS84Latest, S}
+    end
+
+    latlon = LatLon(lat, lon)
+    return convert(projection, latlon)
+end
+
+"""
+    smooth!(A)
+
+Smooths the interior of a 2D array `A` using a simple averaging method. The function modifies the array `A` in place.
+
+# Arguments
+
+  - `A::AbstractMatrix`: A 2D array to be smoothed.
+
+# Details
+
+The function updates the interior elements of `A` (excluding the boundary elements) by adding a weighted average of the second differences along both dimensions. The boundary elements are then set to the values of their nearest interior neighbors to maintain the boundary conditions.
+"""
+@views function smooth!(A)
+    A[2:(end - 1),
+    2:(end - 1)] .= A[2:(end - 1), 2:(end - 1)] .+
+                                   1.0 ./ 4.1 .*
+                                   (diff(diff(A[:, 2:(end - 1)], dims = 1), dims = 1) .+
+                                    diff(diff(A[2:(end - 1), :], dims = 2), dims = 2))
+    A[1, :]=A[2, :];
+    A[end, :]=A[end - 1, :];
+    A[:, 1]=A[:, 2];
+    A[:, end]=A[:, end - 1]
+end
+
+# function smooth(A)
+#     A_smooth = A[2:end-1,2:end-1] .+ 1.0./4.1.*(diff(diff(A[:,2:end-1], dims=1), dims=1) .+ diff(diff(A[2:end-1,:], dims=2), dims=2))
+#     @tullio A_smooth_pad[i,j] := A_smooth[pad(i-1,1,1),pad(j-1,1,1)] # Fill borders 
+#     return A_smooth_pad
+# end
+
+"""
+    is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
+
+Return a matrix with booleans indicating if a given pixel is at distance at least
+`distance` in the set of non zero values of the matrix. This usually allows
+discarding the border pixels of a glacier.
+A positive value of `distance` indicates a measurement from inside the glacier, while a negative `distance` indicates one from outside.
+
+Arguments:
+
+  - `A::Matrix{F}`: Matrix from which to compute the matrix of booleans.
+  - `distance::I`: Distance to the border, computed as the number of pixels we need
+    to move from within the glacier to find a pixel with value zero.
+"""
+function is_in_glacier(A::Matrix{F}, distance::I) where {I <: Integer, F <: AbstractFloat}
+    B = convert.(F, (A .!= 0))
+    # Reverse values in case we want distance from outside the border
+    if distance < 0
+        distance = -distance
+        B .= 1.0 .- B
+    end
+    for i in 1:distance
+        # We cannot use in-place affectation because this function is differentiated by Zygote in ODINN
+        B = min.(
+            B,
+            circshift(B, (1, 0)),
+            circshift(B, (-1, 0)),
+            circshift(B, (0, 1)),
+            circshift(B, (0, -1))
+        )
+    end
+    B_bool = B .> 0.001
+    if distance >= 0
+        return B_bool
+    else
+        return .!B_bool
+    end
+end
+
+"""
+    block_average_pad_edge_masked(
+        mat::Matrix{F},
+        mask::BitMatrix,
+        n::Int;
+        empty_value::F = F(NaN),
+    ) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging `n x n` blocks intersecting with a mask, using
+edge-replication padding when the matrix dimensions are not divisible by `n`.
+Edge padding replicates the last row/column values to expand the matrix so that both
+dimensions are divisible by `n`.
+Returns a matrix of averaged values with size `(ceil(Int, X/n), ceil(Int, Y/n))`.
+The average discards values where mask is false.
+If the mask is full of falses for a given block, the average is replaced by the
+prescribed empty value.
+
+Arguments
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `mask::BitMatrix`: Mask of valid data to average.
+  - `n::Int`: Block size for downsampling.
+  - `empty_value::F`: Fallback value for blocks that do not have valid values. Defaults to NaN.
+"""
+function block_average_pad_edge_masked(
+        mat::Matrix{F},
+        mask::BitMatrix,
+        n::Int;
+        empty_value::F = F(NaN)
+) where {F <: AbstractFloat}
+    @assert size(mat) == size(mask) "mat and mask must have the same size"
+
+    mask_F = F.(mask)
+
+    sum_values = block_average_pad_edge(mat .* mask_F, n)
+    valid_frac = block_average_pad_edge(mask_F, n)
+
+    out = sum_values ./ valid_frac
+
+    out[valid_frac .== 0] .= empty_value
+
+    return out
+end
+
+"""
+    block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging `n x n` blocks, using edge-replication padding
+when the matrix dimensions are not divisible by `n`.
+Edge padding replicates the last row/column values to expand the matrix so that both
+dimensions are divisible by `n`.
+Returns a matrix of averaged values with size `(ceil(Int, X/n), ceil(Int, Y/n))`.
+
+Arguments
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `n::Int`: Block size for downsampling.
+"""
+function block_average_pad_edge(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+    X, Y = size(mat)
+    new_X = ceil(Int, X / n) * n
+    new_Y = ceil(Int, Y / n) * n
+
+    # Create padded matrix filled with edge values
+    padded = similar(mat, new_X, new_Y)
+
+    # Fill original data
+    padded[1:X, 1:Y] .= mat
+
+    # Pad bottom rows with last row
+    if new_X > X
+        for i in (X + 1):new_X
+            padded[i, 1:Y] .= mat[end, :]
+        end
+    end
+
+    # Pad right columns with last column
+    if new_Y > Y
+        for j in (Y + 1):new_Y
+            padded[1:X, j] .= mat[:, end]
+        end
+    end
+
+    # Fill bottom-right corner (if both X and Y were padded)
+    if new_X > X && new_Y > Y
+        for i in (X + 1):new_X
+            for j in (Y + 1):new_Y
+                padded[i, j] = mat[end, end]
+            end
+        end
+    end
+
+    return block_average(padded, n)
+end
+
+"""
+    block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+
+Downsamples a matrix by averaging non-overlapping `n x n` blocks.
+Returns a matrix of the block-averaged values with size `(div(X, n), div(Y, n))`
+where `(X, Y) = size(mat)`.
+
+Arguments
+
+  - `mat::Matrix{F}`: Input 2D matrix.
+  - `n::Int`: Block size for downsampling. Both matrix dimensions must be divisible by `n`.
+"""
+function block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
+    X, Y = size(mat)
+    @assert X % n == 0 && Y % n == 0 "Matrix dimensions are $(size(mat)) but they are not divisible by n=$n"
+
+    A, B = div(X, n), div(Y, n)
+    reshaped = reshape(mat, n, A, n, B)
+    permuted = permutedims(reshaped, (2, 4, 1, 3))  # (A, B, n, n)
+    mean_blocks = mean(permuted, dims = (3, 4))
+    return dropdims(mean_blocks, dims = (3, 4))
 end

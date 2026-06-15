@@ -73,6 +73,28 @@ function Base.:(==)(a::Climate2Dstep, b::Climate2Dstep)
         a.x == b.x && a.y == b.y && a.ref_hgt == b.ref_hgt
 end
 
+function diffToDict(a::Climate2Dstep, b::Climate2Dstep)
+    Dict{Symbol, Bool}(
+        :temp => a.temp == b.temp,
+        :PDD => a.PDD == b.PDD,
+        :snow => a.snow == b.snow,
+        :rain => a.rain == b.rain,
+        :elevation_diff => a.elevation_diff == b.elevation_diff,
+        :aspect => a.aspect == b.aspect,
+        :albedo => a.albedo == b.albedo,
+        :slhf => a.slhf == b.slhf,
+        :slope => a.slope == b.slope,
+        :sshf => a.sshf == b.sshf,
+        :ssrd => a.ssrd == b.ssrd,
+        :str => a.str == b.str,
+        :gradient => a.gradient == b.gradient,
+        :avg_gradient => a.avg_gradient == b.avg_gradient,
+        :x => a.x == b.x,
+        :y => a.y == b.y,
+        :ref_hgt => a.ref_hgt == b.ref_hgt
+    )
+end
+
 """
     ClimateStep{F <: AbstractFloat}
 
@@ -267,6 +289,8 @@ end
 function Base.:(==)(a::Climate2D, b::Climate2D)
     a.raw_climate == b.raw_climate && a.climate_raw_step == b.climate_raw_step &&
         a.climate_step == b.climate_step && a.climate_2D_step == b.climate_2D_step &&
+        # Some properties are checked approximatively because of numerical rounding
+        # varying depending on the platform, which results in different values
         a.longterm_temps_scalar ≈ b.longterm_temps_scalar &&
         a.longterm_temps_gridded ≈ b.longterm_temps_gridded &&
         a.avg_temps ≈ b.avg_temps &&
@@ -280,9 +304,9 @@ function diffToDict(a::Climate2D, b::Climate2D)
         :climate_raw_step => a.climate_raw_step == b.climate_raw_step,
         :climate_step => a.climate_step == b.climate_step,
         :climate_2D_step => a.climate_2D_step == b.climate_2D_step,
-        :longterm_temps_scalar => a.longterm_temps_scalar == b.longterm_temps_scalar,
-        :longterm_temps_gridded => a.longterm_temps_gridded == b.longterm_temps_gridded,
-        :avg_temps => a.avg_temps == b.avg_temps,
+        :longterm_temps_scalar => a.longterm_temps_scalar ≈ b.longterm_temps_scalar,
+        :longterm_temps_gridded => a.longterm_temps_gridded ≈ b.longterm_temps_gridded,
+        :avg_temps => a.avg_temps ≈ b.avg_temps,
         :avg_gradients => a.avg_gradients == b.avg_gradients,
         :ref_hgt => a.ref_hgt == b.ref_hgt,
         :climate_data_source => a.climate_data_source == b.climate_data_source
@@ -291,7 +315,8 @@ end
 
 """
     DummyClimate2D(;
-        longterm_temps::Vector{F} = []
+        longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
+        longterm_temps_gridded::Matrix{F} = Matrix{Sleipnir.Float}(zeros(0, 0))
     ) where {F <: AbstractFloat}
 
 Dummy climate initialization for very specific use cases where we don't have climate
@@ -301,7 +326,8 @@ It returns a minimalistic Climate2D instance.
 
 Arguments:
 
-  - `longterm_temps::Vector{F}`: Long term temperatures.
+  - `longterm_temps_scalar::Vector{F}`: Scalar long term temperatures.
+  - `longterm_temps_gridded::Matrix{F}`: Distributed long term temperatures (matrix).
 """
 function DummyClimate2D(;
         longterm_temps_scalar::Vector{F} = Vector{Sleipnir.Float}([]),
