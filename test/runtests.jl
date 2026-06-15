@@ -1,6 +1,12 @@
 import Pkg
 function is_included_in_repl()
-    for frame in StackTraces.stacktrace()
+    # Handle github CI
+    if get(ENV, "CI_FAST", "false")=="true"
+        return true
+    end
+    frames = StackTraces.stacktrace()
+    # Handle manual include by the user in the REPL
+    for frame in frames
         if occursin("start_repl_backend", string(frame.func))
             return true
         end
@@ -55,10 +61,13 @@ ENV["GKSwstype"]="nul"
     @testset "Constructors" begin
         @testset "Parameters constructors with specified values" params_constructor_specified(save_refs = false)
         @testset "Parameters constructors by default" params_constructor_default(save_refs = false)
+        @testset "Glaciers 2D minimalistic constructors" glaciers2D_simple_constructor()
         @testset "Glaciers 2D constructors w/o glathida data" glaciers2D_constructor(
             use_glathida_data = false, save_refs = false)
         @testset "Glaciers 2D constructors w/ glathida data" glaciers2D_constructor(
             use_glathida_data = true, save_refs = false)
+        @testset "Glaciers 2D constructors Farinotti19 ice thickness source" glaciers2D_thickness_source(:Farinotti19)
+        @testset "Glaciers 2D constructors Millan22 ice thickness source" glaciers2D_thickness_source(:Millan22)
         @testset "Surface velocity datacube" surface_velocity_data()
         @testset "Thickness data constructor" thickness_construction()
         @testset "Results instantiation w/o velocity datacube" results_default(save_refs = false)
