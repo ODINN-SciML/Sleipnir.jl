@@ -21,7 +21,7 @@ function _default_hugonnet_dhdt_path()
         # Bundled fallback (reference glaciers only) so tests/CI have geodetic data
         # when the full worldwide file is not available locally.
         normpath(joinpath(
-            @__DIR__, "..", "..", "..", "data",
+            @__DIR__, "..", "..", "..", "test", "data", "glaciers",
             "hugonnet_2021_geodetic_test_subset.csv"))
     )
 
