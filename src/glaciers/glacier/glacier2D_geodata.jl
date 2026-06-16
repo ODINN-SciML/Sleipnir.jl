@@ -5,8 +5,8 @@
 # ── Hugonnet 2021 geodetic mass balance ──────────────────────
 
 const _HUGONNET_PERIOD = "2000-01-01_2020-01-01"
-const _hugonnet_dhdt_cache = Ref{Union{Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
-const _hugonnet_mb_uncertainty_cache = Ref{Union{Nothing, Dict{String, Sleipnir.Float}}}(nothing)
+const _hugonnet_cache = Ref{Union{
+    Nothing, Dict{String, Tuple{DhdtData{Sleipnir.Float}, Sleipnir.Float}}}}(nothing)
 
 function _default_hugonnet_dhdt_path()
     candidates = (
@@ -48,74 +48,41 @@ function _parse_hugonnet_period(period::AbstractString)
     return (start_year, end_year)
 end
 
-function _load_hugonnet_dhdt_cache()
-    if !isnothing(_hugonnet_dhdt_cache[])
-        return _hugonnet_dhdt_cache[]
-    end
+function _load_hugonnet_cache()
+    isnothing(_hugonnet_cache[]) || return _hugonnet_cache[]
 
     path = _default_hugonnet_dhdt_path()
-    if isnothing(path)
-        cache = Dict{String, DhdtData{Sleipnir.Float}}()
-        _hugonnet_dhdt_cache[] = cache
-        return cache
+    cache = Dict{String, Tuple{DhdtData{Sleipnir.Float}, Sleipnir.Float}}()
+    if !isnothing(path)
+        for row in CSV.File(path)
+            string(row.period) == _HUGONNET_PERIOD || continue
+            ismissing(row.dmdtda) && continue
+
+            period = _parse_hugonnet_period(string(row.period))
+            isnothing(period) && continue
+
+            mb = Sleipnir.Float(row.dmdtda)
+            isfinite(mb) || continue
+
+            err_mb = (!ismissing(row.err_dmdtda) && isfinite(row.err_dmdtda)) ?
+                     Sleipnir.Float(row.err_dmdtda) : Sleipnir.Float(NaN)
+
+            cache[string(row.rgiid)] = (DhdtData(period, mb), err_mb)
+        end
     end
 
-    cache = Dict{String, DhdtData{Sleipnir.Float}}()
-    for row in CSV.File(path)
-        period_str = string(row.period)
-        period_str == _HUGONNET_PERIOD || continue
-        ismissing(row.dmdtda) && continue
-
-        period = _parse_hugonnet_period(period_str)
-        isnothing(period) && continue
-
-        mb = Sleipnir.Float(row.dmdtda)
-        isfinite(mb) || continue
-
-        cache[string(row.rgiid)] = DhdtData(period, mb)
-    end
-
-    _hugonnet_dhdt_cache[] = cache
-    return cache
-end
-
-function _load_hugonnet_mb_uncertainty_cache()
-    if !isnothing(_hugonnet_mb_uncertainty_cache[])
-        return _hugonnet_mb_uncertainty_cache[]
-    end
-
-    path = _default_hugonnet_dhdt_path()
-    if isnothing(path)
-        cache = Dict{String, Sleipnir.Float}()
-        _hugonnet_mb_uncertainty_cache[] = cache
-        return cache
-    end
-
-    cache = Dict{String, Sleipnir.Float}()
-    for row in CSV.File(path)
-        period_str = string(row.period)
-        period_str == _HUGONNET_PERIOD || continue
-        ismissing(row.err_dmdtda) && continue
-
-        period = _parse_hugonnet_period(period_str)
-        isnothing(period) && continue
-
-        err_mb = Sleipnir.Float(row.err_dmdtda)
-        isfinite(err_mb) || continue
-
-        cache[string(row.rgiid)] = err_mb
-    end
-
-    _hugonnet_mb_uncertainty_cache[] = cache
+    _hugonnet_cache[] = cache
     return cache
 end
 
 function _default_hugonnet_dhdt(rgi_id::String)
-    return get(_load_hugonnet_dhdt_cache(), rgi_id, nothing)
+    entry = get(_load_hugonnet_cache(), rgi_id, nothing)
+    return isnothing(entry) ? nothing : entry[1]
 end
 
 function _default_hugonnet_mb_uncertainty(rgi_id::String)
-    return get(_load_hugonnet_mb_uncertainty_cache(), rgi_id, Sleipnir.Float(NaN))
+    entry = get(_load_hugonnet_cache(), rgi_id, nothing)
+    return isnothing(entry) ? Sleipnir.Float(NaN) : entry[2]
 end
 
 # ── GlaThiDa ice thickness ───────────────────────────────────

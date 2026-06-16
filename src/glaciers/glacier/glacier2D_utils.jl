@@ -289,6 +289,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
 
     # Initialize glacier climate
     climate = Climate2D(rgi_id, params, S, Coords)
+    dhdt_data = _default_hugonnet_dhdt(rgi_id)
 
     return Glacier2D(
         rgi_id = rgi_id,
@@ -302,11 +303,9 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
         cenlon = cenlon, cenlat = cenlat,
         params_projection = params_projection,
-        dhdtData = _default_hugonnet_dhdt(rgi_id),
-        geodetic_MB = begin
-            dhdt_data = _default_hugonnet_dhdt(rgi_id)
-            isnothing(dhdt_data) ? Sleipnir.Float(NaN) : Sleipnir.Float(dhdt_data.dhdt)
-        end,
+        dhdtData = dhdt_data,
+        geodetic_MB = isnothing(dhdt_data) ? Sleipnir.Float(NaN) :
+                      Sleipnir.Float(dhdt_data.dhdt),
         geodetic_MB_uncertainty = _default_hugonnet_mb_uncertainty(rgi_id)
     )
 end
