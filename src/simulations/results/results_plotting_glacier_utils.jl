@@ -326,8 +326,8 @@ end
         title_mapping::Dict;
         timeIdx::Union{Nothing,Int64} = nothing,
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
-        lengthscale::Float64 = 0.00001,
-        tiplength::Float64 = 0.5,
+        lengthscale::Sleipnir.Float = Sleipnir.Float(0.00001),
+        tiplength::Sleipnir.Float = Sleipnir.Float(0.5),
     ) -> Figure
 
 Plot quivers for glacier variables.
@@ -341,8 +341,8 @@ Plot quivers for glacier variables.
     data should be plotted when dealing with vector of matrix. Default is nothing
     which selects the last element available.
   - `figsize::Union{Nothing, Tuple{Int64, Int64}}`: Size of the figure.
-  - `lengthscale::Float64`: Lengthscale of the arrows in the quiver plot.
-  - `tiplength::Float64`: Length of the arrow in the quiver plot.
+  - `lengthscale::Sleipnir.Float`: Lengthscale of the arrows in the quiver plot.
+  - `tiplength::Sleipnir.Float`: Length of the arrow in the quiver plot.
 
 # Returns
 
@@ -354,8 +354,8 @@ function plot_glacier_quivers(
         title_mapping::Dict;
         timeIdx::Union{Nothing, Int64} = nothing,
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
-        lengthscale::Float64 = 0.00001,
-        tiplength::Float64 = 0.5
+        lengthscale::Sleipnir.Float = Sleipnir.Float(0.00001),
+        tiplength::Sleipnir.Float = Sleipnir.Float(0.5)
 )
     figKwargs = isnothing(figsize) ? Dict{Symbol, Any}() :
                 Dict{Symbol, Any}(:size => figsize)

@@ -5,7 +5,7 @@ export is_in_glacier
 ########  SURFACE TOPOGRAPHY & GRID MATH  #####################
 ###############################################################
 
-function _window_cell_count(window_m::AbstractFloat, spacing::AbstractFloat)
+function _window_cell_count(window_m::Sleipnir.Float, spacing::Sleipnir.Float)
     spacing_safe = max(spacing, Sleipnir.Float(eps(Float64)))
     n_cells = max(1, round(Int, window_m / spacing_safe))
     isodd(n_cells) ? n_cells : n_cells + 1
@@ -13,9 +13,9 @@ end
 
 function _smoothed_surface(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat;
-        window_m::AbstractFloat = 200.0)
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float;
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0))
     wx = _window_cell_count(window_m, Δx)
     wy = _window_cell_count(window_m, Δy)
     half_wx = (wx - 1) ÷ 2
@@ -36,8 +36,8 @@ end
 
 function _centered_gradients(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat)
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float)
     nx, ny = size(S)
     dSdx = zeros(Sleipnir.Float, nx, ny)
     dSdy = zeros(Sleipnir.Float, nx, ny)
@@ -70,9 +70,9 @@ end
 """
     compute_surface_topography(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat;
-        window_m::AbstractFloat = 200.0,
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float;
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0),
     )
 
 Compute dynamic slope and aspect fields from the current glacier surface `S`.
@@ -81,9 +81,9 @@ computing finite-difference gradients to reduce pixel-scale noise.
 """
 function compute_surface_topography(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat;
-        window_m::AbstractFloat = 200.0)
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float;
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0))
     S_smooth = _smoothed_surface(S, Δx, Δy; window_m = window_m)
     dSdx, dSdy = _centered_gradients(S_smooth, Δx, Δy)
 
@@ -94,7 +94,7 @@ end
 
 function compute_surface_topography(
         glacier::Glacier2D;
-        window_m::AbstractFloat = 200.0)
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0))
     return compute_surface_topography(
         glacier.S,
         glacier.Δx,
@@ -104,18 +104,18 @@ end
 
 function compute_surface_slope(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat;
-        window_m::AbstractFloat = 200.0)
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float;
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0))
     slope, _ = compute_surface_topography(S, Δx, Δy; window_m = window_m)
     return slope
 end
 
 function compute_surface_aspect(
         S::Matrix{<: AbstractFloat},
-        Δx::AbstractFloat,
-        Δy::AbstractFloat;
-        window_m::AbstractFloat = 200.0)
+        Δx::Sleipnir.Float,
+        Δy::Sleipnir.Float;
+        window_m::Sleipnir.Float = Sleipnir.Float(200.0))
     _, aspect = compute_surface_topography(S, Δx, Δy; window_m = window_m)
     return aspect
 end

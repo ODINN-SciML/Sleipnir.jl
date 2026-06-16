@@ -80,9 +80,11 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
             slice_start = max(period[begin], climTstart)
             slice_end = min(period[end], climTend)
             if slice_start <= slice_end
+                @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
                 climate = _slice_climate_between_dates(climate, slice_start, slice_end)
+            else
+                error("No climate data available for the requested period $(period[begin]) to $(period[end]). Climate data range from $(climTstart) to $(climTend).")
             end
-            @warn "No overlapping period available between climate tspan! Climate data range from $(climTstart) to $(climTend)."
         end
         # Save raw gdir climate on disk
         write(joinpath(rgi_path, raw_climate_clipped_file), climate)
@@ -91,7 +93,7 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
 end
 
 """
-    get_cumulative_climate!(climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds=[-0.009, -0.003])
+    get_cumulative_climate!(climate, t::Sleipnir.Float, step::Sleipnir.Float, gradient_bounds=[-0.009, -0.003])
     get_cumulative_climate!(climate, period::StepRange{Date, Day}, gradient_bounds=[-0.009, -0.003])
 
 Calculate and update the cumulative climate data for a given period.
@@ -102,8 +104,8 @@ The user can choose between providing a specific time `t` and a time step `step`
   - `climate::Climate`: The climate object containing raw climate data.
   - `gradient_bounds::Vector{Float64}`: Optional. The bounds within which to clamp the gradient values. Default is `[-0.009, -0.003]`.
     Optional parameters to specify the time period:
-  - `t::AbstractFloat`: Time at which the cumulative climate data should be computed.
-  - `step::AbstractFloat`: Time step used to compute the cumulative climate data. Together with `t` they define a time period.
+  - `t::Sleipnir.Float`: Time at which the cumulative climate data should be computed.
+  - `step::Sleipnir.Float`: Time step used to compute the cumulative climate data. Together with `t` they define a time period.
     or
   - `period::StepRange{Date, Day}`: The time period for which to compute the cumulative climate data.
 
@@ -120,7 +122,8 @@ The user can choose between providing a specific time `t` and a time step `step`
   - `climate.climate_step.ref_hgt`: The reference height from the raw climate data.
 """
 function get_cumulative_climate!(
-        climate, t::AbstractFloat, step::AbstractFloat, gradient_bounds = [-0.009, -0.003])
+        climate, t::Sleipnir.Float, step::Sleipnir.Float, gradient_bounds = [
+            -0.009, -0.003])
     # First we get the dates of the current time and the previous step
     period = partial_year(Day, t - step):Day(1):partial_year(Day, t)
     get_cumulative_climate!(climate, period, gradient_bounds)
@@ -267,7 +270,7 @@ function apply_t_cumul_grad!(
                            climate_2D_step.gradient .* (S .- climate_2D_step.ref_hgt)
     climate_2D_step.PDD .= ifelse.(climate_2D_step.PDD .< 0.0, 0.0, climate_2D_step.PDD) # Crop negative PDD values
 
-    # We adjust the rain/snow fractions with the updated temperature
+    # We adjust the rain/snow fractions between 0 and 2°C with the updated temperature
     f = clamp.((2 .- climate_2D_step.temp) ./ 2, 0, 1)
     climate_2D_step.rain .= (1 .- f) .* climate_2D_step.snow
     climate_2D_step.snow .*= f
@@ -339,8 +342,8 @@ This function updates the 2D climate structure of the given glacier by:
 function downscale_2D_climate!(
         glacier::Glacier2D;
         include_topography::Bool = false,
-        topography_window_m::AbstractFloat = 200.0,
-        temp_bias::AbstractFloat = 0.0)
+        topography_window_m::Sleipnir.Float = Sleipnir.Float(200.0),
+        temp_bias::Sleipnir.Float = Sleipnir.Float(0.0))
     climate = glacier.climate
     @. climate.climate_2D_step.elevation_diff = glacier.S - climate.climate_step.ref_hgt
     if include_topography
@@ -420,10 +423,10 @@ function downscale_2D_climate(
         S::Matrix{<: AbstractFloat},
         Coords::Dict;
         include_topography::Bool = false,
-        topography_window_m::AbstractFloat = 200.0,
-        Δx::Union{Nothing, AbstractFloat} = nothing,
-        Δy::Union{Nothing, AbstractFloat} = nothing,
-        temp_bias::AbstractFloat = 0.0)
+        topography_window_m::Sleipnir.Float = Sleipnir.Float(200.0),
+        Δx::Union{Nothing, Sleipnir.Float} = nothing,
+        Δy::Union{Nothing, Sleipnir.Float} = nothing,
+        temp_bias::Sleipnir.Float = Sleipnir.Float(0.0))
     dummy_grid = zeros(size(S))
     temp_2D = climate_step.avg_temp .+ dummy_grid
     elevation_diff_2D = S .- climate_step.ref_hgt
@@ -530,35 +533,35 @@ Calculate a partial year date based on a floating-point year value.
 # Arguments
 
   - `period::Type{<:Period}`: The type of period to use (e.g., `Month`, `Day`).
-  - `float::Float64`: The floating-point year value.
+  - `float::Sleipnir.Float`: The floating-point year value.
 
 # Returns
 
   - `Date`: The calculated date corresponding to the partial year.
 """
-function partial_year(period::Type{<:Period}, float::AbstractFloat)
+function partial_year(period::Type{<:Period}, float::Sleipnir.Float)
     _year, Δ = divrem(float, 1)
     year_start = Date(convert(Int, _year))
     year = period((year_start + Year(1)) - year_start)
     partial = period(round(Dates.value(year) * Δ))
     year_start + partial
 end
-function partial_year(period::Type{<:Period}, floats::Vector{<:AbstractFloat})
+function partial_year(period::Type{<:Period}, floats::Vector{Sleipnir.Float})
     map(f -> partial_year(period, f), floats)
 end
 
 """
-    partial_year(float::Float64) -> Float64
+    partial_year(float::Sleipnir.Float) -> Sleipnir.Float
 
 Calculate the partial year value based on the given floating-point number.
 
 # Arguments
 
-  - `float::Float64`: A floating-point number representing the fraction of the year.
+  - `float::Sleipnir.Float`: A floating-point number representing the fraction of the year.
 
 # Returns
 
-  - `Float64`: The calculated partial year value.
+  - `Sleipnir.Float`: The calculated partial year value.
 """
 partial_year(float) = partial_year(Day, float)
 
