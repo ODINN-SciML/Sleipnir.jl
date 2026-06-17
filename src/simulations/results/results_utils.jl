@@ -131,9 +131,15 @@ function create_results(
             date2_Vref = Vector{Sleipnir.Float}([])
         end
     else
-        Vx = Vy = V = Vector{Matrix{Sleipnir.Float}}([[;;]])
-        Vx_ref = Vy_ref = V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-        date_Vref = date1_Vref = date2_Vref = Vector{Sleipnir.Float}([])
+        Vx = typeof(H)()
+        Vy = typeof(H)()
+        V = typeof(H)()
+        Vx_ref = typeof(H)()
+        Vy_ref = typeof(H)()
+        V_ref = typeof(H)()
+        date_Vref = Vector{Sleipnir.Float}([])
+        date1_Vref = Vector{Sleipnir.Float}([])
+        date2_Vref = Vector{Sleipnir.Float}([])
     end
 
     if !isnothing(glacier.thicknessData)
