@@ -1,5 +1,5 @@
 
-export Glacier2D, Climate2D
+export Glacier2D, AbstractGlacier, Climate2D
 
 """
     AbstractGlacier
