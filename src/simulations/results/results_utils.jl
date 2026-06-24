@@ -65,7 +65,7 @@ Create a `Results` object from a given simulation and solution.
   - `glacier_idx::I`: The index of the glacier within the simulation.
   - `solution`: The solution object containing all the steps including intermediate ones.
   - `tstops::Vector{F}`: The list of time steps to use to construct the results.
-  - `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+  - `processVelocity::Union{Nothing, Function}`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
 
 # Returns
 
@@ -112,8 +112,16 @@ function create_results(
             Vy_ref = glacier.velocityData.vy
             V_ref = glacier.velocityData.vabs
             date_Vref = datetime_to_floatyear.(glacier.velocityData.date)
-            date1_Vref = datetime_to_floatyear.(glacier.velocityData.date1)
-            date2_Vref = datetime_to_floatyear.(glacier.velocityData.date2)
+            if !isnothing(glacier.velocityData.date1)
+                date1_Vref = datetime_to_floatyear.(glacier.velocityData.date1)
+            else
+                date1_Vref = Vector{Sleipnir.Float}([])
+            end
+            if !isnothing(glacier.velocityData.date2)
+                date2_Vref = datetime_to_floatyear.(glacier.velocityData.date2)
+            else
+                date2_Vref = Vector{Sleipnir.Float}([])
+            end
         elseif simulation.parameters.simulation.use_velocities && !isempty(glacier.Vx)
             # Fall back to the static (Millan) velocity as a single-frame reference for plotting.
             Vx_ref = [glacier.Vx]
