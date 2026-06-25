@@ -1,5 +1,5 @@
 
-export initialize_glaciers, initialize_glacier_with_millan
+export initialize_glaciers
 export generate_ground_truth, generate_ground_truth!
 export is_in_glacier
 export glacierName
