@@ -317,6 +317,26 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
+function _process_Millan22_velocities(params, glacier_gd)
+    if params.simulation.gridScalingFactor > 1
+        Vx = block_average_pad_edge_masked(
+            glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
+            params.simulation.gridScalingFactor; empty_value = 0.0)
+        Vy = block_average_pad_edge_masked(
+            glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
+            params.simulation.gridScalingFactor; empty_value = 0.0)
+        V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
+    else
+        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+        fillNaN!(V)
+        fillNaN!(Vx)
+        fillNaN!(Vy)
+    end
+    return V, Vy, Vy
+end
+
 function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
     # We filter glacier borders in high elevations to avoid overflow problems
     dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
@@ -372,22 +392,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
     if params.simulation.use_velocities
-        if params.simulation.gridScalingFactor > 1
-            Vx = block_average_pad_edge_masked(
-                glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
-                params.simulation.gridScalingFactor; empty_value = 0.0)
-            Vy = block_average_pad_edge_masked(
-                glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
-                params.simulation.gridScalingFactor; empty_value = 0.0)
-            V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
-        else
-            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
-            fillNaN!(V)
-            fillNaN!(Vx)
-            fillNaN!(Vy)
-        end
+        V, Vy, Vy = _process_Millan22_velocities(params, glacier_gd)
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
@@ -541,7 +546,6 @@ function Glacier2D(
     end
 end
 
-
 """
     generate_ground_truth!(glacier::Glacier2D, params::Parameters)
 
@@ -562,15 +566,7 @@ function generate_ground_truth!(
         glacier_gd = convertRasterStackToFloat64(glacier_gd)
     end
 
-    mask = glacier_gd.glacier_mask.data .== 1
-
-    vx_mat = ifelse.(mask, glacier_gd.millan_vx.data, NaN)
-    vy_mat = ifelse.(mask, glacier_gd.millan_vy.data, NaN)
-    vabs_mat = ifelse.(mask, glacier_gd.millan_v.data, NaN)
-
-    fillNaN!(vx_mat)
-    fillNaN!(vy_mat)
-    fillNaN!(vabs_mat)
+    vabs_mat, vy_mat, vx_mat = _process_Millan22_velocities(params, glacier_gd)
 
     MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
     MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
@@ -585,13 +581,13 @@ function generate_ground_truth!(
         vx = [vx_mat],
         vy = [vy_mat],
         vabs = [vabs_mat],
-        isGridGlacierAligned = true,
+        isGridGlacierAligned = true
     )
 
-    thicknessData = ThicknessData(
-        t = [datetime_to_floatyear(date_mean)], 
-        H = [glacier.H₀]
-    )
+    # thicknessData = ThicknessData(
+    #     t = [datetime_to_floatyear(date_mean)],
+    #     H = [glacier.H₀]
+    # )
 
     #return Glacier2D(glacier; thicknessData = thicknessData, velocityData = velocityData)
     return Glacier2D(glacier; velocityData = velocityData)
@@ -610,7 +606,6 @@ function generate_ground_truth(
 )
     return map(glacier -> generate_ground_truth!(glacier, params), glaciers)
 end
-
 
 # [Begin] Glathida Utilities
 """
