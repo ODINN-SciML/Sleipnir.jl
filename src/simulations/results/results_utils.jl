@@ -39,12 +39,12 @@ Vector of indices such that `t[indices]` are the times in `t` closest to each va
 
   - For the initial time step (`tspan[1]`), returns the first matching index to avoid out-of-range interpolation
   - For subsequent time steps, returns the last matching index to capture state after potential callbacks
-  - Uses approximate equality with relative tolerance `rtol=1e-7` to handle numerical rounding
+  - Uses approximate equality with relative tolerance `rtol=1e-10` to handle numerical rounding
 """
 function indFromT(tspan, tstops, t)
     return [val==tspan[1] ?
-            findfirst(_t->(isapprox(_t, val, rtol = 1e-7)), t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
-            findlast(_t->(isapprox(_t, val, rtol = 1e-7)), t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
+            findfirst(_t->(isapprox(_t, val, rtol = 1e-10)), t) : # If this corresponds to the initial state, keep the first time step that corresponds in order to avoid issues with out of range interpolation.
+            findlast(_t->(isapprox(_t, val, rtol = 1e-10)), t) # Otherwise, keep the last time step that corresponds. This is to get the state after a potential CB has been applied.
             for val in tstops] # We use isapprox because of potential numerical roundings
 end
 
