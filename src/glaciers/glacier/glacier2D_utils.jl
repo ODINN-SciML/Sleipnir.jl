@@ -1,6 +1,6 @@
 
 export initialize_glaciers, initialize_glacier_with_millan
-export generate_ground_truth, generate_ground_truth!, Millan22
+export generate_ground_truth, generate_ground_truth!
 export is_in_glacier
 export glacierName
 export compute_surface_topography, compute_surface_slope, compute_surface_aspect
@@ -334,7 +334,7 @@ function _process_Millan22_velocities(params, glacier_gd)
         fillNaN!(Vx)
         fillNaN!(Vy)
     end
-    return V, Vy, Vy
+    return V, Vx, Vy
 end
 
 function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
@@ -392,7 +392,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
     if params.simulation.use_velocities
-        V, Vy, Vy = _process_Millan22_velocities(params, glacier_gd)
+        V, Vx, Vy = _process_Millan22_velocities(params, glacier_gd)
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
