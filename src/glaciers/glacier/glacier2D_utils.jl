@@ -1,5 +1,6 @@
 
-export initialize_glaciers
+export initialize_glaciers, initialize_glacier_with_millan
+export generate_ground_truth, generate_ground_truth!, Millan22
 export is_in_glacier
 export glacierName
 export compute_surface_topography, compute_surface_slope, compute_surface_aspect
@@ -539,6 +540,77 @@ function Glacier2D(
             params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
     end
 end
+
+
+"""
+    generate_ground_truth!(glacier::Glacier2D, params::Parameters)
+
+Attach Millan ground-truth data to a single `Glacier2D` object.
+
+This function loads the Millan 2022 velocity rasters for the glacier,
+builds a matching `SurfaceVelocityData`, and creates a `ThicknessData` entry
+at the mean acquisition date of the fixed Millan acquisition window.
+It returns a new `Glacier2D` copy with both fields attached.
+"""
+function generate_ground_truth!(
+        glacier::Glacier2D,
+        params::Parameters
+)
+    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id])
+    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    if Sleipnir.doublePrec
+        glacier_gd = convertRasterStackToFloat64(glacier_gd)
+    end
+
+    mask = glacier_gd.glacier_mask.data .== 1
+
+    vx_mat = ifelse.(mask, glacier_gd.millan_vx.data, NaN)
+    vy_mat = ifelse.(mask, glacier_gd.millan_vy.data, NaN)
+    vabs_mat = ifelse.(mask, glacier_gd.millan_v.data, NaN)
+
+    fillNaN!(vx_mat)
+    fillNaN!(vy_mat)
+    fillNaN!(vabs_mat)
+
+    MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
+    MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
+
+    delta = MILLAN22_DATE2 - MILLAN22_DATE1
+    date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
+
+    velocityData = SurfaceVelocityData(
+        date = [date_mean],
+        date1 = [MILLAN22_DATE1],
+        date2 = [MILLAN22_DATE2],
+        vx = [vx_mat],
+        vy = [vy_mat],
+        vabs = [vabs_mat],
+        isGridGlacierAligned = true,
+    )
+
+    thicknessData = ThicknessData(
+        t = [datetime_to_floatyear(date_mean)], 
+        H = [glacier.H₀]
+    )
+
+    #return Glacier2D(glacier; thicknessData = thicknessData, velocityData = velocityData)
+    return Glacier2D(glacier; velocityData = velocityData)
+end
+
+"""
+    generate_ground_truth(glaciers::AbstractVector{<:Glacier2D}, params::Parameters)
+
+Vectorized version of `generate_ground_truth!` for a collection of glaciers.
+Each glacier is updated independently and the function returns a new vector of
+`Glacier2D` objects with Millan thickness and velocity data attached.
+"""
+function generate_ground_truth(
+        glaciers::AbstractVector{<:Glacier2D},
+        params::Parameters
+)
+    return map(glacier -> generate_ground_truth!(glacier, params), glaciers)
+end
+
 
 # [Begin] Glathida Utilities
 """
