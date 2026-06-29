@@ -1,6 +1,5 @@
 
 export initialize_glaciers
-export generate_ground_truth, generate_ground_truth!
 export is_in_glacier
 export glacierName
 export compute_surface_topography, compute_surface_slope, compute_surface_aspect
@@ -53,8 +52,8 @@ function _centered_gradients(
         dSdx[end, :] .= dSdx_edges[end, :]
         if nx > 2
             dSdx[2:(end - 1),
-            :] .= 0.5 .*
-                                    (dSdx_edges[1:(end - 1), :] .+ dSdx_edges[2:end, :])
+                :] .= 0.5 .*
+                      (dSdx_edges[1:(end - 1), :] .+ dSdx_edges[2:end, :])
         end
     end
 
@@ -64,8 +63,8 @@ function _centered_gradients(
         dSdy[:, end] .= dSdy_edges[:, end]
         if ny > 2
             dSdy[:,
-            2:(end - 1)] .= 0.5 .*
-                                    (dSdy_edges[:, 1:(end - 1)] .+ dSdy_edges[:, 2:end])
+                2:(end - 1)] .= 0.5 .*
+                                (dSdy_edges[:, 1:(end - 1)] .+ dSdy_edges[:, 2:end])
         end
     end
 
@@ -398,6 +397,25 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         Vx = zeros(Sleipnir.Float, size(H₀))
         Vy = zeros(Sleipnir.Float, size(H₀))
     end
+    if params.simulation.velocity_product == :Millan22
+        MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
+        MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
+
+        delta = MILLAN22_DATE2 - MILLAN22_DATE1
+        date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
+
+        velocityData = SurfaceVelocityData(
+            date = [date_mean],
+            date1 = [MILLAN22_DATE1],
+            date2 = [MILLAN22_DATE2],
+            vx = [Vx],
+            vy = [Vy],
+            vabs = [V],
+            isGridGlacierAligned = true
+        )
+    else
+        velocityData = nothing
+    end
     Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
     Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
     if params.simulation.gridScalingFactor > 1
@@ -422,7 +440,8 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         mask = mask, mask_loss = mask_loss,
         Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
         cenlon = cenlon, cenlat = cenlat,
-        params_projection = params_projection
+        params_projection = params_projection,
+        velocityData = velocityData
     )
 end
 
@@ -546,67 +565,6 @@ function Glacier2D(
     end
 end
 
-"""
-    generate_ground_truth!(glacier::Glacier2D, params::Parameters)
-
-Attach Millan ground-truth data to a single `Glacier2D` object.
-
-This function loads the Millan 2022 velocity rasters for the glacier,
-builds a matching `SurfaceVelocityData`, and creates a `ThicknessData` entry
-at the mean acquisition date of the fixed Millan acquisition window.
-It returns a new `Glacier2D` copy with both fields attached.
-"""
-function generate_ground_truth!(
-        glacier::Glacier2D,
-        params::Parameters
-)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id])
-    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
-    if Sleipnir.doublePrec
-        glacier_gd = convertRasterStackToFloat64(glacier_gd)
-    end
-
-    vabs_mat, vy_mat, vx_mat = _process_Millan22_velocities(params, glacier_gd)
-
-    MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
-    MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
-
-    delta = MILLAN22_DATE2 - MILLAN22_DATE1
-    date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
-
-    velocityData = SurfaceVelocityData(
-        date = [date_mean],
-        date1 = [MILLAN22_DATE1],
-        date2 = [MILLAN22_DATE2],
-        vx = [vx_mat],
-        vy = [vy_mat],
-        vabs = [vabs_mat],
-        isGridGlacierAligned = true
-    )
-
-    # thicknessData = ThicknessData(
-    #     t = [datetime_to_floatyear(date_mean)],
-    #     H = [glacier.H₀]
-    # )
-
-    #return Glacier2D(glacier; thicknessData = thicknessData, velocityData = velocityData)
-    return Glacier2D(glacier; velocityData = velocityData)
-end
-
-"""
-    generate_ground_truth(glaciers::AbstractVector{<:Glacier2D}, params::Parameters)
-
-Vectorized version of `generate_ground_truth!` for a collection of glaciers.
-Each glacier is updated independently and the function returns a new vector of
-`Glacier2D` objects with Millan thickness and velocity data attached.
-"""
-function generate_ground_truth(
-        glaciers::AbstractVector{<:Glacier2D},
-        params::Parameters
-)
-    return map(glacier -> generate_ground_truth!(glacier, params), glaciers)
-end
-
 # [Begin] Glathida Utilities
 """
     get_glathida!(glaciers::Vector{G}, params::Parameters; force=false) where {G <: Glacier2D}
@@ -689,8 +647,7 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
         gtd_grid = zeros(size(glacier.H₀))
         count = zeros(size(glacier.H₀))
-        for (thick, i, j) in
-            zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
+        for (thick, i, j) in zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
             count[i, j] += 1
             gtd_grid[i, j] += thick
         end
@@ -965,10 +922,10 @@ The function updates the interior elements of `A` (excluding the boundary elemen
 """
 @views function smooth!(A)
     A[2:(end - 1),
-    2:(end - 1)] .= A[2:(end - 1), 2:(end - 1)] .+
-                                   1.0 ./ 4.1 .*
-                                   (diff(diff(A[:, 2:(end - 1)], dims = 1), dims = 1) .+
-                                    diff(diff(A[2:(end - 1), :], dims = 2), dims = 2))
+        2:(end - 1)] .= A[2:(end - 1), 2:(end - 1)] .+
+                        1.0 ./ 4.1 .*
+                        (diff(diff(A[:, 2:(end - 1)], dims = 1), dims = 1) .+
+                         diff(diff(A[2:(end - 1), :], dims = 2), dims = 2))
     A[1, :]=A[2, :];
     A[end, :]=A[end - 1, :];
     A[:, 1]=A[:, 2];
