@@ -11,7 +11,7 @@ abstract type AbstractModel end
 const AbstractEmptyModel = Union{AbstractModel, Nothing}
 
 """
-    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    Model{IFM <: AbstractEmptyModel, MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}}, TC <: AbstractEmptyModel}
 
 A mutable struct that represents a model with three components: iceflow, mass balance, and machine learning.
 
@@ -19,7 +19,7 @@ A mutable struct that represents a model with three components: iceflow, mass ba
         iceflow::IFM,
         mass_balance::MBM,
         trainable_components::TC,
-    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    ) where {IFM <: AbstractEmptyModel, MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}}, TC <: AbstractEmptyModel}
 
     Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
@@ -27,30 +27,32 @@ Initialize Model (no machine learning model).
 
 # Keyword arguments
 
-  - `iceflow::IFM}`: Represents the iceflow component, which is an instance of `IFM`.
-  - `mass_balance::Union{MBM, Vector{MBM}}`: Represents the mass balance component, which is an instance of `MBM`.
+  - `iceflow::IFM`: Represents the iceflow component, which is an instance of `IFM`.
+  - `mass_balance::MBM`: Represents the mass balance component. Either a single `MBM` instance or a `Vector{MBM}` of per-glacier models.
   - `trainable_components::TC`: Represents the trainable components, which is an instance of `TC`.
 
 # Type Parameters
 
   - `IFM`: A subtype of `AbstractEmptyModel` representing the type of the iceflow model.
-  - `MBM`: A subtype of `AbstractEmptyModel` representing the type of the mass balance model.
+  - `MBM`: Either a subtype of `AbstractEmptyModel` (single shared model) or a `Vector` of such subtypes (per-glacier models). The field stores the exact runtime type — no `Union` in the field — which is required for AD compatibility.
   - `TC`: A subtype of `AbstractEmptyModel` representing the type of the trainable components.
 """
 mutable struct Model{
-    IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    IFM <: AbstractEmptyModel,
+    MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}},
+    TC <: AbstractEmptyModel}
     iceflow::IFM
-    mass_balance::Union{MBM, Vector{MBM}}
+    mass_balance::MBM
     trainable_components::TC
 
     function Model(
             iceflow::IFM,
-            mass_balance::Union{MBM, Vector{MBM}},
+            mass_balance::MBM,
             trainable_components::TC
     ) where {
-            IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
-        # Keep the element type `MBM` as the type parameter so the field type
-        # `Union{MBM, Vector{MBM}}` absorbs both a single model and a per-glacier vector.
+            IFM <: AbstractEmptyModel,
+            MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}},
+            TC <: AbstractEmptyModel}
         new{IFM, MBM, TC}(iceflow, mass_balance, trainable_components)
     end
 end

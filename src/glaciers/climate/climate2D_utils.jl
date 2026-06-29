@@ -4,7 +4,7 @@
 ###############################################
 
 export downscale_2D_climate!, downscale_2D_climate,
-       get_cumulative_climate!, get_cumulative_climate, apply_t_cumul_grad!,
+       get_cumulative_climate!, get_cumulative_climate,
        apply_t_grad!, trim_period, partial_year, get_longterm_temps,
        get_winter_prcp_factor
 
@@ -14,6 +14,18 @@ function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; redu
             reducer(getproperty(climate_raw_step, layer)); digits = 8))
     end
     return Sleipnir.Float(0.0)
+end
+
+# Effective period (decimal years) the raw climate series must cover. When the mass
+# balance model is calibrated against geodetic observations, the series must also span
+# the Hugonnet calibration window, not just the simulation tspan.
+function _climate_period(simparams::SimulationParameters)
+    tspan = simparams.tspan
+    if simparams.use_MB && simparams.calibrate_MB
+        return (min(tspan[1], HUGONNET_CLIMATE_PERIOD[1]),
+            max(tspan[2], HUGONNET_CLIMATE_PERIOD[2]))
+    end
+    return tspan
 end
 
 function _slice_climate_between_dates(
@@ -61,13 +73,14 @@ function generate_raw_climate_files(rgi_id::String, simparams::SimulationParamet
         @error "RGI path not found for: $rgi_id"
     end
 
-    raw_climate_clipped_file = "raw_climate_$(simparams.tspan).nc"
+    period = _climate_period(simparams)
+    raw_climate_clipped_file = "raw_climate_$(period).nc"
     if !isfile(joinpath(rgi_path, raw_climate_clipped_file))
         println("Getting raw climate data for: ", rgi_id)
-        # Get raw climate data for gdir. We start a year before the simulation tspan to ensure we have enough data
+        # Get raw climate data for gdir. We start a year before the period to ensure we have enough data
         # for variables with a sliding time window
-        tspan_date = partial_year(Day, simparams.tspan[1] - 1):Day(1):partial_year(
-            Day, simparams.tspan[2])
+        tspan_date = partial_year(Day, period[1] - 1):Day(1):partial_year(
+            Day, period[2])
         climate = get_raw_climate_data(rgi_path, simparams.climate_data_source)
         # Make sure the desired period is covered by the climate data
         period = trim_period(tspan_date, climate)

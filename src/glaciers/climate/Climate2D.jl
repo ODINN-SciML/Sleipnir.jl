@@ -91,8 +91,8 @@ function diffToDict(a::Climate2Dstep, b::Climate2Dstep)
         :str => a.str == b.str,
         :gradient => a.gradient == b.gradient,
         :avg_gradient => a.avg_gradient == b.avg_gradient,
-        :x => a.x == b.x,
-        :y => a.y == b.y,
+        :x => safe_approx(a.x, b.x; rtol = 1e-5),
+        :y => safe_approx(a.y, b.y; rtol = 1e-5),
         :ref_hgt => a.ref_hgt == b.ref_hgt
     )
 end
@@ -227,7 +227,7 @@ mutable struct Climate2D{CLIMRAW <: RasterStack, CLIMRAWSTEP <: RasterStack,
             Day, params.simulation.tspan[1] +
                  params.simulation.step_MB)
         raw_climate = RasterStack(joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id],
-            "raw_climate_$(params.simulation.tspan).nc"))
+            "raw_climate_$(_climate_period(params.simulation)).nc"))
         if Sleipnir.doublePrec
             raw_climate = convertRasterStackToFloat64(raw_climate)
         end

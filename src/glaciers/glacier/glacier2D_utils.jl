@@ -1,7 +1,6 @@
 
 export initialize_glaciers
 export glacierName
-export compute_surface_topography, compute_surface_slope, compute_surface_aspect
 export farinotti19_thickness, millan22_thickness
 
 ###############################################################
@@ -303,10 +302,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
         cenlon = cenlon, cenlat = cenlat,
         params_projection = params_projection,
-        dhdtData = dhdt_data,
-        geodetic_MB = isnothing(dhdt_data) ? Sleipnir.Float(NaN) :
-                      Sleipnir.Float(dhdt_data.dhdt),
-        geodetic_MB_uncertainty = _default_hugonnet_mb_uncertainty(rgi_id)
+        dhdtData = dhdt_data
     )
 end
 

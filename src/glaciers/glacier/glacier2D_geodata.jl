@@ -5,18 +5,16 @@
 # ── Hugonnet 2021 geodetic mass balance ──────────────────────
 
 const _HUGONNET_PERIOD = "2000-01-01_2020-01-01"
+# Decimal-year bounds of the Hugonnet calibration window. The raw climate series must
+# span this period when the mass balance model is calibrated against geodetic data.
+const HUGONNET_CLIMATE_PERIOD = (2000.0, 2020.0)
 const _hugonnet_cache = Ref{Union{
-    Nothing, Dict{String, Tuple{DhdtData{Sleipnir.Float}, Sleipnir.Float}}}}(nothing)
+    Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
 
 function _default_hugonnet_dhdt_path()
     candidates = (
         joinpath(
-            homedir(),
-            "OGGM",
-            "download_cache",
-            "cluster.klima.uni-bremen.de",
-            "~oggm",
-            "geodetic_ref_mb",
+            prepro_dir, "geodetic_ref_mb",
             "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
         # Bundled fallback (reference glaciers only) so tests/CI have geodetic data
         # when the full worldwide file is not available locally.
@@ -52,7 +50,7 @@ function _load_hugonnet_cache()
     isnothing(_hugonnet_cache[]) || return _hugonnet_cache[]
 
     path = _default_hugonnet_dhdt_path()
-    cache = Dict{String, Tuple{DhdtData{Sleipnir.Float}, Sleipnir.Float}}()
+    cache = Dict{String, DhdtData{Sleipnir.Float}}()
     if !isnothing(path)
         for row in CSV.File(path)
             string(row.period) == _HUGONNET_PERIOD || continue
@@ -67,7 +65,7 @@ function _load_hugonnet_cache()
             err_mb = (!ismissing(row.err_dmdtda) && isfinite(row.err_dmdtda)) ?
                      Sleipnir.Float(row.err_dmdtda) : Sleipnir.Float(NaN)
 
-            cache[string(row.rgiid)] = (DhdtData(period, mb), err_mb)
+            cache[string(row.rgiid)] = DhdtData(period, mb, err_mb)
         end
     end
 
@@ -76,13 +74,7 @@ function _load_hugonnet_cache()
 end
 
 function _default_hugonnet_dhdt(rgi_id::String)
-    entry = get(_load_hugonnet_cache(), rgi_id, nothing)
-    return isnothing(entry) ? nothing : entry[1]
-end
-
-function _default_hugonnet_mb_uncertainty(rgi_id::String)
-    entry = get(_load_hugonnet_cache(), rgi_id, nothing)
-    return isnothing(entry) ? Sleipnir.Float(NaN) : entry[2]
+    return get(_load_hugonnet_cache(), rgi_id, nothing)
 end
 
 # ── GlaThiDa ice thickness ───────────────────────────────────
