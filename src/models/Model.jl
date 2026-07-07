@@ -53,7 +53,11 @@ mutable struct Model{
             IFM <: AbstractEmptyModel,
             MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}},
             TC <: AbstractEmptyModel}
-        new{IFM, MBM, TC}(iceflow, mass_balance, trainable_components)
+        # Parameterize on the concrete runtime types: the `where` bounds above are not
+        # guaranteed concrete (e.g. a Union bound has isconcretetype == false), whereas
+        # typeof(value) always is, which keeps the fields AD-friendly.
+        new{typeof(iceflow), typeof(mass_balance), typeof(trainable_components)}(
+            iceflow, mass_balance, trainable_components)
     end
 end
 Model(; iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)

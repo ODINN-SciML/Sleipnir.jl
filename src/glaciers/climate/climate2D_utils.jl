@@ -259,36 +259,6 @@ function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
     return climate
 end
 
-# TODO: make snow/rain thresholds customizable
-"""
-    apply_t_cumul_grad!(climate_2D_step::Climate2Dstep, S::Matrix{F}) where {F <: AbstractFloat}
-
-Apply temperature and precipitation gradients based on the positive degree day (PDD) and on the elevation matrix `S` to the climate data in `climate_2D_step`.
-
-# Arguments
-
-  - `climate_2D_step::Climate2Dstep`: The climate data structure containing temperature, PDD, gradients, and reference height.
-  - `S::Matrix{F}`: A matrix of elevations.
-
-# Description
-
-This function updates the temperature and PDD fields in `climate_2D_step` by applying the respective gradients based on the difference between the elevation matrix `S` and the reference height. Negative PDD values are cropped to zero. Additionally, the function adjusts the rain and snow fractions based on the updated temperature values.
-"""
-function apply_t_cumul_grad!(
-        climate_2D_step::Climate2Dstep, S::Matrix{F}) where {F <: AbstractFloat}
-    # We apply the gradients to the temperature
-    climate_2D_step.temp .= climate_2D_step.temp .+
-                            climate_2D_step.avg_gradient .* (S .- climate_2D_step.ref_hgt)
-    climate_2D_step.PDD .= climate_2D_step.PDD .+
-                           climate_2D_step.gradient .* (S .- climate_2D_step.ref_hgt)
-    climate_2D_step.PDD .= ifelse.(climate_2D_step.PDD .< 0.0, 0.0, climate_2D_step.PDD) # Crop negative PDD values
-
-    # We adjust the rain/snow fractions between 0 and 2°C with the updated temperature
-    f = clamp.((2 .- climate_2D_step.temp) ./ 2, 0, 1)
-    climate_2D_step.rain .= (1 .- f) .* climate_2D_step.snow
-    climate_2D_step.snow .*= f
-end
-
 """
     apply_t_grad!(climate::RasterStack, dem::Raster)
 
