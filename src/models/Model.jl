@@ -1,5 +1,5 @@
 
-export AbstractModel
+export AbstractModel, Model
 
 """
     AbstractModel
@@ -11,7 +11,7 @@ abstract type AbstractModel end
 const AbstractEmptyModel = Union{AbstractModel, Nothing}
 
 """
-    Model{IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    Model{IFM <: AbstractEmptyModel, MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}}, TC <: AbstractEmptyModel}
 
 A mutable struct that represents a model with three components: iceflow, mass balance, and machine learning.
 
@@ -19,7 +19,7 @@ A mutable struct that represents a model with three components: iceflow, mass ba
         iceflow::IFM,
         mass_balance::MBM,
         trainable_components::TC,
-    ) where {IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    ) where {IFM <: AbstractEmptyModel, MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}}, TC <: AbstractEmptyModel}
 
     Model(;iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
 
@@ -27,18 +27,20 @@ Initialize Model (no machine learning model).
 
 # Keyword arguments
 
-  - `iceflow::IFM}`: Represents the iceflow component, which is an instance of `IFM`.
-  - `mass_balance::Union{MBM, Vector{MBM}}`: Represents the mass balance component, which is an instance of `MBM`.
+  - `iceflow::IFM`: Represents the iceflow component, which is an instance of `IFM`.
+  - `mass_balance::MBM`: Represents the mass balance component. Either a single `MBM` instance or a `Vector{MBM}` of per-glacier models.
   - `trainable_components::TC`: Represents the trainable components, which is an instance of `TC`.
 
 # Type Parameters
 
   - `IFM`: A subtype of `AbstractEmptyModel` representing the type of the iceflow model.
-  - `MBM`: A subtype of `AbstractEmptyModel` representing the type of the mass balance model.
+  - `MBM`: Either a subtype of `AbstractEmptyModel` (single shared model) or a `Vector` of such subtypes (per-glacier models). The field stores the exact runtime type — no `Union` in the field — which is required for AD compatibility.
   - `TC`: A subtype of `AbstractEmptyModel` representing the type of the trainable components.
 """
 mutable struct Model{
-    IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+    IFM <: AbstractEmptyModel,
+    MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}},
+    TC <: AbstractEmptyModel}
     iceflow::IFM
     mass_balance::MBM
     trainable_components::TC
@@ -48,7 +50,12 @@ mutable struct Model{
             mass_balance::MBM,
             trainable_components::TC
     ) where {
-            IFM <: AbstractEmptyModel, MBM <: AbstractEmptyModel, TC <: AbstractEmptyModel}
+            IFM <: AbstractEmptyModel,
+            MBM <: Union{<:AbstractEmptyModel, Vector{<:AbstractEmptyModel}},
+            TC <: AbstractEmptyModel}
+        # Parameterize on the concrete runtime types: the `where` bounds above are not
+        # guaranteed concrete (e.g. a Union bound has isconcretetype == false), whereas
+        # typeof(value) always is, which keeps the fields AD-friendly.
         new{typeof(iceflow), typeof(mass_balance), typeof(trainable_components)}(
             iceflow, mass_balance, trainable_components)
     end
@@ -97,7 +104,18 @@ function Base.show(io::IO, type::MIME"text/plain", model::Model)
     println(io)
     Base.show(io, type, model.iceflow)
     println(io)
-    Base.show(io, type, model.mass_balance)
+    if model.mass_balance isa AbstractVector
+        # Per-glacier mass balance models (e.g. calibrated TImodel1): show a
+        # summary plus the first model as a representative sample.
+        n = length(model.mass_balance)
+        println(io, "Per-glacier mass balance models ($n × $(nameof(eltype(model.mass_balance))))")
+        if n > 0
+            Base.show(io, type, first(model.mass_balance))
+            println(io)
+        end
+    else
+        Base.show(io, type, model.mass_balance)
+    end
     println(io)
     if isnothing(model.trainable_components)
         println(io, "No learnable components")

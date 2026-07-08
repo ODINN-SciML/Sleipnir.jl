@@ -50,7 +50,7 @@ manually, but rather through the `initialize_glaciers` function.
   - `params_projection::Dict{String, Float64}`: Projection parameters that allows mapping the regional grid to global WGS84 coordinates.
   - `thicknessData::THICKDATA`: Thickness data structure that is used to store the reference values.
   - `velocityData::SURFVELDATA`: Surface velocity data structure that is used to store the reference values.
-  - `dhdtData::DHDTDATA`: Structure that is used to store the reference values of the mean glacier surface elevation change.
+  - `dhdtData::DHDTDATA`: Structure that is used to store the reference values of the mean glacier surface elevation change. The `uncertainty` field on `DhdtData` carries the associated uncertainty (e.g. from Hugonnet et al. 2021).
 """
 mutable struct Glacier2D{F <: AbstractFloat, I <: Integer, CLIM <: Climate2D,
     THICKDATA <: Union{<:ThicknessData, Nothing},
@@ -276,9 +276,12 @@ function Base.:(==)(a::Glacier2D, b::Glacier2D)
         a.A == b.A && a.C == b.C && a.n == b.n && a.p == b.p && a.q == b.q &&
         a.slope == b.slope && a.dist_border == b.dist_border &&
         a.mask == b.mask && a.mask_loss == b.mask_loss &&
-        a.Coords == b.Coords && a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
+        # Coords, cenlon and cenlat are projection-derived and vary slightly across platforms
+        safe_approx(a.Coords, b.Coords; rtol = 1e-5) &&
+        a.Δx == b.Δx && a.Δy == b.Δy && a.nx == b.nx &&
         a.ny == b.ny &&
-        a.cenlon == b.cenlon && a.cenlat == b.cenlat &&
+        safe_approx(a.cenlon, b.cenlon; rtol = 1e-5) &&
+        safe_approx(a.cenlat, b.cenlat; rtol = 1e-5) &&
         a.params_projection == b.params_projection &&
         a.thicknessData == b.thicknessData && a.velocityData == b.velocityData &&
         a.dhdtData == b.dhdtData
@@ -293,9 +296,11 @@ function Base.:(≈)(a::Glacier2D, b::Glacier2D)
         isapprox(a.slope, b.slope; rtol = 1e-3) &&
         safe_approx(a.dist_border, b.dist_border) &&
         a.mask == b.mask && a.mask_loss == b.mask_loss &&
-        safe_approx(a.Coords, b.Coords) && a.Δx == b.Δx && a.Δy == b.Δy &&
+        safe_approx(a.Coords, b.Coords; rtol = 1e-5) &&
+        a.Δx == b.Δx && a.Δy == b.Δy &&
         a.nx == b.nx && a.ny == b.ny &&
-        safe_approx(a.cenlon, b.cenlon) && safe_approx(a.cenlat, b.cenlat) &&
+        safe_approx(a.cenlon, b.cenlon; rtol = 1e-5) &&
+        safe_approx(a.cenlat, b.cenlat; rtol = 1e-5) &&
         safe_approx(a.params_projection, b.params_projection) &&
         safe_approx(a.thicknessData, b.thicknessData) &&
         safe_approx(a.velocityData, b.velocityData) &&
@@ -321,13 +326,13 @@ function diffToDict(a::Glacier2D, b::Glacier2D)
         :dist_border => a.dist_border == b.dist_border,
         :mask => a.mask == b.mask,
         :mask_loss => a.mask_loss == b.mask_loss,
-        :Coords => a.Coords == b.Coords,
+        :Coords => safe_approx(a.Coords, b.Coords; rtol = 1e-5),
         :Δx => a.Δx == b.Δx,
         :Δy => a.Δy == b.Δy,
         :nx => a.nx == b.nx,
         :ny => a.ny == b.ny,
-        :cenlon => a.cenlon == b.cenlon,
-        :cenlat => a.cenlat == b.cenlat,
+        :cenlon => safe_approx(a.cenlon, b.cenlon; rtol = 1e-5),
+        :cenlat => safe_approx(a.cenlat, b.cenlat; rtol = 1e-5),
         :params_projection => a.params_projection == b.params_projection,
         :thicknessData => a.thicknessData == b.thicknessData,
         :velocityData => a.velocityData == b.velocityData,

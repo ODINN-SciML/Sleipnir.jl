@@ -68,14 +68,15 @@ function Base.:(==)(a::Results, b::Results)
         a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
         # Some properties are checked approximatively because of numerical rounding
         # varying depending on the platform, which results in different values
-        a.S == b.S && a.B == b.B && a.x ≈ b.x && a.y ≈ b.y &&
+        a.S == b.S && a.B == b.B &&
+        safe_approx(a.x, b.x; rtol = 1e-5) && safe_approx(a.y, b.y; rtol = 1e-5) &&
         a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
         a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
         a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref &&
         a.date2_Vref == b.date2_Vref &&
         a.t_dhdt == b.t_dhdt && a.dhdt_ref == b.dhdt_ref &&
         a.Δx == b.Δx && a.Δy == b.Δy &&
-        a.lon == b.lon && a.lat == b.lat &&
+        safe_approx(a.lon, b.lon; rtol = 1e-5) && safe_approx(a.lat, b.lat; rtol = 1e-5) &&
         a.nx == b.nx && a.ny == b.ny && a.t == b.t &&
         a.MB == b.MB && a.t_MB == b.t_MB &&
         isequal(a.tspan, b.tspan)
@@ -90,8 +91,8 @@ function diffToDict(a::Results, b::Results)
         :H_ref => a.H_ref == b.H_ref,
         :S => a.S == b.S,
         :B => a.B == b.B,
-        :x => a.x ≈ b.x,
-        :y => a.y ≈ b.y,
+        :x => safe_approx(a.x, b.x; rtol = 1e-5),
+        :y => safe_approx(a.y, b.y; rtol = 1e-5),
         :V => a.V == b.V,
         :Vx => a.Vx == b.Vx,
         :Vy => a.Vy == b.Vy,
@@ -105,8 +106,8 @@ function diffToDict(a::Results, b::Results)
         :dhdt_ref => a.dhdt_ref == b.dhdt_ref,
         :Δx => a.Δx == b.Δx,
         :Δy => a.Δy == b.Δy,
-        :lon => a.lon == b.lon,
-        :lat => a.lat == b.lat,
+        :lon => safe_approx(a.lon, b.lon; rtol = 1e-5),
+        :lat => safe_approx(a.lat, b.lat; rtol = 1e-5),
         :nx => a.nx == b.nx,
         :ny => a.ny == b.ny,
         :t => a.t == b.t,
@@ -167,7 +168,7 @@ Construct a `Results` object for a glacier simulation.
   - `date1_Vref::Vector{F}`: First date of velocity acquisition. Defaults to an empty vector.
   - `date2_Vref::Vector{F}`: Second date of velocity acquisition. Defaults to an empty vector.
   - `t_dhdt::Union{Tuple{F, F}, Nothing}`: Time window of the mean surface elevation change. Defaults to `nothing` in which case if `glacier.dhdtData` exists, `glacier.dhdtData.t` is used instead.
-  - `dhdt_ref::Union{F, Nothing}`: Mean surface elevation change. Defaults to `nothing` in which case if `glacier.dhdtData` exists, `glacier.dhdtData.dhdt` is used instead.
+  - `dhdt_ref::Union{F, Nothing}`: Mean surface elevation change. Defaults to `nothing` in which case `glacier.dhdtData.dhdt` is used when `glacier.dhdtData` is available.
   - `Δx::F`: Grid spacing in the x-direction. Defaults to `glacier.Δx`.
   - `Δy::F`: Grid spacing in the y-direction. Defaults to `glacier.Δy`.
   - `lon::F`: Longitude of the glacier grid center. Defaults to `glacier.cenlon`.
@@ -216,10 +217,12 @@ function Results(glacier::G, ifm::IF;
 
     if isnothing(t_dhdt)
         t_dhdt = isnothing(glacier.dhdtData) ?
-                 Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0)) : glacier.dhdtData.t
+                 Tuple{Sleipnir.Float, Sleipnir.Float}((NaN, NaN)) :
+                 Tuple{Sleipnir.Float, Sleipnir.Float}(glacier.dhdtData.t)
     end
     if isnothing(dhdt_ref)
-        dhdt_ref = isnothing(glacier.dhdtData) ? Sleipnir.Float(0.0) : glacier.dhdtData.dhdt
+        dhdt_ref = isnothing(glacier.dhdtData) ?
+                   Sleipnir.Float(NaN) : glacier.dhdtData.dhdt
     end
 
     # Build the results struct based on input values

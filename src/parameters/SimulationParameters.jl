@@ -7,6 +7,10 @@ A structure to hold simulation parameters for a simulation in ODINN.
 # Fields
 
   - `use_MB::Bool`: Flag to indicate whether mass balance should be used.
+  - `calibrate_MB::Bool`: Flag to indicate whether the mass balance model should be
+    calibrated per glacier against geodetic observations when building a simulation.
+    The calibration routine dispatches on the mass balance model type; model types
+    without a calibration method are left unchanged.
   - `use_iceflow::Bool`: Flag to indicate whether ice flow should be used.
   - `plots::Bool`: Flag to indicate whether plots should be generated.
   - `use_velocities::Bool`: Flag to indicate whether velocities should be calculated.
@@ -30,6 +34,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
 struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
        AbstractParameters
     use_MB::Bool
+    calibrate_MB::Bool
     use_iceflow::Bool
     plots::Bool
     use_velocities::Bool
@@ -55,6 +60,7 @@ Constructor for `SimulationParameters` type, including default values.
 
     SimulationParameters(;
         use_MB::Bool = true,
+        calibrate_MB::Bool = false,
         use_iceflow::Bool = true,
         plots::Bool = true,
         use_velocities::Bool = true,
@@ -78,6 +84,8 @@ Constructor for `SimulationParameters` type, including default values.
 # Keyword arguments
 
   - `use_MB::Bool`: Whether to use mass balance (default: `true`).
+  - `calibrate_MB::Bool`: Whether to calibrate the mass balance model per glacier
+    against geodetic observations when building a simulation (default: `true`).
   - `use_iceflow::Bool`: Whether to use ice flow (default: `true`).
   - `plots::Bool`: Whether to generate plots (default: `true`).
   - `use_velocities::Bool`: Whether to calculate velocities (default: `true`).
@@ -119,6 +127,7 @@ Constructor for `SimulationParameters` type, including default values.
 """
 function SimulationParameters(;
         use_MB::Bool = true,
+        calibrate_MB::Bool = true,
         use_iceflow::Bool = true,
         plots::Bool = true,
         use_velocities::Bool = true,
@@ -143,7 +152,7 @@ function SimulationParameters(;
              (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source! Should be either `:Millan22` or `:Farinotti19`."
 
     simulation_parameters = SimulationParameters(
-        use_MB, use_iceflow, plots,
+        use_MB, calibrate_MB, use_iceflow, plots,
         use_velocities, f_surface_velocity_factor,
         overwrite_climate, use_glathida_data,
         Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
@@ -161,6 +170,7 @@ end
 
 function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
     a.use_MB == b.use_MB &&
+        a.calibrate_MB == b.calibrate_MB &&
         a.use_iceflow == b.use_iceflow &&
         a.plots == b.plots &&
         a.use_velocities == b.use_velocities &&

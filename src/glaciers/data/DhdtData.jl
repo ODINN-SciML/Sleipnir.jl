@@ -10,14 +10,17 @@ Note: if you use an external dataset please make sure that you use the correct u
 mutable struct DhdtData{F <: AbstractFloat} <: AbstractData
     t::Tuple{F, F}
     dhdt::F
+    uncertainty::F
 
-    function DhdtData(t, H)
-        return new{Sleipnir.Float}(t, H)
+    function DhdtData(t, dhdt, uncertainty = NaN)
+        return new{Sleipnir.Float}(t, dhdt, Sleipnir.Float(uncertainty))
     end
 end
 
-Base.:(==)(a::DhdtData, b::DhdtData) = a.t == b.t && a.dhdt == b.dhdt
+function Base.:(==)(a::DhdtData, b::DhdtData)
+    a.t == b.t && a.dhdt == b.dhdt && a.uncertainty == b.uncertainty
+end
 
 function Base.:(≈)(a::DhdtData, b::DhdtData)
-    safe_approx(a.t, b.t) && safe_approx(a.dhdt, b.dhdt)
+    a.t == b.t && safe_approx(a.dhdt, b.dhdt) && safe_approx(a.uncertainty, b.uncertainty)
 end

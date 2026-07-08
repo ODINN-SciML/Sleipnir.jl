@@ -115,7 +115,7 @@ function climate_downscale(; save_refs::Bool = false, climate_data_source::Symbo
         climate_step = get_cumulative_climate(glacier.climate.raw_climate)
         get_cumulative_climate!(glacier.climate, t, step)
         climate_2D_step = downscale_2D_climate(
-            glacier.climate.climate_step, glacier.S, glacier.Coords)
+            glacier.climate.climate_step, glacier.climate.climate_raw_step, glacier.S, glacier.Coords)
         downscale_2D_climate!(glacier)
 
         JET.@test_opt broken=true target_modules=(Sleipnir,) get_cumulative_climate(glacier.climate.raw_climate)
@@ -150,4 +150,49 @@ end
 function dummy_climate()
     climate = Sleipnir.DummyClimate2D(
         longterm_temps_scalar = [-2.0], longterm_temps_gridded = [-2.0 -1.5; -1.0 -0.5])
+end
+
+function winter_prcp_factor_test()
+    # Argentière (NH, W5E5): high-precipitation Alpine glacier.
+    # OGGM derives prcp_fac ≈ 1.78 for this glacier — well below the 2.5 global default.
+    rgi_id = "RGI60-11.03638"
+    params = Parameters(
+        simulation = SimulationParameters(
+        use_MB = true,
+        use_velocities = false,
+        tspan = (2000.0, 2020.0),
+        test_mode = true,
+        rgi_paths = Dict(rgi_id => get_rgi_paths()[rgi_id])
+    )
+    )
+    glacier = initialize_glaciers([rgi_id], params)[1]
+
+    prcp_fac = get_winter_prcp_factor(glacier, params)
+
+    # Must be finite and within the declared calibration bounds
+    @test isfinite(prcp_fac)
+    @test prcp_fac >= params.physical.prcp_fac_min
+    @test prcp_fac <= params.physical.prcp_fac_max
+
+    # Argentière is a wet Alpine glacier → high winter prcp → W5E5 log formula
+    # gives a factor well below the 2.5 global default.  OGGM reports ≈ 1.78.
+    @test prcp_fac < 2.5
+
+    # Cross-check: reproduce the computation directly from the historical daily file
+    # to verify the NH winter mask (Oct–Apr) and the W5E5 log formula are applied correctly.
+    source = glacier.climate.climate_data_source
+    fpath = joinpath(Sleipnir.prepro_dir,
+        params.simulation.rgi_paths[rgi_id],
+        "climate_historical_daily_$(source).nc")
+    if isfile(fpath)
+        clim = Sleipnir.RasterStack(fpath)
+        dates = Date.(collect(Sleipnir.dims(clim, Sleipnir.Ti)))
+        winter_NH = (10, 11, 12, 1, 2, 3, 4)
+        sel = [(Dates.month(d) in winter_NH) &&
+               (Date(1979, 1, 1) <= d <= Date(2019, 12, 31)) for d in dates]
+        w_prcp = Statistics.mean(clim.prcp.data[sel])
+        expected = clamp(-1.0614 * log(w_prcp) + 3.9200,
+            params.physical.prcp_fac_min, params.physical.prcp_fac_max)
+        @test prcp_fac ≈ expected
+    end
 end
