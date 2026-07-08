@@ -66,6 +66,7 @@ Create a `Results` object from a given simulation and solution.
   - `solution`: The solution object containing all the steps including intermediate ones.
   - `tstops::Vector{F}`: The list of time steps to use to construct the results.
   - `processVelocity::Union{Nothing, Function}=nothing`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+  - `processC::Union{Nothing, Function}=nothing`: Post processing function returning the gridded sliding coefficient `C`. It takes `(simulation, θ)` and returns a single matrix. Defaults to nothing (empty `C`).
 
 # Returns
 
@@ -81,7 +82,8 @@ function create_results(
         solution,
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
-        MB::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        processC::Union{Nothing, Function} = nothing,
+        MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
         t_MB::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
     tspan = simulation.parameters.simulation.tspan
@@ -111,9 +113,16 @@ function create_results(
             Vx_ref = glacier.velocityData.vx
             Vy_ref = glacier.velocityData.vy
             V_ref = glacier.velocityData.vabs
-            date_Vref = datetime_to_floatyear.(glacier.velocityData.date)
-            date1_Vref = datetime_to_floatyear.(glacier.velocityData.date1)
-            date2_Vref = datetime_to_floatyear.(glacier.velocityData.date2)
+            # Synthetic velocity data may carry no acquisition dates
+            date_Vref = isnothing(glacier.velocityData.date) ?
+                        Vector{Sleipnir.Float}([]) :
+                        datetime_to_floatyear.(glacier.velocityData.date)
+            date1_Vref = isnothing(glacier.velocityData.date1) ?
+                         Vector{Sleipnir.Float}([]) :
+                         datetime_to_floatyear.(glacier.velocityData.date1)
+            date2_Vref = isnothing(glacier.velocityData.date2) ?
+                         Vector{Sleipnir.Float}([]) :
+                         datetime_to_floatyear.(glacier.velocityData.date2)
         elseif simulation.parameters.simulation.use_velocities && !isempty(glacier.Vx)
             # Fall back to the static (Millan) velocity as a single-frame reference for plotting.
             Vx_ref = [glacier.Vx]
@@ -123,9 +132,11 @@ function create_results(
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
         else
-            Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            # NB: use Matrix(undef,0,0), not the `[;;]` literal: Zygote rewrites hvncat to cat(),
+            # which CommonDataModel (Rasters) type-pirates into an empty CatArray → BoundsError.
+            Vx_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            Vy_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            V_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
             date_Vref = Vector{Sleipnir.Float}([])
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
@@ -145,7 +156,7 @@ function create_results(
     if !isnothing(glacier.thicknessData)
         H_ref = glacier.thicknessData.H
     else
-        H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        H_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
     end
 
     if !isnothing(glacier.dhdtData)
@@ -156,6 +167,9 @@ function create_results(
         t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
     end
 
+    C = isnothing(processC) ? Matrix{Sleipnir.Float}(undef, 0, 0) :
+        processC(simulation, θ)
+
     results = Results(
         glacier,
         iceflow_cache;
@@ -163,6 +177,7 @@ function create_results(
         H_ref = H_ref,
         S = iceflow_cache.S,
         B = glacier.B,
+        C = C,
         V = V,
         Vx = Vx,
         Vy = Vy,

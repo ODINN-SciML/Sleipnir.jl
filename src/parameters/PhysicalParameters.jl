@@ -42,8 +42,8 @@ Initialize the physical parameters of a model.
         η₀::F = 1.0,
         maxA::Float64 = 8e-17,
         minA::Float64 = 8.5e-20,
-        maxC::Float64 = 8e-17, # TODO: to be revised
-        minC::Float64 = 8.5e-20,
+        maxC::Float64 = 1e-1,
+        minC::Float64 = 1e-5,
         maxTlaw::Float64 = 1.0,
         minTlaw::Float64 = -25.0,
         noise_A_magnitude::Float64 = 5e-18
@@ -70,8 +70,8 @@ function PhysicalParameters(;
         η₀::F = 1.0,
         maxA::F = 8e-17,
         minA::F = 8.5e-20,
-        maxC::F = 8e-17, # TODO: to be revised
-        minC::F = 8.5e-20,
+        maxC::F = 1e-1, # sliding coeff C [m·yr⁻¹·Pa⁻¹] for default p=3, q=2
+        minC::F = 1e-5,
         maxTlaw::F = 1.0,
         minTlaw::F = -25.0,
         noise_A_magnitude::F = 5e-18

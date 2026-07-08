@@ -273,7 +273,7 @@ function plot_glacier_heatmaps(
         nx, ny = size(data)
         colormap = get(colormap_mapping, string(var), :cool)  # Default colormap
 
-        if (var in ice_thickness_vars) || (var in velocity_vars)
+        if (var in ice_thickness_vars) || (var in velocity_vars) || (var == :C)
             data[.!mask] .= NaN
         end
         if var==:H_glathida
@@ -302,11 +302,15 @@ function plot_glacier_heatmaps(
             end
         end
         cb_kwargs = isnothing(cb_ticks) ? NamedTuple() : (; ticks = cb_ticks)
-        cb = Colorbar(fig[ax_row, ax_col + 1], hm; cb_kwargs...)
+        # Compact tick labels (3 significant digits) keep the colorbar narrow; the
+        # variable/unit goes on the colorbar label instead of an overlapping Label.
+        cb = Colorbar(fig[ax_row, ax_col + 1], hm;
+            label = "$var ($unit)", labelsize = 12, ticklabelsize = 10,
+            width = 12, halign = :left,
+            tickformat = vals -> [string(round(v; sigdigits = 3)) for v in vals],
+            cb_kwargs...)
         Observables.connect!(
             cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
-        Label(fig[ax_row, ax_col + 1], "$var ($unit)",
-            fontsize = 14, valign = :top, padding = (0, -25))
 
         _overlay_contour!(ax, meta.contour)
         ax.title = "$title"
@@ -315,6 +319,21 @@ function plot_glacier_heatmaps(
     end
 
     fig[0, :] = Label(fig, "$rgi_id")
+
+    # Enlarge the heatmaps and keep the colorbars narrow: by default the colorbar columns
+    # are as wide as the maps which, combined with DataAspect, shrinks them to tiny squares.
+    heatmap_cols = num_vars == 1 ? (1,) : (1, 3)
+    cbar_cols = num_vars == 1 ? (2,) : (2, 4)
+    for c in heatmap_cols
+        colsize!(fig.layout, c, CairoMakie.Fixed(380))
+    end
+    for c in cbar_cols
+        colsize!(fig.layout, c, CairoMakie.Fixed(95))
+    end
+    for r in 1:cld(num_vars, 2)
+        rowsize!(fig.layout, r, CairoMakie.Fixed(380))
+    end
+
     resize_to_layout!(fig)
     return fig
 end

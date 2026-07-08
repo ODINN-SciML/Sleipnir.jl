@@ -11,6 +11,7 @@ A mutable struct to store the results of simulations.
   - `H_ref::Vector{Matrix{F}}`: Reference data for ice thickness.
   - `S::Matrix{F}`: Glacier surface altimetry.
   - `B::Matrix{F}`: Glacier bedrock.
+  - `C::Matrix{F}`: Gridded sliding coefficient (e.g. the inverted `C` field). Empty when not applicable.
   - `V::Matrix{F}`: Glacier ice surface velocities.
   - `Vx::Matrix{F}`: x-component of the glacier ice surface velocity `V`.
   - `Vy::Matrix{F}`: y-component of the glacier ice surface velocity `V`.
@@ -37,6 +38,7 @@ mutable struct Results{F <: AbstractFloat, I <: Integer}
     H_ref::Vector{Matrix{F}}
     S::Matrix{F}
     B::Matrix{F}
+    C::Matrix{F}
     x::Vector{F}
     y::Vector{F}
     V::Vector{Matrix{F}}
@@ -68,7 +70,7 @@ function Base.:(==)(a::Results, b::Results)
         a.H_glathida == b.H_glathida && a.H_ref == b.H_ref &&
         # Some properties are checked approximatively because of numerical rounding
         # varying depending on the platform, which results in different values
-        a.S == b.S && a.B == b.B && a.x ≈ b.x && a.y ≈ b.y &&
+        a.S == b.S && a.B == b.B && a.C == b.C && a.x ≈ b.x && a.y ≈ b.y &&
         a.V == b.V && a.Vx == b.Vx && a.Vy == b.Vy &&
         a.V_ref == b.V_ref && a.Vx_ref == b.Vx_ref && a.Vy_ref == b.Vy_ref &&
         a.date_Vref == b.date_Vref && a.date1_Vref == b.date1_Vref &&
@@ -90,6 +92,7 @@ function diffToDict(a::Results, b::Results)
         :H_ref => a.H_ref == b.H_ref,
         :S => a.S == b.S,
         :B => a.B == b.B,
+        :C => a.C == b.C,
         :x => a.x ≈ b.x,
         :y => a.y ≈ b.y,
         :V => a.V == b.V,
@@ -124,6 +127,7 @@ end
         H_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         S::Matrix{F} = zeros(Sleipnir.Float, size(ifm.S)),
         B::Matrix{F} = zeros(Sleipnir.Float, size(glacier.B)),
+        C::Matrix{F} = Matrix{Sleipnir.Float}(undef, 0, 0),
         V::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vx::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vy::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
@@ -157,6 +161,7 @@ Construct a `Results` object for a glacier simulation.
   - `H_ref::Vector{Matrix{F}}`: Reference ice thickness. Defaults to an empty vector.
   - `S::Matrix{F}`: Surface elevation matrix. Defaults to a zero matrix of the same size as `ifm.S`.
   - `B::Matrix{F}`: Bed elevation matrix. Defaults to a zero matrix of the same size as `glacier.B`.
+  - `C::Matrix{F}`: Gridded sliding coefficient. Defaults to an empty matrix.
   - `V::Vector{Matrix{F}}`: Velocity magnitude matrix. Defaults to an empty vector.
   - `Vx::Vector{Matrix{F}}`: Velocity in the x-direction matrix. Defaults to an empty vector.
   - `Vy::Vector{Matrix{F}}`: Velocity in the y-direction matrix. Defaults to an empty vector.
@@ -189,6 +194,7 @@ function Results(glacier::G, ifm::IF;
         H_ref::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         S::Matrix{F} = zeros(Sleipnir.Float, size(ifm.S)),
         B::Matrix{F} = zeros(Sleipnir.Float, size(glacier.B)),
+        C::Matrix{F} = Matrix{Sleipnir.Float}(undef, 0, 0),
         V::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vx::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
         Vy::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
@@ -224,7 +230,7 @@ function Results(glacier::G, ifm::IF;
 
     # Build the results struct based on input values
     results = Results{Sleipnir.Float, Sleipnir.Int}(
-        rgi_id, H, H_glathida, H_ref, S, B,
+        rgi_id, H, H_glathida, H_ref, S, B, C,
         x, y,
         V, Vx, Vy, V_ref, Vx_ref, Vy_ref,
         date_Vref, date1_Vref, date2_Vref,
