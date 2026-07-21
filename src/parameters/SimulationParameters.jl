@@ -25,7 +25,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `test_mode::Bool`: Flag to indicate whether to run in test mode.
   - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
   - `ice_thickness_source::Symbol`: Source of ice thickness data.
-  - `velocity_product::Symbol`: Source of velocity product data.
+  - `velocity_product::Union{Symbol, Nothing}`: Source of velocity product data.
   - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
@@ -50,7 +50,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::Symbol
-    velocity_product::Symbol
+    velocity_product::Union{Symbol, Nothing}
     climate_data_source::Symbol
     mapping::VM
     gridScalingFactor::I
@@ -77,7 +77,7 @@ Constructor for `SimulationParameters` type, including default values.
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
-        velocity_product::Symbol = :Millan22,
+        velocity_product::Union{Symbol, Nothing} = :Millan22,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
@@ -95,7 +95,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `1.0`).
   - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
   - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
-  - `velocity_product::Symbol`: Source of velocity product data (default: `:Millan22`).
+  - `velocity_product::Union{Symbol, Nothing}`: Source of velocity product data (default: `:Millan22`).
   - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
   - `int_type::DataType`: Data type for integers (default: `Int64`).
   - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
@@ -146,7 +146,7 @@ function SimulationParameters(;
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
-        velocity_product::Symbol = :Millan22,
+        velocity_product::Union{Symbol, Nothing} = :Millan22,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
@@ -156,9 +156,6 @@ function SimulationParameters(;
     velocity_product_sym = Symbol(velocity_product)
     @assert ((ice_thickness_source_sym == :Millan22) ||
              (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source! Should be either `:Millan22` or `:Farinotti19`."
-    if !use_velocities && velocity_product_sym == :Millan22
-        velocity_product_sym = :nothing
-    end
     @assert ((velocity_product_sym == :Millan22) ||
              (velocity_product_sym == :nothing)) "Wrong velocity product source! Should be either `:Millan22` or `:nothing`."
 
@@ -202,41 +199,6 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.mapping == b.mapping &&
         a.gridScalingFactor == b.gridScalingFactor &&
         a.catch_errors == b.catch_errors
-end
-
-function Base.:(==)(a::SimulationParameters, b)
-    required_props = (
-        :use_MB, :use_iceflow, :plots, :use_velocities, :f_surface_velocity_factor,
-        :overwrite_climate, :use_glathida_data, :tspan, :step_MB, :multiprocessing,
-        :workers, :working_dir, :test_mode, :rgi_paths, :ice_thickness_source,
-        :climate_data_source, :mapping, :gridScalingFactor, :catch_errors
-    )
-    all(hasproperty(b, p) for p in required_props) || return false
-    b_velocity_product = hasproperty(b, :velocity_product) ?
-                         Symbol(getproperty(b,
-        :velocity_product)) : (getproperty(b, :use_velocities) ? :Millan22 : :nothing)
-    return SimulationParameters(
-        use_MB = getproperty(b, :use_MB),
-        use_iceflow = getproperty(b, :use_iceflow),
-        plots = getproperty(b, :plots),
-        use_velocities = getproperty(b, :use_velocities),
-        f_surface_velocity_factor = getproperty(b, :f_surface_velocity_factor),
-        overwrite_climate = getproperty(b, :overwrite_climate),
-        use_glathida_data = getproperty(b, :use_glathida_data),
-        tspan = getproperty(b, :tspan),
-        step_MB = getproperty(b, :step_MB),
-        multiprocessing = getproperty(b, :multiprocessing),
-        workers = getproperty(b, :workers),
-        working_dir = getproperty(b, :working_dir),
-        test_mode = getproperty(b, :test_mode),
-        rgi_paths = getproperty(b, :rgi_paths),
-        ice_thickness_source = Symbol(getproperty(b, :ice_thickness_source)),
-        velocity_product = b_velocity_product,
-        climate_data_source = Symbol(getproperty(b, :climate_data_source)),
-        mapping = getproperty(b, :mapping),
-        gridScalingFactor = getproperty(b, :gridScalingFactor),
-        catch_errors = getproperty(b, :catch_errors)
-    ) == a
 end
 
 # Display setup
