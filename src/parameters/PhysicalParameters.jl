@@ -17,6 +17,13 @@ A structure representing physical parameters used in simulations.
   - `maxTlaw::F`: Maximum temperature according to some law.
   - `minTlaw::F`: Minimum temperature according to some law.
   - `noise_A_magnitude::F`: Magnitude of noise in A.
+  - `ρ_w::F`: Density of water (kg m⁻³), used for ice-to-water-equivalent conversions.
+  - `DDF_min::F`: Minimum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹).
+  - `DDF_max::F`: Maximum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹).
+  - `prcp_fac_min::F`: Minimum precipitation correction factor for TI model calibration.
+  - `prcp_fac_max::F`: Maximum precipitation correction factor for TI model calibration.
+  - `temp_bias_min::F`: Minimum temperature bias (°C) for TI model calibration. Default: -10.0.
+  - `temp_bias_max::F`: Maximum temperature bias (°C) for TI model calibration. Default: 10.0.
 """
 struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     ρ::F
@@ -30,6 +37,13 @@ struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     maxTlaw::F
     minTlaw::F
     noise_A_magnitude::F
+    ρ_w::F
+    DDF_min::F
+    DDF_max::F
+    prcp_fac_min::F
+    prcp_fac_max::F
+    temp_bias_min::F
+    temp_bias_max::F
 end
 
 """
@@ -62,6 +76,13 @@ Initialize the physical parameters of a model.
     - `maxTlaw`: Maximum value of Temperature used in simulations on fake law
     - `minTlaw`: Minimum value of Temperature used in simulations on fake law
     - `noise_A_magnitude`: Magnitude of noise added to A
+    - `ρ_w`: Water density (kg m⁻³). Default: 1000.0.
+    - `DDF_min`: Minimum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹). Default: 0.5×10⁻³.
+    - `DDF_max`: Maximum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹). Default: 20.0×10⁻³.
+    - `prcp_fac_min`: Minimum precipitation correction factor for TI model calibration. Default: 0.1.
+    - `prcp_fac_max`: Maximum precipitation correction factor for TI model calibration. Default: 10.0.
+    - `temp_bias_min`: Minimum temperature bias (°C) for TI model calibration. Default: -10.0.
+    - `temp_bias_max`: Maximum temperature bias (°C) for TI model calibration. Default: 10.0.
 """
 function PhysicalParameters(;
         ρ::F = 900.0,
@@ -74,15 +95,23 @@ function PhysicalParameters(;
         minC::F = 8.5e-20,
         maxTlaw::F = 1.0,
         minTlaw::F = -25.0,
-        noise_A_magnitude::F = 5e-18
+        noise_A_magnitude::F = 5e-18,
+        ρ_w::F = 1000.0,
+        DDF_min::F = 0.5 / 1000.0,
+        DDF_max::F = 20.0 / 1000.0,
+        prcp_fac_min::F = 0.1,
+        prcp_fac_max::F = 10.0,
+        temp_bias_min::F = -10.0,
+        temp_bias_max::F = 10.0
 ) where {F <: AbstractFloat}
-    # Build PhysicalParameters based on values
     ft = typeof(g)
     physical_parameters = PhysicalParameters{ft}(ρ, g, ϵ, η₀,
         maxA, minA,
         maxC, minC,
         maxTlaw, minTlaw,
-        noise_A_magnitude)
+        noise_A_magnitude,
+        ρ_w, DDF_min, DDF_max, prcp_fac_min, prcp_fac_max,
+        temp_bias_min, temp_bias_max)
 
     return physical_parameters
 end
@@ -93,7 +122,11 @@ function Base.:(==)(a::PhysicalParameters, b::PhysicalParameters)
         a.maxA == b.maxA && a.minA == b.minA &&
         a.minC == b.minC && a.maxC == b.maxC &&
         a.minTlaw == b.minTlaw && a.maxTlaw == b.maxTlaw &&
-        a.noise_A_magnitude == b.noise_A_magnitude
+        a.noise_A_magnitude == b.noise_A_magnitude &&
+        a.ρ_w == b.ρ_w &&
+        a.DDF_min == b.DDF_min && a.DDF_max == b.DDF_max &&
+        a.prcp_fac_min == b.prcp_fac_min && a.prcp_fac_max == b.prcp_fac_max &&
+        a.temp_bias_min == b.temp_bias_min && a.temp_bias_max == b.temp_bias_max
 end
 
 # Show helpers

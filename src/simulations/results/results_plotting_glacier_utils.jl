@@ -326,8 +326,8 @@ end
         title_mapping::Dict;
         timeIdx::Union{Nothing,Int64} = nothing,
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
-        lengthscale::Float64 = 0.00001,
-        tiplength::Float64 = 0.5,
+        lengthscale::Float64 = Float64(0.00001),
+        tiplength::Float64 = Float64(0.5),
     ) -> Figure
 
 Plot quivers for glacier variables.
@@ -354,8 +354,8 @@ function plot_glacier_quivers(
         title_mapping::Dict;
         timeIdx::Union{Nothing, Int64} = nothing,
         figsize::Union{Nothing, Tuple{Int64, Int64}} = nothing,
-        lengthscale::Float64 = 0.00001,
-        tiplength::Float64 = 0.5
+        lengthscale::Float64 = Float64(0.00001),
+        tiplength::Float64 = Float64(0.5)
 )
     figKwargs = isnothing(figsize) ? Dict{Symbol, Any}() :
                 Dict{Symbol, Any}(:size => figsize)

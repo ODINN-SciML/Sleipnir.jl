@@ -156,14 +156,6 @@ function create_results(
         H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
     end
 
-    if !isnothing(glacier.dhdtData)
-        dhdt_ref = glacier.dhdtData.dhdt
-        t_dhdt = glacier.dhdtData.t
-    else
-        dhdt_ref = Sleipnir.Float(0.0)
-        t_dhdt = Tuple{Sleipnir.Float, Sleipnir.Float}((0.0, 0.0))
-    end
-
     results = Results(
         glacier,
         iceflow_cache;
@@ -180,8 +172,6 @@ function create_results(
         date_Vref = date_Vref,
         date1_Vref = date1_Vref,
         date2_Vref = date2_Vref,
-        t_dhdt = t_dhdt,
-        dhdt_ref = dhdt_ref,
         Δx = glacier.Δx,
         Δy = glacier.Δy,
         lon = glacier.cenlon,
