@@ -93,6 +93,9 @@ include("laws/Law.jl")
 # Fake data used in the tests
 include("data/surface_velocity.jl")
 
+# Abstract loss definition
+include("losses/Losses.jl")
+
 ##############################################
 #######    PRE-LOADED VARIABLES     ##########
 ##############################################

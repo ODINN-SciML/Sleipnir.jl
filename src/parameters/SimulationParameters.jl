@@ -25,7 +25,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `test_mode::Bool`: Flag to indicate whether to run in test mode.
   - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
   - `ice_thickness_source::Symbol`: Source of ice thickness data.
-  - `velocity_product::Union{Symbol, Nothing}`: Source of velocity product data.
+  - `velocity_product::Symbol`: Source of velocity product data.
   - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
@@ -50,7 +50,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::Symbol
-    velocity_product::Union{Symbol, Nothing}
+    velocity_product::Symbol
     climate_data_source::Symbol
     mapping::VM
     gridScalingFactor::I
@@ -77,7 +77,7 @@ Constructor for `SimulationParameters` type, including default values.
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
-        velocity_product::Union{Symbol, Nothing} = :Millan22,
+        velocity_product::Symbol = :Millan22,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
@@ -95,7 +95,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `1.0`).
   - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
   - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
-  - `velocity_product::Union{Symbol, Nothing}`: Source of velocity product data (default: `:Millan22`).
+  - `velocity_product::Symbol`: Source of velocity product data (default: `:Millan22`).
   - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
   - `int_type::DataType`: Data type for integers (default: `Int64`).
   - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
@@ -146,7 +146,7 @@ function SimulationParameters(;
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
-        velocity_product::Union{Symbol, Nothing} = :Millan22,
+        velocity_product::Symbol = :nothing,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,

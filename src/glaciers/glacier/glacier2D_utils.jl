@@ -281,7 +281,12 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         Vx = zeros(Sleipnir.Float, size(H₀))
         Vy = zeros(Sleipnir.Float, size(H₀))
     end
-    if params.simulation.velocity_product == :Millan22
+    loss_needs_Millan22 = if isnothing(params.UDE)
+        false
+    else
+        velocityProduct(params.UDE.empirical_loss_function) == :Millan22
+    end
+    if params.simulation.velocity_product == :Millan22 || loss_needs_Millan22
         MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
         MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
 
