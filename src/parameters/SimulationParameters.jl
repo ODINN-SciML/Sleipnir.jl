@@ -25,6 +25,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `test_mode::Bool`: Flag to indicate whether to run in test mode.
   - `rgi_paths::Dict{String, String}`: Dictionary of RGI paths.
   - `ice_thickness_source::Symbol`: Source of ice thickness data.
+  - `velocity_product::Symbol`: Source of velocity product data.
   - `mapping::VM`: Mapping to use in order to grid the data from the coordinates of
     the velocity product datacube to the glacier grid.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
@@ -49,6 +50,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     test_mode::Bool
     rgi_paths::Dict{String, String}
     ice_thickness_source::Symbol
+    velocity_product::Symbol
     climate_data_source::Symbol
     mapping::VM
     gridScalingFactor::I
@@ -75,6 +77,7 @@ Constructor for `SimulationParameters` type, including default values.
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
+        velocity_product::Symbol = :Millan22,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
@@ -92,6 +95,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `f_surface_velocity_factor::F`: Numerical factor representing the ratio between depth integrated ice velocity and surface velocity (default: `1.0`).
   - `overwrite_climate::Bool`: Whether to overwrite climate data (default: `false`).
   - `use_glathida_data::Bool`: Whether to use GLATHIDA data (default: `false`).
+  - `velocity_product::Symbol`: Source of velocity product data (default: `:Millan22`).
   - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
   - `int_type::DataType`: Data type for integers (default: `Int64`).
   - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
@@ -142,14 +146,18 @@ function SimulationParameters(;
         test_mode::Bool = false,
         rgi_paths::Dict{String, String} = Dict{String, String}(),
         ice_thickness_source::Symbol = :Farinotti19,
+        velocity_product::Symbol = :nothing,
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
         catch_errors::Bool = false
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
     ice_thickness_source_sym = Symbol(ice_thickness_source)
+    velocity_product_sym = Symbol(velocity_product)
     @assert ((ice_thickness_source_sym == :Millan22) ||
              (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source! Should be either `:Millan22` or `:Farinotti19`."
+    @assert ((velocity_product_sym == :Millan22) ||
+             (velocity_product_sym == :nothing)) "Wrong velocity product source! Should be either `:Millan22` or `:nothing`."
 
     simulation_parameters = SimulationParameters(
         use_MB, calibrate_MB, use_iceflow, plots,
@@ -157,7 +165,8 @@ function SimulationParameters(;
         overwrite_climate, use_glathida_data,
         Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
         multiprocessing, Sleipnir.Int(workers), working_dir,
-        test_mode, rgi_paths, ice_thickness_source_sym, climate_data_source, mapping,
+        test_mode, rgi_paths, ice_thickness_source_sym, velocity_product_sym,
+        climate_data_source, mapping,
         gridScalingFactor, catch_errors
     )
 
@@ -185,6 +194,7 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.test_mode == b.test_mode &&
         a.rgi_paths == b.rgi_paths &&
         a.ice_thickness_source == b.ice_thickness_source &&
+        a.velocity_product == b.velocity_product &&
         a.climate_data_source == b.climate_data_source &&
         a.mapping == b.mapping &&
         a.gridScalingFactor == b.gridScalingFactor &&
@@ -234,6 +244,10 @@ function Base.show(io::IO, params::SimulationParameters)
     field(io, "ice_thickness");
     print(io, " = ");
     val(io, ":$(params.ice_thickness_source)")
+    sep(io)
+    field(io, "velocity_product");
+    print(io, " = ");
+    val(io, ":$(params.velocity_product)")
     sep(io)
     field(io, "climate");
     print(io, " = ");

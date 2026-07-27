@@ -200,6 +200,26 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
+function _process_Millan22_velocities(params, glacier_gd)
+    if params.simulation.gridScalingFactor > 1
+        Vx = block_average_pad_edge_masked(
+            glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
+            params.simulation.gridScalingFactor; empty_value = 0.0)
+        Vy = block_average_pad_edge_masked(
+            glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
+            params.simulation.gridScalingFactor; empty_value = 0.0)
+        V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
+    else
+        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
+        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
+        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+        fillNaN!(V)
+        fillNaN!(Vx)
+        fillNaN!(Vy)
+    end
+    return V, Vx, Vy
+end
+
 function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
     # We filter glacier borders in high elevations to avoid overflow problems
     dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
@@ -255,26 +275,35 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
     Coords = Dict{String, Vector{Float64}}("lon" => longitudes, "lat" => latitudes)
 
     if params.simulation.use_velocities
-        if params.simulation.gridScalingFactor > 1
-            Vx = block_average_pad_edge_masked(
-                glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
-                params.simulation.gridScalingFactor; empty_value = 0.0)
-            Vy = block_average_pad_edge_masked(
-                glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
-                params.simulation.gridScalingFactor; empty_value = 0.0)
-            V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
-        else
-            V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-            Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-            Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
-            fillNaN!(V)
-            fillNaN!(Vx)
-            fillNaN!(Vy)
-        end
+        V, Vx, Vy = _process_Millan22_velocities(params, glacier_gd)
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
         Vy = zeros(Sleipnir.Float, size(H₀))
+    end
+    loss_needs_Millan22 = if isnothing(params.UDE)
+        false
+    else
+        velocityProduct(params.UDE.empirical_loss_function) == :Millan22
+    end
+    if params.simulation.velocity_product == :Millan22 || loss_needs_Millan22
+        MILLAN22_DATE1 = Dates.DateTime(2017, 1, 1)
+        MILLAN22_DATE2 = Dates.DateTime(2018, 1, 1)
+
+        delta = MILLAN22_DATE2 - MILLAN22_DATE1
+        date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
+
+        velocityData = SurfaceVelocityData(
+            date = [date_mean],
+            date1 = [MILLAN22_DATE1],
+            date2 = [MILLAN22_DATE2],
+            vx = [Vx],
+            vy = [Vy],
+            vabs = [V],
+            isGridGlacierAligned = true
+        )
+    else
+        velocityData = nothing
     end
     Δx::Sleipnir.Float = abs.(glacier_grid["dxdy"][1])
     Δy::Sleipnir.Float = abs.(glacier_grid["dxdy"][2])
@@ -302,6 +331,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         Coords = Coords, Δx = Δx, Δy = Δy, nx = nx, ny = ny,
         cenlon = cenlon, cenlat = cenlat,
         params_projection = params_projection,
+        velocityData = velocityData,
         dhdtData = dhdt_data
     )
 end

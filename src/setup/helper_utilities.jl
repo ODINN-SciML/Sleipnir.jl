@@ -5,16 +5,24 @@ export check_concrete_types, check_field_types
 # `rtol` is forwarded to `isapprox` for fields whose values vary slightly across
 # platforms (e.g. projection-derived coordinates); when `nothing`, the default `≈` is used.
 function safe_approx(a, b; rtol = nothing)
-    _approx(x, y) = isnothing(rtol) ? (x ≈ y) : isapprox(x, y; rtol = rtol)
     if isnothing(a) && isnothing(b)
         return true
     elseif isnothing(a) || isnothing(b)
         return false
     elseif (a isa Dict) && (b isa Dict)
         keys(a) == keys(b) || return false
-        return all(_approx(a[k], b[k]) for k in keys(a))
+        return all(_approx(a[k], b[k], rtol) for k in keys(a))
+    elseif (a isa Vector) && (b isa Vector)
+        return all(_approx(ai, bi, rtol) for (ai, bi) in zip(a, b))
     else
-        return _approx(a, b)
+        return _approx(a, b, rtol)
+    end
+end
+function _approx(x, y, rtol)
+    if typeof(x)==DateTime && typeof(y)==DateTime
+        return x==y
+    else
+        return isnothing(rtol) ? (x ≈ y) : isapprox(x, y; rtol = rtol)
     end
 end
 
