@@ -194,8 +194,12 @@ end
 
 function convertRasterStackToFloat64(rs::RasterStack)
     layerNames = names(rs)
+    newlayers = [Missing <: eltype(rs[n].data) ?
+                 rebuild(rs[n]; data = passmissing(Float64).(parent(rs[n])), missingval = missing) :
+                 Float64.(rs[n])
+                 for n in layerNames]
     return RasterStack(
-        NamedTuple{Tuple(layerNames)}([Float64.(rs[n]) for n in layerNames]),
+        NamedTuple{Tuple(layerNames)}(newlayers),
         metadata = metadata(rs)
     )
 end
@@ -203,16 +207,20 @@ end
 function _process_Millan22_velocities(params, glacier_gd)
     if params.simulation.gridScalingFactor > 1
         Vx = block_average_pad_edge_masked(
-            glacier_gd.millan_vx.data, glacier_gd.glacier_mask.data .== 1,
-            params.simulation.gridScalingFactor; empty_value = 0.0)
+            replace(glacier_gd.millan_vx.data, missing => 0.0), glacier_gd.glacier_mask.data .==
+                                                                1,
+            (params.simulation.gridScalingFactor); empty_value = 0.0)
         Vy = block_average_pad_edge_masked(
-            glacier_gd.millan_vy.data, glacier_gd.glacier_mask.data .== 1,
+            replace(glacier_gd.millan_vy.data, missing => 0.0), glacier_gd.glacier_mask.data .==
+                                                                1,
             params.simulation.gridScalingFactor; empty_value = 0.0)
         V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
     else
-        V = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_v.data, 0.0)
-        Vx = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vx.data, 0.0)
-        Vy = ifelse.(glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_vy.data, 0.0)
+        V = ifelse.(glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_v.data, missing => 0.0), 0.0)
+        Vx = ifelse.(
+            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vx.data, missing => 0.0), 0.0)
+        Vy = ifelse.(
+            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vy.data, missing => 0.0), 0.0)
         fillNaN!(V)
         fillNaN!(Vx)
         fillNaN!(Vy)
@@ -346,7 +354,7 @@ function farinotti19_thickness(rgi_id::String, params::Parameters)
 end
 function farinotti19_thickness(glacier_gd::RasterStack)
     return Sleipnir.Float.(ifelse.(
-        glacier_gd.glacier_mask.data .== 1, glacier_gd.consensus_ice_thickness.data, 0.0))
+        glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.consensus_ice_thickness.data, missing => 0.0), 0.0))
 end
 function millan22_thickness(rgi_id::String, params::Parameters)
     rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
@@ -358,7 +366,7 @@ function millan22_thickness(rgi_id::String, params::Parameters)
 end
 function millan22_thickness(glacier_gd::RasterStack)
     return Sleipnir.Float.(ifelse.(
-        glacier_gd.glacier_mask.data .== 1, glacier_gd.millan_ice_thickness.data, 0.0))
+        glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_ice_thickness.data, missing => 0.0), 0.0))
 end
 
 """
