@@ -92,6 +92,7 @@ ENV["GKSwstype"]="nul"
         @testset "Helpers" helpers()
         @testset "Simulation utils" simulation_utils()
         @testset "Results utils" results_utils()
+        @testset "Show vector of glaciers" glaciers_vector_show()
         @testset "Glacier grid downscaling" glacier_grid_downscaling()
         @testset "Operations on glacier mask" operations_glacier_mask()
     end
