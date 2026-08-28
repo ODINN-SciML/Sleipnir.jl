@@ -421,7 +421,7 @@ function Base.show(io::IO, type::MIME"text/plain", glaciers::Vector{<:AbstractGl
 end
 function Base.show(io::IO, glaciers::Vector{<:AbstractGlacier})
     len = length(glaciers)
-    print(io, "$(len)-element Vector{$(eltype(glaciers).name.wrapper)}")
+    print(io, "$(len)-element Vector{$(Base.unwrap_unionall(eltype(glaciers)).name.wrapper)}")
     try
         regions = counter([split(split(glacier.rgi_id, "-")[2], ".")[1]
                            for glacier in glaciers])

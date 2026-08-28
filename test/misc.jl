@@ -54,6 +54,12 @@ function operations_glacier_mask()
     end
 end
 
+function glaciers_vector_show()
+    # eltype is a UnionAll whenever not all type parameters are bound, which is what
+    # initialize_glaciers returns; showing it used to throw "type UnionAll has no field name"
+    @test occursin("Glacier2D", sprint(show, Glacier2D[]))
+end
+
 function glacier_grid_downscaling()
     params = Parameters(
         simulation = SimulationParameters(
