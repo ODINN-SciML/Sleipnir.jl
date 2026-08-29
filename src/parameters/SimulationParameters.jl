@@ -62,7 +62,7 @@ Constructor for `SimulationParameters` type, including default values.
 
     SimulationParameters(;
         use_MB::Bool = true,
-        calibrate_MB::Bool = false,
+        calibrate_MB::Bool = true,
         use_iceflow::Bool = true,
         plots::Bool = true,
         use_velocities::Bool = true,
