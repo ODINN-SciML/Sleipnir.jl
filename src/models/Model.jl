@@ -65,8 +65,31 @@ function _construct_Model(iceflow::Union{<: AbstractModel, Nothing},
         mass_balance::Union{<: AbstractModel, Nothing}, regressors)
     throw("_construct_Model is not implemented. This is likely because you provided regressors outside of ODINN.")
 end
-# Since Model is a keyword argument function, we need to define it in Sleipnir
-# Otherwise we would have to define it multiple times, making the precompilation impossible with ODINN
+
+"""
+    Model(;
+        iceflow::Union{<: AbstractModel, Nothing} = nothing,
+        mass_balance::Union{<: AbstractModel, Nothing} = nothing,
+        regressors::Union{NamedTuple, Nothing} = nothing
+    )
+
+Creates a new model instance using the provided iceflow, mass balance, and machine learning components.
+
+# Arguments
+
+  - `iceflow::Union{IFM, Nothing}`: The iceflow model to be used. Can be a single model or `nothing`.
+  - `mass_balance::Union{MBM, Nothing}`: The mass balance model to be used. Can be a single model or `nothing`.
+  - `regressors::Union{NamedTuple, Nothing}`: The regressors to be used in the laws.
+
+# Returns
+
+  - `model`: A new instance of `Sleipnir.Model` initialized with the provided components.
+
+# Note
+
+Since Model is a keyword argument function, it is defined in Sleipnir. Otherwise we would have to
+define it multiple times, making the ODINN precompilation impossible because of method overwriting.
+"""
 function Model(;
         iceflow::Union{<: AbstractModel, Nothing} = nothing,
         mass_balance::Union{<: AbstractModel, Nothing} = nothing,
