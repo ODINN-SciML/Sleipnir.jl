@@ -60,7 +60,24 @@ mutable struct Model{
             iceflow, mass_balance, trainable_components)
     end
 end
-Model(; iceflow, mass_balance) = Model(iceflow, mass_balance, nothing)
+
+function _construct_Model(iceflow::Union{<: AbstractModel, Nothing},
+        mass_balance::Union{<: AbstractModel, Nothing}, regressors)
+    throw("_construct_Model is not implemented. This is likely because you provided regressors outside of ODINN.")
+end
+# Since Model is a keyword argument function, we need to define it in Sleipnir
+# Otherwise we would have to define it multiple times, making the precompilation impossible with ODINN
+function Model(;
+        iceflow::Union{<: AbstractModel, Nothing} = nothing,
+        mass_balance::Union{<: AbstractModel, Nothing} = nothing,
+        regressors::Union{NamedTuple, Nothing} = nothing
+)
+    if isnothing(regressors)
+        Model(iceflow, mass_balance, nothing)
+    else
+        _construct_Model(iceflow, mass_balance, regressors)
+    end
+end
 
 """
     ModelCache{IFC, MBC}
