@@ -43,8 +43,8 @@ meshgrid(x, y) = (repeat(x, 1, length(y)), repeat(y', length(x), 1))
 ############    PARAMETERS     ###############
 ##############################################
 
-const global root_dir::String = dirname(@__DIR__)
-const dir_src::String = joinpath(root_dir, "src")
+const src_dir::String = dirname(@__FILE__)
+const global root_dir::String = joinpath(src_dir, "..")
 const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
 const doublePrec::Bool = parse(Bool, get(ENV, "ODINN_DOUBLE_PREC", "true"))
 const Float = doublePrec ? Float64 : Float32
@@ -57,45 +57,45 @@ end
 ##########  SLEIPNIR LIBRARIES  ##############
 ##############################################
 
-include(dir_src*"/setup/config.jl")
+include(src_dir*"/setup/config.jl")
 
 # Anything related to managing glacier data used for data assimilation
-include(dir_src*"/glaciers/data/Data.jl")
+include(src_dir*"/glaciers/data/Data.jl")
 
 # All parameters needed for the models
-include(dir_src*"/parameters/Parameters.jl")
+include(src_dir*"/parameters/Parameters.jl")
 
 # Anything related to managing glacier topographical and climate variables
-include(dir_src*"/glaciers/glacier/Glacier.jl")
+include(src_dir*"/glaciers/glacier/Glacier.jl")
 
 # The utils of surface velocity data, glaciers and climate need the struct to be already
 # defined since they depend on each other. This is why we import them afterwards
-include(dir_src*"/glaciers/data/SurfaceVelocityData_utils.jl")
-include(dir_src*"/glaciers/data/SurfaceVelocityMapping_utils.jl")
-include(dir_src*"/glaciers/glacier/glacier2D_topography.jl")
-include(dir_src*"/glaciers/glacier/glacier2D_projection.jl")
-include(dir_src*"/glaciers/glacier/glacier2D_geodata.jl")
-include(dir_src*"/glaciers/glacier/glacier2D_utils.jl")
-include(dir_src*"/glaciers/climate/climate2D_utils.jl")
+include(src_dir*"/glaciers/data/SurfaceVelocityData_utils.jl")
+include(src_dir*"/glaciers/data/SurfaceVelocityMapping_utils.jl")
+include(src_dir*"/glaciers/glacier/glacier2D_topography.jl")
+include(src_dir*"/glaciers/glacier/glacier2D_projection.jl")
+include(src_dir*"/glaciers/glacier/glacier2D_geodata.jl")
+include(src_dir*"/glaciers/glacier/glacier2D_utils.jl")
+include(src_dir*"/glaciers/climate/climate2D_utils.jl")
 
 # All structures and functions related to ODINN models
-include(dir_src*"/models/Model.jl")
+include(src_dir*"/models/Model.jl")
 
 # Everything related to running simulations in ODINN
-include(dir_src*"/simulations/Simulation.jl")
+include(src_dir*"/simulations/Simulation.jl")
 # Law interface and utils
-include(dir_src*"/laws/GenInput.jl")
-include(dir_src*"/laws/Inputs.jl")
-include(dir_src*"/laws/Cache.jl")
-include(dir_src*"/laws/AbstractLaw.jl")
-include(dir_src*"/laws/VJP.jl")
-include(dir_src*"/laws/Law.jl")
+include(src_dir*"/laws/GenInput.jl")
+include(src_dir*"/laws/Inputs.jl")
+include(src_dir*"/laws/Cache.jl")
+include(src_dir*"/laws/AbstractLaw.jl")
+include(src_dir*"/laws/VJP.jl")
+include(src_dir*"/laws/Law.jl")
 
 # Fake data used in the tests
-include(dir_src*"/data/surface_velocity.jl")
+include(src_dir*"/data/surface_velocity.jl")
 
 # Abstract loss definition
-include(dir_src*"/losses/Losses.jl")
+include(src_dir*"/losses/Losses.jl")
 
 ##############################################
 #######    PRE-LOADED VARIABLES     ##########
