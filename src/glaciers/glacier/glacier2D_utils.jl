@@ -491,7 +491,7 @@ This function filters out glaciers from the provided `rgi_ids` list based on two
 function filter_missing_glaciers!(rgi_ids::Vector{String}, params::Parameters) # TODO: see if this is necessary, otherwise remove
 
     # Check which glaciers we can actually process
-    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
+    pathCsv = joinpath(artifact"rgi62_stats", "rgi62_stats.csv")
     rgi_stats = CSV.File(pathCsv)
 
     # Remove level 2 glaciers
@@ -529,7 +529,7 @@ function glacierName(rgi_id::String)
     return glacierName([rgi_id])[1]
 end
 function glacierName(rgi_ids::Vector{String})
-    pathCsv = joinpath(dirname(prepro_dir), "rgi62_stats.csv")
+    pathCsv = joinpath(artifact"rgi62_stats", "rgi62_stats.csv")
     rgi_stats = CSV.File(pathCsv)
     return [glacierName(rgi_id, rgi_stats) for rgi_id in rgi_ids]
 end

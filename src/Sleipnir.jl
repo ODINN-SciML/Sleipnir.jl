@@ -8,6 +8,7 @@ module Sleipnir
 using Base: @kwdef
 using Infiltrator
 import Pkg
+using Pkg.Artifacts
 using JLD2
 using Distributed
 using Statistics, NaNStatistics
@@ -45,7 +46,7 @@ meshgrid(x, y) = (repeat(x, 1, length(y)), repeat(y', length(x), 1))
 
 const src_dir::String = dirname(@__FILE__)
 const global root_dir::String = joinpath(src_dir, "..")
-const global prepro_dir::String = joinpath(homedir(), ".ODINN", "ODINN_prepro")
+const global prepro_dir::String = joinpath(artifact"ODINN_prepro", "ODINN_prepro")
 const doublePrec::Bool = parse(Bool, get(ENV, "ODINN_DOUBLE_PREC", "true"))
 const Float = doublePrec ? Float64 : Float32
 const Int = doublePrec ? Int64 : Int32
