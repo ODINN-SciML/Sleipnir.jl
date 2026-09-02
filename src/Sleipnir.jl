@@ -20,6 +20,7 @@ using HDF5
 using ComponentArrays
 using Rasters
 using CSV
+using DataFrames: DataFrame, subset, ByRow # Some of the exported bindings conflict with Rasters
 using JSON
 using CodecZlib
 using Tar
