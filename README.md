@@ -17,4 +17,4 @@ It must contain the UUID of Sleipnir together with the path to your custom prepr
 [f5e6c550-199f-11ee-3608-394420200519]
 ODINN_prepro = "/path/to/custom/dir"
 ```
-See [the artifacts documentation](~/.julia/artifacts/Overrides.toml) for more information.
+See [the artifacts documentation](https://pkgdocs.julialang.org/v1/artifacts/) for more information.
