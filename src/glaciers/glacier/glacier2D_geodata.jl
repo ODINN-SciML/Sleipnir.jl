@@ -4,77 +4,54 @@
 
 # ── Hugonnet 2021 geodetic mass balance ──────────────────────
 
-const _HUGONNET_PERIOD = "2000-01-01_2020-01-01"
+const _HUGONNET_PERIOD = (Date(2000, 1, 1), Date(2020, 1, 1))
 # Decimal-year bounds of the Hugonnet calibration window. The raw climate series must
 # span this period when the mass balance model is calibrated against geodetic data.
 const HUGONNET_CLIMATE_PERIOD = (2000.0, 2020.0)
-const _hugonnet_cache = Ref{Union{
-    Nothing, Dict{String, DhdtData{Sleipnir.Float}}}}(nothing)
+const _hugonnet_df_cache = Ref{Union{
+    Nothing, DataFrame}}(nothing)
 
-function _default_hugonnet_dhdt_path()
-    candidates = (
-        joinpath(
-            prepro_dir, "geodetic_ref_mb",
-            "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide.csv"),
-        # Bundled fallback (reference glaciers only) so tests/CI have geodetic data
-        # when the full worldwide file is not available locally.
-        normpath(joinpath(
-            @__DIR__, "..", "..", "..", "test", "data", "glaciers",
-            "hugonnet_2021_geodetic_test_subset.csv"))
-    )
-
-    for path in candidates
-        if isfile(path)
-            return path
-        end
-    end
-
-    return nothing
+function _load_hugonnet_dataset()
+    path = joinpath(artifact"hugonnet21_dataset", "hugonnet21_dataset",
+        "hugonnet_2021_ds_rgi60_pergla_rates_10_20_worldwide_filled.csv")
+    df = CSV.read(path, DataFrame)
+    df.period_start = Date.(first.(split.(df.period, "_")))
+    df.period_end = Date.(last.(split.(df.period, "_")))
+    df = subset(df, :period_start => ByRow(==(_HUGONNET_PERIOD[1])),
+        :period_end => ByRow(==(_HUGONNET_PERIOD[2])))
+    df = df[.!ismissing.(df.dmdtda), :]
+    df = df[.!ismissing.(df.err_dmdtda), :]
+    return df
 end
 
-function _parse_hugonnet_period(period::AbstractString)
-    bounds = split(period, '_')
-    length(bounds) == 2 || return nothing
-
-    start_year = tryparse(Sleipnir.Float, first(split(bounds[1], '-')))
-    end_year = tryparse(Sleipnir.Float, first(split(bounds[2], '-')))
-
-    if isnothing(start_year) || isnothing(end_year)
+function _build_dhdt(df::DataFrame, rgi_id::String)
+    if rgi_id in df.rgiid
+        sel_df = df[df.rgiid .== rgi_id, :]
+        @assert size(sel_df, 1) == 1 "Found multiple entries for $(rgiid) in the Hugonnet21 dataset for the geodetic period $(_HUGONNET_PERIOD)."
+        period = (Sleipnir.Float(year(sel_df[1, :period_start])),
+            Sleipnir.Float(year(sel_df[1, :period_end])))
+        mb = Sleipnir.Float(sel_df[1, :dmdtda])
+        err_mb = Sleipnir.Float(sel_df[1, :err_dmdtda])
+        return DhdtData(period, mb, err_mb)
+    else
         return nothing
     end
-
-    return (start_year, end_year)
 end
 
-function _load_hugonnet_cache()
-    isnothing(_hugonnet_cache[]) || return _hugonnet_cache[]
-
-    path = _default_hugonnet_dhdt_path()
-    cache = Dict{String, DhdtData{Sleipnir.Float}}()
-    if !isnothing(path)
-        for row in CSV.File(path)
-            string(row.period) == _HUGONNET_PERIOD || continue
-            ismissing(row.dmdtda) && continue
-
-            period = _parse_hugonnet_period(string(row.period))
-            isnothing(period) && continue
-
-            mb = Sleipnir.Float(row.dmdtda)
-            isfinite(mb) || continue
-
-            err_mb = (!ismissing(row.err_dmdtda) && isfinite(row.err_dmdtda)) ?
-                     Sleipnir.Float(row.err_dmdtda) : Sleipnir.Float(NaN)
-
-            cache[string(row.rgiid)] = DhdtData(period, mb, err_mb)
-        end
-    end
-
-    _hugonnet_cache[] = cache
-    return cache
+function _load_hugonnet_df_cache()
+    isnothing(_hugonnet_df_cache[]) || return _hugonnet_df_cache[]
+    df = _load_hugonnet_dataset()
+    _hugonnet_df_cache[] = df
+    return df
 end
 
 function _default_hugonnet_dhdt(rgi_id::String)
-    return get(_load_hugonnet_cache(), rgi_id, nothing)
+    return _build_dhdt(_load_hugonnet_df_cache(), rgi_id)
+end
+function _default_hugonnet_dhdt(rgi_ids::Vector{String})
+    map(rgi_ids) do rgi_id
+        _build_dhdt(_load_hugonnet_df_cache(), rgi_id)
+    end
 end
 
 # ── GlaThiDa ice thickness ───────────────────────────────────
