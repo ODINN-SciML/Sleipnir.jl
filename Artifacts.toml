@@ -2,12 +2,19 @@
 git-tree-sha1 = "a67e063a09b81a66b21dd2e74f780dc98e6d4915"
 
     [[ODINN_prepro.download]]
-    url = "https://huggingface.co/datasets/ODINN-SciML/ODINN_prepro/resolve/v0.0.1/ODINN_prepro.tar.gz"
+    url = "https://huggingface.co/datasets/ODINN-SciML/ODINN_prepro/resolve/v0.0.3/ODINN_prepro.tar.gz"
     sha256 = "71a7df93a499679515f0132a6d80feeeae7a4c8b2c46873a804dad8691588c14"
 
 [rgi62_stats]
 git-tree-sha1 = "570f8d1db9327883e9731258667d14186dbc58f5"
 
     [[rgi62_stats.download]]
-    url = "https://huggingface.co/datasets/ODINN-SciML/ODINN_prepro/resolve/v0.0.1/rgi62_stats.tar.gz"
+    url = "https://huggingface.co/datasets/ODINN-SciML/ODINN_prepro/resolve/v0.0.3/rgi62_stats.tar.gz"
     sha256 = "efb2f5f30229ac6c3142823b4dc0586d1aef1d1e2c19196c5f8068a807218a52"
+
+[hugonnet21_dataset]
+git-tree-sha1 = "0934aeb3562a3996c575370cc9d9976847efe4df"
+
+    [[hugonnet21_dataset.download]]
+    url = "https://huggingface.co/datasets/ODINN-SciML/ODINN_prepro/resolve/v0.0.3/hugonnet21_dataset.tar.gz"
+    sha256 = "27491deb7ebf4eb66990f3071d2c25d37d244db4711ce5fbb33f0a362f1be741"
