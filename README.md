@@ -10,8 +10,8 @@ Sleipnir.jl is the core package of [ODINN.jl](https://github.com/ODINN-SciML/ODI
 
 As of version 0.7.1, OGGM data are now preprocessed with [Gungnir](https://github.com/ODINN-SciML/Gungnir). These preprocessed data are saved on a Hugging Face repository they are downloaded as artifacts upon precompilation of Sleipnir. They are then stored locally in `~/.ODINN/ODINN_prepro/` for the subsequent executions.
 
-In case for example you want to perform simulations with glaciers which are not in the preprocessed directory, the preprocessed directory path can be overridden very easily.
-For this define an `Overrides.toml` which can be placed in `~/.julia/artifacts/Overrides.toml`.
+In case for example you want to perform simulations with glaciers that are not in the preprocessed directory, the preprocessed directory path can be overridden very easily.
+To do this, define an `Overrides.toml`, which should be placed in `~/.julia/artifacts/Overrides.toml`.
 It must contain the UUID of Sleipnir together with the path to your custom preprocessed directory:
 ```
 [f5e6c550-199f-11ee-3608-394420200519]
