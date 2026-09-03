@@ -62,7 +62,7 @@ mutable struct Model{
 end
 
 function _construct_Model(iceflow::Union{<: AbstractModel, Nothing},
-        mass_balance::Union{<: AbstractModel, Nothing}, regressors)
+        mass_balance::Union{<: AbstractModel, Nothing}, regressors, target)
     throw("_construct_Model is not implemented. This is likely because you provided regressors outside of ODINN.")
 end
 
@@ -93,12 +93,13 @@ define it multiple times, making the ODINN precompilation impossible because of 
 function Model(;
         iceflow::Union{<: AbstractModel, Nothing} = nothing,
         mass_balance::Union{<: AbstractModel, Nothing} = nothing,
-        regressors::Union{NamedTuple, Nothing} = nothing
+        regressors::Union{NamedTuple, Nothing} = nothing,
+        target = nothing
 )
     if isnothing(regressors)
         Model(iceflow, mass_balance, nothing)
     else
-        _construct_Model(iceflow, mass_balance, regressors)
+        _construct_Model(iceflow, mass_balance, regressors, target)
     end
 end
 
