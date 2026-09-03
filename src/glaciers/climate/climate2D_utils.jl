@@ -33,7 +33,7 @@ function _slice_climate_between_dates(
     time_axis = collect(dims(climate, Ti))
     selected = filter(t -> start_date <= Date(t) <= end_date, time_axis)
     isempty(selected) &&
-        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date)."))
+        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date). Time axis of climate data ranges from $(minimum(time_axis)) to $(maximum(time_axis))."))
     return climate[At(selected)]
 end
 
