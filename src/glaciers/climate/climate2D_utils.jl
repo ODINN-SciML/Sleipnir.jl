@@ -33,7 +33,7 @@ function _slice_climate_between_dates(
     time_axis = collect(dims(climate, Ti))
     selected = filter(t -> start_date <= Date(t) <= end_date, time_axis)
     isempty(selected) &&
-        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date)."))
+        throw(ArgumentError("No climate timesteps found between $(start_date) and $(end_date). Time axis of climate data ranges from $(minimum(time_axis)) to $(maximum(time_axis))."))
     return climate[At(selected)]
 end
 
@@ -68,7 +68,7 @@ This function generates raw climate files for a specified RGI ID if they do not 
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
     rgi_path = "" # Initialize RGI path to be accessible outside the try block
     try
-        rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
+        rgi_path = joinpath(prepro_dir(), simparams.rgi_paths[rgi_id])
     catch
         @error "RGI path not found for: $rgi_id"
     end
@@ -254,7 +254,9 @@ function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
             ))
         end
     else
-        throw(ArgumentError("Unsupported climate data source"))
+        throw(ArgumentError(
+            "Unsupported climate data source: $(climate_data_source). Supported sources are :W5E5 and :ERA5."
+        ))
     end
     return climate
 end
@@ -419,8 +421,12 @@ function downscale_2D_climate(
     slope_2D = zero(Sleipnir.Float) .+ dummy_grid
     aspect_2D = zero(Sleipnir.Float) .+ dummy_grid
     if include_topography
-        Δx === nothing && error("Missing Δx for topography computation")
-        Δy === nothing && error("Missing Δy for topography computation")
+        Δx === nothing && error(
+            "Missing Δx for topography computation. Provide the grid spacing Δx when include_topography=true."
+        )
+        Δy === nothing && error(
+            "Missing Δy for topography computation. Provide the grid spacing Δy when include_topography=true."
+        )
         slope_2D,
         aspect_2D = compute_surface_topography(
             S,
@@ -570,7 +576,7 @@ This function retrieves the gridded data for the specified glacier using its RGI
 function get_longterm_temps(rgi_id::String, params::Parameters,
         climate::RasterStack, S::Matrix{<: AbstractFloat})
     glacier_gd = RasterStack(joinpath(
-        prepro_dir, params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
+        prepro_dir(), params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
     temp_orig = copy(climate.temp.data)  # avoid corrupting temp in-place
     apply_t_grad!(climate, glacier_gd.topo)
     temps_2D = apply_t_grad_gridded(climate, S)
@@ -608,7 +614,7 @@ within noise).
 function get_winter_prcp_factor(glacier::AbstractGlacier, params::Parameters;
         prcp_fac_bounds::Tuple{<: Real, <: Real} = (0.1, 10.0))
     source = glacier.climate.climate_data_source
-    fpath = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id],
+    fpath = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id],
         "climate_historical_daily_$(source).nc")
     if !isfile(fpath)
         @warn "get_winter_prcp_factor: daily climate file not found for $(glacier.rgi_id) " *

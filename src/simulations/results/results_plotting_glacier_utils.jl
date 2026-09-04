@@ -250,14 +250,15 @@ function plot_glacier_heatmaps(
                           max(maximum(max_values_velocity), eps(Float64))
 
     num_vars = length(variables)
-    rows, cols = if num_vars == 1
+    rows,
+    cols = if num_vars == 1
         2, 2
     elseif num_vars == 2
         3, 2
     elseif num_vars in [3, 4]
         3, 4
     else
-        error("Unsupported number of variables.")
+        error("Unsupported number of variables: $(num_vars). Heatmaps support 1 to 4 variables.")
     end
 
     figKwargs[:layout] = GridLayout(rows, cols)
@@ -365,12 +366,13 @@ function plot_glacier_quivers(
     x, y = meta.x, meta.y
 
     num_vars = length(variables)
-    rows, cols = if num_vars == 1
+    rows,
+    cols = if num_vars == 1
         1, 1
     elseif num_vars == 2
         1, 2
     else
-        error("Unsupported number of variables.")
+        error("Unsupported number of variables: $(num_vars). Quiver plots support 1 or 2 variables.")
     end
 
     figKwargs[:layout] = GridLayout(rows, cols)
