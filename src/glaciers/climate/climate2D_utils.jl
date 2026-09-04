@@ -254,7 +254,9 @@ function get_raw_climate_data(rgi_path::String, climate_data_source::Symbol)
             ))
         end
     else
-        throw(ArgumentError("Unsupported climate data source"))
+        throw(ArgumentError(
+            "Unsupported climate data source: $(climate_data_source). Supported sources are :W5E5 and :ERA5."
+        ))
     end
     return climate
 end
@@ -419,8 +421,12 @@ function downscale_2D_climate(
     slope_2D = zero(Sleipnir.Float) .+ dummy_grid
     aspect_2D = zero(Sleipnir.Float) .+ dummy_grid
     if include_topography
-        Δx === nothing && error("Missing Δx for topography computation")
-        Δy === nothing && error("Missing Δy for topography computation")
+        Δx === nothing && error(
+            "Missing Δx for topography computation. Provide the grid spacing Δx when include_topography=true."
+        )
+        Δy === nothing && error(
+            "Missing Δy for topography computation. Provide the grid spacing Δy when include_topography=true."
+        )
         slope_2D,
         aspect_2D = compute_surface_topography(
             S,

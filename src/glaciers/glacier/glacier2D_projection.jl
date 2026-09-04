@@ -40,7 +40,7 @@ function UTMercator(x::F, y::F; k = 0.9996, cenlon = 0.0, cenlat = 0.0,
         x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
         hemisphere = nothing) where {F <: AbstractFloat}
     if !isnothing(zone)
-        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
+        @assert hemisphere in (:north, :south) "When zone is provided, hemisphere must be :north or :south; received $(hemisphere)."
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)(x, y)
     else
         # Convert to right units
@@ -77,7 +77,7 @@ function ReverseUTMercator(lat::F, lon::F; k = 0.9996, cenlon = 0.0, cenlat = 0.
         x0 = 0.0, y0 = 0.0, zone::Union{Nothing, Int} = nothing,
         hemisphere = nothing) where {F <: AbstractFloat}
     if !isnothing(zone)
-        @assert !isnothing(hemisphere) "When zone is provided, hemisphere should also be defined. It can be either :north or :south"
+        @assert hemisphere in (:north, :south) "When zone is provided, hemisphere must be :north or :south; received $(hemisphere)."
         projection = CoordRefSystems.utm(hemisphere, zone; datum = WGS84Latest)
     else
         # Convert to right units

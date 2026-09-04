@@ -155,9 +155,9 @@ function SimulationParameters(;
     ice_thickness_source_sym = Symbol(ice_thickness_source)
     velocity_product_sym = Symbol(velocity_product)
     @assert ((ice_thickness_source_sym == :Millan22) ||
-             (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source! Should be either `:Millan22` or `:Farinotti19`."
+             (ice_thickness_source_sym == :Farinotti19)) "Wrong ice thickness source: $(ice_thickness_source_sym). Should be either `:Millan22` or `:Farinotti19`."
     @assert ((velocity_product_sym == :Millan22) ||
-             (velocity_product_sym == :nothing)) "Wrong velocity product source! Should be either `:Millan22` or `:nothing`."
+             (velocity_product_sym == :nothing)) "Wrong velocity product source: $(velocity_product_sym). Should be either `:Millan22` or `:nothing`."
 
     simulation_parameters = SimulationParameters(
         use_MB, calibrate_MB, use_iceflow, plots,

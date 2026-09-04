@@ -104,7 +104,7 @@ function initialize_glaciers(
         valid_rgi_ids = [glacier.rgi_id for glacier in valid_glaciers]
 
         if isempty(valid_rgi_ids)
-            error("None of the provided RGI IDs have GlaThiDa.")
+            error("None of the provided RGI IDs have GlaThiDa data. Requested RGI IDs: $(rgi_ids). Check that the IDs have matching records in the GlaThiDa dataset.")
         end
 
         if length(valid_rgi_ids) < length(rgi_ids)
@@ -675,7 +675,7 @@ function block_average_pad_edge_masked(
         n::Int;
         empty_value::F = F(NaN)
 ) where {F <: AbstractFloat}
-    @assert size(mat) == size(mask) "mat and mask must have the same size"
+    @assert size(mat) == size(mask) "mat and mask must have the same size. Received size(mat)=$(size(mat)) and size(mask)=$(size(mask))."
 
     mask_F = F.(mask)
 

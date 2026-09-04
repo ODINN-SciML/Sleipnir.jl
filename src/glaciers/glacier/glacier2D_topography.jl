@@ -226,7 +226,7 @@ Arguments
 """
 function block_average(mat::Matrix{F}, n::Int) where {F <: AbstractFloat}
     X, Y = size(mat)
-    @assert X % n == 0 && Y % n == 0 "Matrix dimensions are $(size(mat)) but they are not divisible by n=$n"
+    @assert X % n == 0 && Y % n == 0 "Matrix dimensions $(size(mat)) are not divisible by block size n=$(n). Each dimension must be an exact multiple of n."
 
     A, B = div(X, n), div(Y, n)
     reshaped = reshape(mat, n, A, n, B)
