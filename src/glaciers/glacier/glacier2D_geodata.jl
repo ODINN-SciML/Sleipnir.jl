@@ -129,7 +129,7 @@ Retrieve or generate the glathida glacier grid for a given glacier.
 This function checks if the glathida glacier grid file (`glathida.h5`) exists in the specified path. If the file exists and `force` is `false`, it reads the grid from the file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`), computes the average thickness for each grid cell, and saves the resulting grid to an HDF5 file (`glathida.h5`).
 """
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id])
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id])
     gtd_path = joinpath(rgi_path, "glathida.h5")
     if isfile(gtd_path) && !force
         gtd_grid = h5read(gtd_path, "gtd_grid")

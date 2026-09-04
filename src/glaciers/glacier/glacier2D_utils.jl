@@ -345,7 +345,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
 end
 
 function farinotti19_thickness(rgi_id::String, params::Parameters)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     if Sleipnir.doublePrec
         glacier_gd = convertRasterStackToFloat64(glacier_gd)
@@ -357,7 +357,7 @@ function farinotti19_thickness(glacier_gd::RasterStack)
         glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.consensus_ice_thickness.data, missing => 0.0), 0.0))
 end
 function millan22_thickness(rgi_id::String, params::Parameters)
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     if Sleipnir.doublePrec
         glacier_gd = convertRasterStackToFloat64(glacier_gd)
@@ -421,7 +421,7 @@ function Glacier2D(
 
     # Load glacier gridded data
     F = Sleipnir.Float
-    rgi_path = joinpath(prepro_dir, params.simulation.rgi_paths[rgi_id])
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
     glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
     if Sleipnir.doublePrec
         glacier_gd = convertRasterStackToFloat64(glacier_gd)

@@ -1,5 +1,9 @@
 export get_rgi_paths
 
+function prepro_dir()
+    return artifact"ODINN_prepro"
+end
+
 function enable_multiprocessing(procs::Int)
     if procs > 0
         if nprocs() < procs
@@ -23,7 +27,7 @@ function enable_multiprocessing(procs::Int)
 end
 
 function get_rgi_paths()
-    rgi_paths = JSON.parsefile(joinpath(prepro_dir, "rgi_paths.json"))
+    rgi_paths = JSON.parsefile(joinpath(prepro_dir(), "rgi_paths.json"))
     # Convert Dict{String, Any} to Dict{String, String} and explicitely define type
     # to ensure type stability in the other packages
     rgi_paths::Dict{String, String} = Dict(k => string(v) for (k, v) in pairs(rgi_paths))
@@ -31,7 +35,7 @@ function get_rgi_paths()
 end
 
 function get_rgi_names()
-    rgi_names = JSON.parsefile(joinpath(prepro_dir, "rgi_names.json"))
+    rgi_names = JSON.parsefile(joinpath(prepro_dir(), "rgi_names.json"))
     # Convert Dict{String, Any} to Dict{String, String} and explicitely define type
     # to ensure type stability in the other packages
     rgi_names::Dict{String, String} = Dict(k => string(v) for (k, v) in pairs(rgi_names))

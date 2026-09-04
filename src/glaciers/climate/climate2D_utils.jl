@@ -68,7 +68,7 @@ This function generates raw climate files for a specified RGI ID if they do not 
 function generate_raw_climate_files(rgi_id::String, simparams::SimulationParameters)
     rgi_path = "" # Initialize RGI path to be accessible outside the try block
     try
-        rgi_path = joinpath(prepro_dir, simparams.rgi_paths[rgi_id])
+        rgi_path = joinpath(prepro_dir(), simparams.rgi_paths[rgi_id])
     catch
         @error "RGI path not found for: $rgi_id"
     end
@@ -576,7 +576,7 @@ This function retrieves the gridded data for the specified glacier using its RGI
 function get_longterm_temps(rgi_id::String, params::Parameters,
         climate::RasterStack, S::Matrix{<: AbstractFloat})
     glacier_gd = RasterStack(joinpath(
-        prepro_dir, params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
+        prepro_dir(), params.simulation.rgi_paths[rgi_id], "gridded_data.nc"))
     temp_orig = copy(climate.temp.data)  # avoid corrupting temp in-place
     apply_t_grad!(climate, glacier_gd.topo)
     temps_2D = apply_t_grad_gridded(climate, S)
@@ -614,7 +614,7 @@ within noise).
 function get_winter_prcp_factor(glacier::AbstractGlacier, params::Parameters;
         prcp_fac_bounds::Tuple{<: Real, <: Real} = (0.1, 10.0))
     source = glacier.climate.climate_data_source
-    fpath = joinpath(prepro_dir, params.simulation.rgi_paths[glacier.rgi_id],
+    fpath = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id],
         "climate_historical_daily_$(source).nc")
     if !isfile(fpath)
         @warn "get_winter_prcp_factor: daily climate file not found for $(glacier.rgi_id) " *

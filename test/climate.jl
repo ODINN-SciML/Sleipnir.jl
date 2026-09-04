@@ -71,7 +71,7 @@ function climate_downscale(; save_refs::Bool = false, climate_data_source::Symbo
             # Write the synthetic ERA5 fixture into a dedicated temp directory so
             # that the real prepro directory is never modified by tests.
             tmpdir = mktempdir()
-            real_glacier_dir = joinpath(Sleipnir.prepro_dir, rgi_paths[rgi_ids[1]])
+            real_glacier_dir = joinpath(Sleipnir.prepro_dir(), rgi_paths[rgi_ids[1]])
             tmp_glacier_dir = joinpath(tmpdir, rgi_ids[1])
             mkpath(tmp_glacier_dir)
             for f in readdir(real_glacier_dir; join = true)
@@ -97,7 +97,7 @@ function climate_downscale(; save_refs::Bool = false, climate_data_source::Symbo
         )
         )
 
-        rgi_path = joinpath(Sleipnir.prepro_dir, params.simulation.rgi_paths[rgi_ids[1]])
+        rgi_path = joinpath(Sleipnir.prepro_dir(), params.simulation.rgi_paths[rgi_ids[1]])
         if climate_data_source == :W5E5
             @test isfile(joinpath(rgi_path, "climate_historical_daily_W5E5.nc"))
         else
@@ -181,7 +181,7 @@ function winter_prcp_factor_test()
     # Cross-check: reproduce the computation directly from the historical daily file
     # to verify the NH winter mask (Oct–Apr) and the W5E5 log formula are applied correctly.
     source = glacier.climate.climate_data_source
-    fpath = joinpath(Sleipnir.prepro_dir,
+    fpath = joinpath(Sleipnir.prepro_dir(),
         params.simulation.rgi_paths[rgi_id],
         "climate_historical_daily_$(source).nc")
     if isfile(fpath)
