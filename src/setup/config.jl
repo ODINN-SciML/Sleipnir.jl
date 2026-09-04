@@ -1,7 +1,7 @@
 export get_rgi_paths
 
 function prepro_dir()
-    return artifact"ODINN_prepro"
+    return joinpath(artifact"ODINN_prepro", "ODINN_prepro")
 end
 
 function enable_multiprocessing(procs::Int)
