@@ -250,7 +250,8 @@ function plot_glacier_heatmaps(
                           max(maximum(max_values_velocity), eps(Float64))
 
     num_vars = length(variables)
-    rows, cols = if num_vars == 1
+    rows,
+    cols = if num_vars == 1
         2, 2
     elseif num_vars == 2
         3, 2
@@ -365,7 +366,8 @@ function plot_glacier_quivers(
     x, y = meta.x, meta.y
 
     num_vars = length(variables)
-    rows, cols = if num_vars == 1
+    rows,
+    cols = if num_vars == 1
         1, 1
     elseif num_vars == 2
         1, 2
