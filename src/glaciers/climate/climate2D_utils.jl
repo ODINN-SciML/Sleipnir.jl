@@ -6,7 +6,7 @@
 export downscale_2D_climate!, downscale_2D_climate,
        get_cumulative_climate!, get_cumulative_climate,
        apply_t_grad!, trim_period, partial_year, get_longterm_temps,
-       get_winter_prcp_factor
+       get_winter_prcp_factor, ClimateWindow, precompute_climate_windows
 
 function _aggregate_raw_layer(climate_raw_step::RasterStack, layer::Symbol; reducer = sum)
     if hasproperty(climate_raw_step, layer)
@@ -168,6 +168,107 @@ function get_cumulative_climate!(
     climate.climate_step.avg_temp = round(climate.avg_temps; digits = 8)
     climate.climate_step.avg_gradient = round(climate.avg_gradients; digits = 8)
     climate.climate_step.ref_hgt = round(climate.ref_hgt; digits = 8)
+end
+
+"""
+    ClimateWindow{F <: AbstractFloat}
+
+Climate data for a single mass balance window, precomputed so that mass balance can be
+evaluated as a source term inside the ice flow RHS without touching `Rasters` during the
+solve.
+
+Window `k` of a run spans `(t₀ + (k-1)·step, t₀ + k·step]`, and `t_end` is its right edge:
+the time at which the discrete scheme applies its jump.
+
+The daily vectors are exactly the ones `downscale_2D_climate!` reads out of
+`climate.climate_raw_step`, and `step` is exactly the `ClimateStep` that
+`get_cumulative_climate!` leaves in `climate.climate_step`. Both are stored as independent
+copies, so a window is unaffected by later calls that overwrite the climate buffers.
+
+# Fields
+
+  - `t_end::F`: Right edge of the window, in decimal years.
+  - `temp::Vector{F}`: Daily air temperature at `ref_hgt`, with no temperature bias applied.
+  - `prcp::Vector{F}`: Daily precipitation, in mm.
+  - `gradient::Vector{F}`: Daily lapse rate, already clamped to `gradient_bounds`.
+  - `step::ClimateStep{F}`: Aggregated scalars for the window.
+"""
+struct ClimateWindow{F <: AbstractFloat}
+    t_end::F
+    temp::Vector{F}
+    prcp::Vector{F}
+    gradient::Vector{F}
+    step::ClimateStep{F}
+end
+
+function Base.:(==)(a::ClimateWindow, b::ClimateWindow)
+    a.t_end == b.t_end && a.temp == b.temp && a.prcp == b.prcp &&
+        a.gradient == b.gradient && a.step == b.step
+end
+
+"""
+    precompute_climate_windows(climate::Climate2D, tspan, step::Sleipnir.Float,
+                               gradient_bounds = [-0.009, -0.003])
+    precompute_climate_windows(glacier::AbstractGlacier, tspan, step, gradient_bounds)
+
+Precompute one [`ClimateWindow`](@ref) per mass balance step covering `tspan`.
+
+The result is the whole climate input a temperature-index model needs for a run, in plain
+`Vector`s. Slicing the raw `RasterStack` is done once here rather than once per callback,
+which is what lets mass balance live in the ice flow RHS: the RHS is called many times per
+window and must not touch `Rasters`.
+
+Window `k` is built by `get_cumulative_climate!(climate, t₀ + k·step, step)`, so the values
+are identical to what the discrete path computes at the same time — that equivalence is
+asserted in the test suite rather than assumed.
+
+# Arguments
+
+  - `climate::Climate2D`: Climate of the glacier. Its step buffers are overwritten as a side
+    effect, exactly as a discrete mass balance callback would overwrite them.
+  - `tspan`: Simulation time span, in decimal years.
+  - `step::Sleipnir.Float`: Mass balance step, in decimal years.
+  - `gradient_bounds`: Bounds the daily lapse rate is clamped to.
+
+# Returns
+
+  - `Vector{ClimateWindow}`: One window per mass balance step, ordered by time.
+
+# Throws
+
+  - `ArgumentError`: If `tspan` is not a whole number of `step`s. A partial trailing window
+    would need climate past `tspan[2]`, which the raw climate is not guaranteed to cover.
+"""
+function precompute_climate_windows(
+        climate::Climate2D, tspan, step::Sleipnir.Float,
+        gradient_bounds = [-0.009, -0.003])
+    n_exact = (tspan[2] - tspan[1]) / step
+    n = round(Int, n_exact)
+    isapprox(n_exact, n; atol = 1e-6) || throw(ArgumentError(
+        "tspan $(tspan) is not a whole number of mass balance steps of $(step) " *
+        "($(n_exact) steps). A partial trailing window would require climate data " *
+        "past the end of the simulation."))
+    n > 0 || throw(ArgumentError("tspan $(tspan) spans no mass balance step of $(step)."))
+
+    windows = Vector{ClimateWindow{Sleipnir.Float}}(undef, n)
+    for k in 1:n
+        t_k = Sleipnir.Float(tspan[1] + k * step)
+        get_cumulative_climate!(climate, t_k, step, gradient_bounds)
+        raw = climate.climate_raw_step
+        windows[k] = ClimateWindow(
+            t_k,
+            Sleipnir.Float.(vec(raw.temp.data)),
+            Sleipnir.Float.(vec(raw.prcp.data)),
+            Sleipnir.Float.(vec(raw.gradient.data)),
+            deepcopy(climate.climate_step))
+    end
+    return windows
+end
+
+function precompute_climate_windows(
+        glacier::AbstractGlacier, tspan, step::Sleipnir.Float,
+        gradient_bounds = [-0.009, -0.003])
+    return precompute_climate_windows(glacier.climate, tspan, step, gradient_bounds)
 end
 
 """

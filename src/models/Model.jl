@@ -88,15 +88,48 @@ end
 function init_cache(model::Model, simulation, glacier_idx, θ)
     return ModelCache(
         init_cache(model.iceflow, simulation, glacier_idx, θ),
-        # Since mass balance models dont use the "Cache" yet we can just put nothing
-        nothing
+        init_mb_cache(model.mass_balance, simulation, glacier_idx, θ)
     )
 end
 function init_cache(model::Model, simulation, glacier_idx)
     init_cache(model, simulation, glacier_idx, nothing)
 end
 
-cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
+"""
+    init_mb_cache(mass_balance, simulation, glacier_idx, θ)
+
+Build the mass balance entry of a [`ModelCache`](@ref).
+
+Most mass balance models carry no state across time steps and return `nothing`, which is
+the default. A model that evaluates mass balance inside the ice flow RHS instead of in a
+periodic callback needs precomputed climate to do so without touching `Rasters` during the
+solve, and overloads this on its own type.
+
+Per-glacier mass balance models (a `Vector` in `Model.mass_balance`) are resolved to the
+`glacier_idx`-th entry first, so an overload only ever sees a single model.
+"""
+init_mb_cache(::Any, simulation, glacier_idx, θ) = nothing
+function init_mb_cache(
+        mass_balance::AbstractVector, simulation, glacier_idx, θ)
+    return init_mb_cache(mass_balance[glacier_idx], simulation, glacier_idx, θ)
+end
+
+"""
+    mb_cache_type(mass_balance)
+
+Type [`init_mb_cache`](@ref) returns, needed by [`cache_type`](@ref) to describe a
+`ModelCache` without building one. Overload it alongside `init_mb_cache`.
+"""
+mb_cache_type(::Any) = Nothing
+function mb_cache_type(mass_balance::AbstractVector)
+    isempty(mass_balance) && return Nothing
+    return mb_cache_type(first(mass_balance))
+end
+
+function cache_type(model::Model)
+    ModelCache{
+        cache_type(model.iceflow), mb_cache_type(model.mass_balance)}
+end
 
 # Display setup
 function Base.show(io::IO, type::MIME"text/plain", model::Model)

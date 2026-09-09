@@ -82,6 +82,7 @@ ENV["GKSwstype"]="nul"
             save_refs = false, climate_data_source = :ERA5)
         @testset "Dummy climate" dummy_climate()
         @testset "Winter precipitation factor" winter_prcp_factor_test()
+        @testset "Climate window precompute" climate_windows_precompute()
     end
 
     @testset "Topography and Inputs" begin
