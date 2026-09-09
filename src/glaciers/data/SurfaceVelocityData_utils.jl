@@ -74,8 +74,8 @@ function initialize_surfacevelocitydata(
 
     # Run some basic tests
     nx, ny, ntimes = size(vx)
-    @assert length(date1) == length(date2) == ntimes
-    @assert nx == ny == 250
+    @assert length(date1) == length(date2) == ntimes "Surface velocity date dimensions do not match the velocity data: length(date1)=$(length(date1)), length(date2)=$(length(date2)), and ntimes=$(ntimes)."
+    @assert nx == ny == 250 "Unsupported surface velocity grid size: received ($(nx), $(ny)); expected a 250 x 250 grid."
 
     # Spatial preprocessing
     params_projection = parse_proj(metadata(velRast)["proj4"])
@@ -415,7 +415,9 @@ function grid(
             end
         end
     else
-        throw("$(mapping.spatialInterp) spatial interpolation method is not implemented")
+        throw(ArgumentError(
+            "Unsupported spatial interpolation method: $(mapping.spatialInterp). Supported methods are :nearest."
+        ))
     end
     return xG, yG, vxG, vyG, flagG
 end
@@ -520,7 +522,7 @@ Combine multiple ice surface velocity datasets into a single `SurfaceVelocityDat
 function combine_velocity_data(refVelocities; merge = false)
     # Check all surfaces are on the same grid as the glacier
     isGridGlacierAligned = [refV.isGridGlacierAligned for refV in refVelocities]
-    @assert all(isGridGlacierAligned) "Different ice surface velocity datasets are not alligned"
+    @assert all(isGridGlacierAligned) "Different ice surface velocity datasets are not aligned. All datasets must be gridded on the same glacier grid before they can be combined. Alignment flags: $(isGridGlacierAligned)."
 
     # Shared features
     x = refVelocities[begin].x
