@@ -129,7 +129,12 @@ end
 function init_cache(model::Model, simulation, glacier_idx, θ)
     return ModelCache(
         init_cache(model.iceflow, simulation, glacier_idx, θ),
-        init_mb_cache(model.mass_balance, simulation, glacier_idx, θ)
+        # Precomputing the climate reads the rasters, which is not a differentiable quantity
+        # and which Zygote cannot traverse: it ends up differentiating DimensionalData's
+        # dimension queries. Only the mass balance cache is excluded, since the iceflow cache
+        # may legitimately carry a dependence on θ.
+        Zygote.@ignore_derivatives(init_mb_cache(
+            model.mass_balance, simulation, glacier_idx, θ))
     )
 end
 function init_cache(model::Model, simulation, glacier_idx)
