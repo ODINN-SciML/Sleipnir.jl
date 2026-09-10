@@ -1,3 +1,5 @@
+export glathida_thickness_series
+
 ###############################################################
 ########  EXTERNAL GEODATA LOADING  ##########################
 ###############################################################
@@ -151,4 +153,154 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         end
     end
     return gtd_grid
+end
+
+"""
+    _glathida_campaign_index(dates::Vector{Date}, merge_window_days::Integer)
+
+Assign each glathida measurement to a survey campaign.
+
+Two consecutive surveys belong to the same campaign when they are less than
+`merge_window_days` apart, which groups the multi day field campaigns that are reported as
+separate dates in the raw dataset.
+
+# Arguments
+
+  - `dates::Vector{Date}`: Date of each measurement.
+  - `merge_window_days::Integer`: Maximum number of days between two surveys of a campaign.
+
+# Returns
+
+  - `index`: A vector of campaign indices, one per measurement, increasing with time.
+"""
+function _glathida_campaign_index(dates::Vector{Date}, merge_window_days::Integer)
+    unique_dates = sort(unique(dates))
+    campaign_of_date = Dict{Date, Int}()
+    campaign = 1
+    campaign_of_date[unique_dates[1]] = campaign
+    for k in 2:length(unique_dates)
+        if Dates.value(unique_dates[k] - unique_dates[k - 1]) > merge_window_days
+            campaign += 1
+        end
+        campaign_of_date[unique_dates[k]] = campaign
+    end
+    return [campaign_of_date[d] for d in dates]
+end
+
+"""
+    get_glathida_campaigns(glacier::Glacier2D, params::Parameters, force; merge_window_days::Integer = 30)
+
+Retrieve or generate the per campaign glathida grids for a given glacier.
+
+Contrary to [`get_glathida_glacier`](@ref) which averages every measurement of a cell into a
+single dateless grid, this function keeps the survey campaigns separate so that they can be
+used as distinct observations of a transient inversion. On a glacier surveyed twice, the
+cells visited in both campaigns otherwise hold the mean of two measurements that are years
+apart, which averages the observed thinning away.
+
+# Arguments
+
+  - `glacier::Glacier2D`: The glacier object for which the glathida campaigns are to be retrieved or generated.
+  - `params::Parameters`: The parameters object containing simulation settings.
+  - `force`: A boolean flag indicating whether to force regeneration of the campaigns even if they already exist.
+  - `merge_window_days::Integer`: Maximum number of days between two surveys of a campaign.
+
+# Returns
+
+  - `t`: A vector of decimal years, one per campaign, sorted chronologically.
+  - `gtd_grids`: A vector of 2D arrays on the native glathida grid, with zeros where no measurement is available.
+
+# Description
+
+This function checks if the glathida campaign file (`glathida_campaigns.h5`) exists in the
+specified path. If the file exists and `force` is `false`, it reads the campaigns from the
+file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`),
+groups the measurements by campaign, computes the average thickness for each grid cell of
+each campaign, and saves the result to an HDF5 file (`glathida_campaigns.h5`).
+The grids are built on the native glathida grid since the `i_grid` and `j_grid` indices of
+the dataset refer to it, irrespective of `gridScalingFactor`.
+"""
+function get_glathida_campaigns(
+        glacier::Glacier2D,
+        params::Parameters,
+        force;
+        merge_window_days::Integer = 30
+)
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id])
+    gtd_path = joinpath(rgi_path, "glathida_campaigns.h5")
+    if isfile(gtd_path) && !force
+        t = h5read(gtd_path, "t")
+        gtd_grids = h5read(gtd_path, "gtd_grids")
+    else
+        glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
+        nx, ny = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))["nxny"]
+
+        dates = Date.(glathida["date"])
+        campaign = _glathida_campaign_index(dates, merge_window_days)
+        ncampaigns = maximum(campaign)
+
+        gtd_grids = zeros(nx, ny, ncampaigns)
+        count = zeros(nx, ny, ncampaigns)
+        for (c, thick, i, j) in
+            zip(campaign, glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
+            count[i, j, c] += 1
+            gtd_grids[i, j, c] += thick
+        end
+
+        gtd_grids .= ifelse.(count .> 0, gtd_grids ./ count, 0.0)
+
+        # Date of a campaign, weighted by the number of measurements of each survey
+        t = [mean(datetime_to_floatyear.(DateTime.(dates[campaign .== c])))
+             for c in 1:ncampaigns]
+
+        # Save file
+        h5open(gtd_path, "w") do file
+            write(file, "t", t)
+            write(file, "gtd_grids", gtd_grids)
+        end
+    end
+    return t, [gtd_grids[:, :, c] for c in axes(gtd_grids, 3)]
+end
+
+"""
+    glathida_thickness_series(glacier::Glacier2D, params::Parameters; force = false, merge_window_days::Integer = 30)
+
+Build the ice thickness time series of the glathida survey campaigns of a glacier.
+
+The returned [`ThicknessData`](@ref) can be attached to a glacier so that each campaign
+constrains the ice thickness at its own date during a transient inversion. Unobserved cells
+are left at zero, which is the convention `is_in_glacier` relies on to select the observed
+pixels. Since the resulting grids are sparse, the accompanying loss must use a zero distance
+to the border, otherwise the mask is eroded to nothing.
+
+# Arguments
+
+  - `glacier::Glacier2D`: The glacier object for which the thickness series is built.
+  - `params::Parameters`: The parameters object containing simulation settings.
+  - `force`: A boolean flag indicating whether to force regeneration of the campaigns even if they already exist.
+  - `merge_window_days::Integer`: Maximum number of days between two surveys of a campaign.
+
+# Returns
+
+  - `thicknessData`: A `ThicknessData` whose entries are the glathida campaigns, sorted chronologically.
+"""
+function glathida_thickness_series(
+        glacier::Glacier2D,
+        params::Parameters;
+        force = false,
+        merge_window_days::Integer = 30
+)
+    t,
+    gtd_grids = get_glathida_campaigns(
+        glacier, params, force; merge_window_days = merge_window_days)
+
+    n = params.simulation.gridScalingFactor
+    H = map(gtd_grids) do gtd_grid
+        n > 1 ?
+        block_average_pad_edge_masked(gtd_grid, gtd_grid .!= 0.0, n; empty_value = 0.0) :
+        gtd_grid
+    end
+    @assert all(size.(H) .== Ref(size(glacier.H₀))) "The glathida grids of $(glacier.rgi_id) have size $(size(first(H))) which does not match the size $(size(glacier.H₀)) of the ice thickness."
+
+    return ThicknessData(t = t, H = H)
 end
