@@ -146,15 +146,26 @@ end
 
 Build the mass balance entry of a [`ModelCache`](@ref).
 
-Most mass balance models carry no state across time steps and return `nothing`, which is
-the default. A model that evaluates mass balance inside the ice flow RHS instead of in a
-periodic callback needs precomputed climate to do so without touching `Rasters` during the
-solve, and overloads this on its own type.
+Mass balance is evaluated inside the ice flow RHS, which needs precomputed climate so that
+the solve never touches `Rasters`. A model that supports this overloads the function on its
+own type; one that does not cannot be used with `use_MB = true`, and this fallback says so
+rather than letting the run proceed. It has to be an error and not a warning: nothing
+downstream applies mass balance on its own, so the run would otherwise finish silently with
+none at all.
 
 Per-glacier mass balance models (a `Vector` in `Model.mass_balance`) are resolved to the
 `glacier_idx`-th entry first, so an overload only ever sees a single model.
 """
-init_mb_cache(::Any, simulation, glacier_idx, θ) = nothing
+function init_mb_cache(mb_model, simulation, glacier_idx, θ)
+    # A stand-in simulation carrying no parameters cannot be asking for mass balance
+    hasproperty(simulation, :parameters) || return nothing
+    simulation.parameters.simulation.use_MB || return nothing
+    throw(ArgumentError(
+        "Mass balance model $(typeof(mb_model)) has no ice flow RHS form, so it cannot be " *
+        "used with use_MB = true. Implement `mb_S_dependence` and `MB_rate!` for it (and " *
+        "`MB_rate_∂H!` to take gradients through it), or run with use_MB = false."))
+end
+init_mb_cache(::Nothing, simulation, glacier_idx, θ) = nothing
 function init_mb_cache(
         mass_balance::AbstractVector, simulation, glacier_idx, θ)
     return init_mb_cache(mass_balance[glacier_idx], simulation, glacier_idx, θ)
