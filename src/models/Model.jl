@@ -129,10 +129,9 @@ end
 function init_cache(model::Model, simulation, glacier_idx, θ)
     return ModelCache(
         init_cache(model.iceflow, simulation, glacier_idx, θ),
-        # Precomputing the climate reads the rasters, which is not a differentiable quantity
-        # and which Zygote cannot traverse: it ends up differentiating DimensionalData's
-        # dimension queries. Only the mass balance cache is excluded, since the iceflow cache
-        # may legitimately carry a dependence on θ.
+        # Precomputing climate reads rasters, which Zygote can't traverse — it ends up
+        # differentiating DimensionalData's dimension queries. Only the mass balance cache
+        # is wrapped here; the iceflow cache may legitimately depend on θ.
         Zygote.@ignore_derivatives(init_mb_cache(
             model.mass_balance, simulation, glacier_idx, θ))
     )
@@ -146,24 +145,23 @@ end
 
 Build the mass balance entry of a [`ModelCache`](@ref).
 
-Mass balance is evaluated inside the ice flow RHS, which needs precomputed climate so that
-the solve never touches `Rasters`. A model that supports this overloads the function on its
-own type; one that does not cannot be used with `use_MB = true`, and this fallback says so
-rather than letting the run proceed. It has to be an error and not a warning: nothing
-downstream applies mass balance on its own, so the run would otherwise finish silently with
+Mass balance runs inside the ice flow RHS, so it needs precomputed climate: the solve must
+never touch `Rasters`. A model supports this by overloading the function on its own type.
+This fallback throws for one that doesn't — an error, not a warning, since nothing
+downstream applies mass balance on its own and the run would otherwise finish silently with
 none at all.
 
-Per-glacier mass balance models (a `Vector` in `Model.mass_balance`) are resolved to the
+Per-glacier mass balance models (a `Vector` in `Model.mass_balance`) resolve to the
 `glacier_idx`-th entry first, so an overload only ever sees a single model.
 """
 function init_mb_cache(mb_model, simulation, glacier_idx, θ)
-    # A stand-in simulation carrying no parameters cannot be asking for mass balance
+    # A stand-in simulation with no parameters isn't requesting mass balance
     hasproperty(simulation, :parameters) || return nothing
     simulation.parameters.simulation.use_MB || return nothing
     throw(ArgumentError(
-        "Mass balance model $(typeof(mb_model)) has no ice flow RHS form, so it cannot be " *
-        "used with use_MB = true. Implement `mb_S_dependence` and `MB_rate!` for it (and " *
-        "`MB_rate_∂H!` to take gradients through it), or run with use_MB = false."))
+        "Mass balance model $(typeof(mb_model)) has no ice flow RHS form and can't be used " *
+        "with use_MB = true. Implement `mb_S_dependence` and `MB_rate!` for it (and " *
+        "`MB_rate_∂H!` for gradients), or run with use_MB = false."))
 end
 init_mb_cache(::Nothing, simulation, glacier_idx, θ) = nothing
 function init_mb_cache(
