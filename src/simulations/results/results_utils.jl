@@ -81,7 +81,7 @@ function create_results(
         solution,
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
-        MB::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
+        MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
         t_MB::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
     tspan = simulation.parameters.simulation.tspan
@@ -131,9 +131,12 @@ function create_results(
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
         else
-            Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            # NB: use Matrix(undef,0,0), not the `[;;]` literal: Zygote rewrites hvncat to
+            # cat(), which CommonDataModel (Rasters) type-pirates into an empty CatArray
+            # and the pullback then throws a BoundsError.
+            Vx_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            Vy_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            V_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
             date_Vref = Vector{Sleipnir.Float}([])
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
@@ -153,7 +156,7 @@ function create_results(
     if !isnothing(glacier.thicknessData)
         H_ref = glacier.thicknessData.H
     else
-        H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        H_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
     end
 
     results = Results(
