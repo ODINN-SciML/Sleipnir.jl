@@ -129,15 +129,62 @@ end
 function init_cache(model::Model, simulation, glacier_idx, θ)
     return ModelCache(
         init_cache(model.iceflow, simulation, glacier_idx, θ),
-        # Since mass balance models dont use the "Cache" yet we can just put nothing
-        nothing
+        # Precomputing climate reads rasters, which Zygote can't traverse — it ends up
+        # differentiating DimensionalData's dimension queries. Only the mass balance cache
+        # is wrapped here; the iceflow cache may legitimately depend on θ.
+        Zygote.@ignore_derivatives(init_mb_cache(
+            model.mass_balance, simulation, glacier_idx, θ))
     )
 end
 function init_cache(model::Model, simulation, glacier_idx)
     init_cache(model, simulation, glacier_idx, nothing)
 end
 
-cache_type(model::Model) = ModelCache{cache_type(model.iceflow), Nothing}
+"""
+    init_mb_cache(mass_balance, simulation, glacier_idx, θ)
+
+Build the mass balance entry of a [`ModelCache`](@ref).
+
+Mass balance runs inside the ice flow RHS, so it needs precomputed climate: the solve must
+never touch `Rasters`. A model supports this by overloading the function on its own type.
+This fallback throws for one that doesn't — an error, not a warning, since nothing
+downstream applies mass balance on its own and the run would otherwise finish silently with
+none at all.
+
+Per-glacier mass balance models (a `Vector` in `Model.mass_balance`) resolve to the
+`glacier_idx`-th entry first, so an overload only ever sees a single model.
+"""
+function init_mb_cache(mb_model, simulation, glacier_idx, θ)
+    # A stand-in simulation with no parameters isn't requesting mass balance
+    hasproperty(simulation, :parameters) || return nothing
+    simulation.parameters.simulation.use_MB || return nothing
+    throw(ArgumentError(
+        "Mass balance model $(typeof(mb_model)) has no ice flow RHS form and can't be used " *
+        "with use_MB = true. Implement `mb_S_dependence` and `MB_rate!` for it (and " *
+        "`MB_rate_∂H!` for gradients), or run with use_MB = false."))
+end
+init_mb_cache(::Nothing, simulation, glacier_idx, θ) = nothing
+function init_mb_cache(
+        mass_balance::AbstractVector, simulation, glacier_idx, θ)
+    return init_mb_cache(mass_balance[glacier_idx], simulation, glacier_idx, θ)
+end
+
+"""
+    mb_cache_type(mass_balance)
+
+Type [`init_mb_cache`](@ref) returns, needed by [`cache_type`](@ref) to describe a
+`ModelCache` without building one. Overload it alongside `init_mb_cache`.
+"""
+mb_cache_type(::Any) = Nothing
+function mb_cache_type(mass_balance::AbstractVector)
+    isempty(mass_balance) && return Nothing
+    return mb_cache_type(first(mass_balance))
+end
+
+function cache_type(model::Model)
+    ModelCache{
+        cache_type(model.iceflow), mb_cache_type(model.mass_balance)}
+end
 
 # Display setup
 function Base.show(io::IO, type::MIME"text/plain", model::Model)

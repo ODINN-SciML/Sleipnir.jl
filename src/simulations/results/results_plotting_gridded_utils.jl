@@ -342,7 +342,7 @@ function plot_cumulative_mb(results::Results;
         colormap = CairoMakie.cgrad([:indianred3, :white, :steelblue3], [0.0, 0.5, 1.0]),
         kwargs...)
     if isempty(results.MB) || isempty(results.MB[begin])
-        @warn "No mass balance callback history in results; skipping cumulative MB plot. " *
+        @warn "No mass balance history in results; skipping cumulative MB plot. " *
               "Make sure the simulation was run with use_MB=true."
         return nothing
     end

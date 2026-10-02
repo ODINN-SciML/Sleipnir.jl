@@ -196,3 +196,61 @@ function winter_prcp_factor_test()
         @test prcp_fac ≈ expected
     end
 end
+
+"""
+Check that `precompute_climate_windows` reproduces `get_cumulative_climate!` exactly.
+
+The precomputed windows are the whole climate input to the continuous mass balance scheme,
+so any drift from what the discrete path computes at the same time would show up as an
+unexplained difference between the two schemes rather than as a test failure. The comparison
+is exact (`==`), not approximate: the windows are built by calling `get_cumulative_climate!`
+itself, so the only way they can differ is by aliasing — `climate_raw_step` is reassigned
+and `climate_step` is mutated in place on every call, so storing either without copying
+would leave every window holding the last window's data.
+"""
+function climate_windows_precompute()
+    rgi_paths = get_rgi_paths()
+    rgi_ids = ["RGI60-07.00042"]
+    rgi_paths = Dict(k => rgi_paths[k] for k in rgi_ids)
+
+    tspan = (2010.0, 2011.0)
+    step_MB = 1.0/12.0
+    params = Parameters(simulation = SimulationParameters(
+        use_MB = true, use_velocities = false, tspan = tspan, step_MB = step_MB,
+        multiprocessing = false, workers = 1, test_mode = true, rgi_paths = rgi_paths))
+    glacier = initialize_glaciers(rgi_ids, params)[1]
+
+    windows = precompute_climate_windows(glacier.climate, tspan, step_MB)
+    @test length(windows) == 12
+
+    # Every window must still match a fresh call after all of them have been built. Doing
+    # the comparison only now, rather than inside the build loop, is what makes this an
+    # aliasing test as well as an equivalence one.
+    for (k, window) in enumerate(windows)
+        t_k = tspan[1] + k * step_MB
+        @test window.t_end == t_k
+        get_cumulative_climate!(glacier.climate, Sleipnir.Float(t_k),
+            Sleipnir.Float(step_MB))
+        @test window.step == glacier.climate.climate_step
+        @test window.temp == vec(glacier.climate.climate_raw_step.temp.data)
+        @test window.prcp == vec(glacier.climate.climate_raw_step.prcp.data)
+        @test window.gradient == vec(glacier.climate.climate_raw_step.gradient.data)
+    end
+
+    # Windows tile the span without overlapping or leaving a gap.
+    @test windows[end].t_end ≈ tspan[2]
+    @test all(diff([w.t_end for w in windows]) .≈ step_MB)
+
+    # Daily lapse rates come back clamped, as the discrete path expects them.
+    @test all(all(-0.009 .<= w.gradient .<= -0.003) for w in windows)
+
+    # A trailing partial window would need climate past the end of the run, so it is
+    # refused rather than silently truncated or extended.
+    @test_throws ArgumentError precompute_climate_windows(
+        glacier.climate, (2010.0, 2010.5), Sleipnir.Float(0.3))
+    @test_throws ArgumentError precompute_climate_windows(
+        glacier.climate, (2010.0, 2010.0), Sleipnir.Float(step_MB))
+
+    # The glacier accessor is a pass-through.
+    @test precompute_climate_windows(glacier, tspan, step_MB) == windows
+end
