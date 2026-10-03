@@ -6,7 +6,7 @@ A structure representing physical parameters used in simulations.
 
 # Fields
 
-  - `ρ::F`: Density of ice.
+  - `ρ::F`: Density of ice (kg m⁻³). Used for ice-flow physics (SIA diffusivity).
   - `g::F`: Gravitational acceleration.
   - `ϵ::F`: Regularization used in the square root of norms for AD numerical stability.
   - `η₀::F`: Initial viscosity.
@@ -18,6 +18,7 @@ A structure representing physical parameters used in simulations.
   - `minTlaw::F`: Minimum temperature according to some law.
   - `noise_A_magnitude::F`: Magnitude of noise in A.
   - `ρ_w::F`: Density of water (kg m⁻³), used for ice-to-water-equivalent conversions.
+  - `ρ_geodetic::F`: Density of glacier ice including air bubbles (kg m⁻³), used for geodetic mass-balance conversions (dh/dt → mass change).
   - `DDF_min::F`: Minimum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹).
   - `DDF_max::F`: Maximum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹).
   - `prcp_fac_min::F`: Minimum precipitation correction factor for TI model calibration.
@@ -38,6 +39,7 @@ struct PhysicalParameters{F <: AbstractFloat} <: AbstractParameters
     minTlaw::F
     noise_A_magnitude::F
     ρ_w::F
+    ρ_geodetic::F
     DDF_min::F
     DDF_max::F
     prcp_fac_min::F
@@ -65,7 +67,7 @@ Initialize the physical parameters of a model.
 
 # Keyword arguments
 
-    - `ρ`: Ice density
+    - `ρ`: Ice density (kg m⁻³). Used for ice-flow physics. Default: 900.0.
     - `g`: Gravitational acceleration.
     - `ϵ`: Regularization used in the square root of norms for AD numerical stability.
     - `η₀`: Factor to cap surface elevation differences with the upstream ice thickness to impose boundary condition in the iceflow equation
@@ -77,6 +79,7 @@ Initialize the physical parameters of a model.
     - `minTlaw`: Minimum value of Temperature used in simulations on fake law
     - `noise_A_magnitude`: Magnitude of noise added to A
     - `ρ_w`: Water density (kg m⁻³). Default: 1000.0.
+    - `ρ_geodetic`: Density of glacier ice for geodetic conversions (kg m⁻³). Default: 850.0.
     - `DDF_min`: Minimum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹). Default: 0.5×10⁻³.
     - `DDF_max`: Maximum degree-day factor for TI model calibration (m w.e. °C⁻¹ d⁻¹). Default: 20.0×10⁻³.
     - `prcp_fac_min`: Minimum precipitation correction factor for TI model calibration. Default: 0.1.
@@ -97,6 +100,7 @@ function PhysicalParameters(;
         minTlaw::F = -25.0,
         noise_A_magnitude::F = 5e-18,
         ρ_w::F = 1000.0,
+        ρ_geodetic::F = 850.0,
         DDF_min::F = 0.5 / 1000.0,
         DDF_max::F = 20.0 / 1000.0,
         prcp_fac_min::F = 0.1,
@@ -110,7 +114,7 @@ function PhysicalParameters(;
         maxC, minC,
         maxTlaw, minTlaw,
         noise_A_magnitude,
-        ρ_w, DDF_min, DDF_max, prcp_fac_min, prcp_fac_max,
+        ρ_w, ρ_geodetic, DDF_min, DDF_max, prcp_fac_min, prcp_fac_max,
         temp_bias_min, temp_bias_max)
 
     return physical_parameters
@@ -123,7 +127,7 @@ function Base.:(==)(a::PhysicalParameters, b::PhysicalParameters)
         a.minC == b.minC && a.maxC == b.maxC &&
         a.minTlaw == b.minTlaw && a.maxTlaw == b.maxTlaw &&
         a.noise_A_magnitude == b.noise_A_magnitude &&
-        a.ρ_w == b.ρ_w &&
+        a.ρ_w == b.ρ_w && a.ρ_geodetic == b.ρ_geodetic &&
         a.DDF_min == b.DDF_min && a.DDF_max == b.DDF_max &&
         a.prcp_fac_min == b.prcp_fac_min && a.prcp_fac_max == b.prcp_fac_max &&
         a.temp_bias_min == b.temp_bias_min && a.temp_bias_max == b.temp_bias_max
