@@ -181,6 +181,15 @@ function mb_cache_type(mass_balance::AbstractVector)
     return mb_cache_type(first(mass_balance))
 end
 
+"""
+    cache_type(model::Model)
+
+Type of the [`ModelCache`](@ref) of `model`, without building one. It pairs the cache type
+of the ice flow model with the one of the mass balance model, given by
+[`mb_cache_type`](@ref).
+
+For a law, `cache_type(law)` returns the type of the cache of that law instead.
+"""
 function cache_type(model::Model)
     ModelCache{
         cache_type(model.iceflow), mb_cache_type(model.mass_balance)}
