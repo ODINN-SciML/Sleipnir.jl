@@ -204,26 +204,28 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
+# Millan22 layer on the glacier grid: masked to the glacier, and averaged by blocks when
+# `gridScalingFactor > 1`
+function _process_Millan22_layer(params, glacier_gd, layer::Symbol)
+    data = replace(glacier_gd[layer].data, missing => 0.0)
+    mask = glacier_gd.glacier_mask.data .== 1
+    n = params.simulation.gridScalingFactor
+    n > 1 && return block_average_pad_edge_masked(data, mask, n; empty_value = 0.0)
+    data = ifelse.(mask, data, 0.0)
+    fillNaN!(data)
+    return data
+end
+
 function _process_Millan22_velocities(params, glacier_gd)
-    if params.simulation.gridScalingFactor > 1
-        Vx = block_average_pad_edge_masked(
-            replace(glacier_gd.millan_vx.data, missing => 0.0), glacier_gd.glacier_mask.data .==
-                                                                1,
-            (params.simulation.gridScalingFactor); empty_value = 0.0)
-        Vy = block_average_pad_edge_masked(
-            replace(glacier_gd.millan_vy.data, missing => 0.0), glacier_gd.glacier_mask.data .==
-                                                                1,
-            params.simulation.gridScalingFactor; empty_value = 0.0)
-        V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
-    else
-        V = ifelse.(glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_v.data, missing => 0.0), 0.0)
-        Vx = ifelse.(
-            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vx.data, missing => 0.0), 0.0)
-        Vy = ifelse.(
-            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vy.data, missing => 0.0), 0.0)
-        fillNaN!(V)
-        fillNaN!(Vx)
-        fillNaN!(Vy)
+    Vx = _process_Millan22_layer(params, glacier_gd, :millan_vx)
+    Vy = _process_Millan22_layer(params, glacier_gd, :millan_vy)
+    V = params.simulation.gridScalingFactor > 1 ? (Vx .^ 2 + Vy .^ 2) .^ (0.5) :
+        _process_Millan22_layer(params, glacier_gd, :millan_v)
+    # Positive `vy` goes along the increasing matrix index (see `SurfaceVelocityData`), while
+    # Millan22 is positive to the north: flip it when the y axis of the grid points south
+    y = lookup(glacier_gd, Y)
+    if first(y) > last(y)
+        Vy = .-Vy
     end
     return V, Vx, Vy
 end
@@ -284,10 +286,16 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
 
     if params.simulation.use_velocities
         V, Vx, Vy = _process_Millan22_velocities(params, glacier_gd)
+        # The error layers are only in `gridded_data.nc` files made with `add_error = True`
+        has_error = :millan_err_vx in keys(glacier_gd) && :millan_err_vy in keys(glacier_gd)
+        err_V = has_error ?
+                hypot.(_process_Millan22_layer(params, glacier_gd, :millan_err_vx),
+            _process_Millan22_layer(params, glacier_gd, :millan_err_vy)) : nothing
     else
         V = zeros(Sleipnir.Float, size(H₀))
         Vx = zeros(Sleipnir.Float, size(H₀))
         Vy = zeros(Sleipnir.Float, size(H₀))
+        err_V = nothing
     end
     loss_needs_Millan22 = if isnothing(params.UDE)
         false
@@ -301,6 +309,9 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         delta = MILLAN22_DATE2 - MILLAN22_DATE1
         date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
 
+        # `vabs_error` has one value per acquisition: the mean error over the ice
+        vabs_error = isnothing(err_V) ? nothing : [mean(err_V[H₀ .> 0])]
+
         velocityData = SurfaceVelocityData(
             date = [date_mean],
             date1 = [MILLAN22_DATE1],
@@ -308,6 +319,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
             vx = [Vx],
             vy = [Vy],
             vabs = [V],
+            vabs_error = vabs_error,
             isGridGlacierAligned = true
         )
     else

@@ -129,6 +129,7 @@ Retrieve or generate the glathida glacier grid for a given glacier.
 # Description
 
 This function checks if the glathida glacier grid file (`glathida.h5`) exists in the specified path. If the file exists and `force` is `false`, it reads the grid from the file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`), computes the average thickness for each grid cell, and saves the resulting grid to an HDF5 file (`glathida.h5`).
+The file holds the grid on the native glathida grid, since the `i_grid` and `j_grid` indices of the dataset refer to it. The grid is then averaged by blocks to the size of the glacier when `gridScalingFactor > 1`.
 """
 function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
     rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id])
@@ -137,8 +138,9 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         gtd_grid = h5read(gtd_path, "gtd_grid")
     else
         glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
-        gtd_grid = zeros(size(glacier.H₀))
-        count = zeros(size(glacier.H₀))
+        nx, ny = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))["nxny"]
+        gtd_grid = zeros(nx, ny)
+        count = zeros(nx, ny)
         for (thick, i, j) in
             zip(glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
             count[i, j] += 1
@@ -152,6 +154,13 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
             write(file, "gtd_grid", gtd_grid)
         end
     end
+
+    n = params.simulation.gridScalingFactor
+    if n > 1
+        gtd_grid = block_average_pad_edge_masked(
+            gtd_grid, gtd_grid .!= 0.0, n; empty_value = 0.0)
+    end
+    @assert size(gtd_grid)==size(glacier.H₀) "The glathida grid of $(glacier.rgi_id) has size $(size(gtd_grid)) which does not match the size $(size(glacier.H₀)) of the ice thickness."
     return gtd_grid
 end
 
