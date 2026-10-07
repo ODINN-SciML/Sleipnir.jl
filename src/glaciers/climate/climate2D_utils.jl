@@ -218,14 +218,14 @@ The result is the whole climate input a temperature-index model needs for a run,
 which is what lets mass balance live in the ice flow RHS: the RHS is called many times per
 window and must not touch `Rasters`.
 
-Window `k` is built by `get_cumulative_climate!(climate, t₀ + k·step, step)`, so the values
-are identical to what the discrete path computes at the same time — that equivalence is
+Window `k` is built by calling `get_cumulative_climate!(climate, t₀ + k·step, step)` once;
+calling it again directly at the same time gives the same values — that equivalence is
 asserted in the test suite rather than assumed.
 
 # Arguments
 
   - `climate::Climate2D`: Climate of the glacier. Its step buffers are overwritten as a side
-    effect, exactly as a discrete mass balance callback would overwrite them.
+    effect, the same as any other call to `get_cumulative_climate!`.
   - `tspan`: Simulation time span, in decimal years.
   - `step::Sleipnir.Float`: Mass balance step, in decimal years.
   - `gradient_bounds`: Bounds the daily lapse rate is clamped to.

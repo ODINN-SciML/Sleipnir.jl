@@ -3,7 +3,7 @@ export DhdtData
 """
 Simple snapshot of mean glacier surface elevation change.
 This represents the glacier-wide average dh/dt.
-The convention is that negative glacier-wide MB is represented as a negative dh/dt (we assume that the ice density is constant).
+The convention is that negative glacier-wide MB is represented as a negative dh/dt (we assume that the ice density is constant; geodetic conversions use `PhysicalParameters.ρ_geodetic`).
 
 Note: if you use an external dataset please make sure that you use the correct unit (surface elevation change vs m.w.e.)
 """
