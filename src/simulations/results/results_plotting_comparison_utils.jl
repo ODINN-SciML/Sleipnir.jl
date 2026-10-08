@@ -99,8 +99,9 @@ inversion, so the pairing is done here rather than left to the caller.
   - `aggregate::Union{Nothing,Symbol}`: `nothing` (default) plots every observation time.
     `:mean` averages the observations and the modelled field over the observation window
     into a single row, matching what a window-averaged velocity loss actually compares.
-  - `mask::Union{Nothing,BitMatrix}`: Cells to keep. Defaults to the glacier mask from
-    `results.H[begin]`, further restricted to cells where the observation is finite.
+  - `mask::Union{Nothing,BitMatrix}`: Cells to keep. Defaults to all the cells. In any case,
+    only the cells with an observation are compared: zero means that there is no observation,
+    as in `ThicknessData` and `SurfaceVelocityData`.
   - `colormap`, `diff_colormap`, `figsize`, `scale_text_size`, `plotContour`, `title`:
     Optional plotting parameters.
 
@@ -145,15 +146,15 @@ function plot_glacier_vs_observations(
         [(sum(t_obs) / length(t_obs), mod_mean, obs_mean)]
     end
 
-    base_mask = isnothing(mask) ? meta.mask : mask
-    nrows = length(pairs)
+    base_mask = isnothing(mask) ? trues(size(first(pairs)[3])) : mask
+    panel_size = 360 # pixels of the longest side of a map
     figKwargs = isnothing(figsize) ? Dict{Symbol, Any}() :
                 Dict{Symbol, Any}(:size => figsize)
     fig = Figure(; figKwargs...)
 
     for (row, (tᵢ, mod_raw, obs_raw)) in enumerate(pairs)
-        # An observation is only usable where it is finite, so the mask is per row
-        cells = base_mask .& isfinite.(obs_raw)
+        # Zero (and NaN) means no observation, so the mask is per row
+        cells = base_mask .& (obs_raw .> 0)
         modelled = copy(float.(mod_raw))
         observed = copy(float.(obs_raw))
         modelled[.!cells] .= NaN
@@ -173,23 +174,24 @@ function plot_glacier_vs_observations(
             ("Modelled ($when)", modelled, colormap, (lo, hi)),
             ("Observed ($when)", observed, colormap, (lo, hi)),
             (
-                @sprintf("Difference — RMSE %.3g, bias %+.3g %s", stats.rmse, stats.bias,
+                @sprintf("Difference\nRMSE %.3g, bias %+.3g %s", stats.rmse, stats.bias,
                     unit),
                 difference, diff_colormap, (-dmax, dmax))
         )
 
         for (col, (paneltitle, data, cmap, crange)) in enumerate(panels)
-            ax = Axis(fig[row, 2col - 1], aspect = DataAspect(), title = paneltitle,
-                titlesize = 11)
             nx, ny = size(data)
+            # Size of the panel from the shape of the grid, so that the map is large with
+            # respect to the labels. The cells are not interpolated: the grid can be coarse.
+            w, h = panel_size .* (nx, ny) ./ max(nx, ny)
+            ax = Axis(fig[row, 2col - 1], aspect = DataAspect(), width = w, height = h,
+                title = paneltitle, titlesize = 13)
             hm = heatmap!(ax, reverseForHeatmap(data, results.x, results.y),
-                colormap = cmap, colorrange = crange)
-            cb = Colorbar(fig[row, 2col], hm; label = col == 3 ? "Δ $unit" : unit)
-            Observables.connect!(
-                cb.height, @lift CairoMakie.Fixed($(viewport(ax.scene)).widths[2]))
+                colormap = cmap, colorrange = crange, interpolate = false)
+            Colorbar(fig[row, 2col], hm; label = col == 3 ? "Δ $unit" : unit, height = h)
             plotContour && _overlay_contour!(ax, meta.contour)
             _decorate_geo_axis!(ax, nx, ny, meta.lon, meta.lat, meta.Δx;
-                scale_text_size = scale_text_size, num_vars = 3)
+                scale_text_size = something(scale_text_size, 12.0), num_vars = 3)
         end
     end
 
