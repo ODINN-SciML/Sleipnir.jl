@@ -8,9 +8,12 @@ export plot_glacier, plot_glacier_heatmaps, plot_glacier_quivers,
        plot_glacier_integrated_volume, plot_glacier_dem
 export plot_gridded_data, accumulate_gridded_data, plot_cumulative_gridded_data,
        plot_cumulative_mb, save_figure
+export plot_glacier_vs_observations, plot_field_histogram
 
 using CairoMakie: Axis
 
 include("results_plotting_glacier_utils.jl")
 include("results_plotting_gridded_utils.jl")
+# after the two above: reuses their helpers (_results_plot_metadata, finite_extrema, …)
+include("results_plotting_comparison_utils.jl")
 include("results_plotting_video_utils.jl")
