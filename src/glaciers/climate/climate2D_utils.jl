@@ -213,6 +213,10 @@ end
 
 Precompute one [`ClimateWindow`](@ref) per mass balance step covering `tspan`.
 
+`tspan` does not need to be a whole number of steps: the last window then keeps its full length
+and ends after `tspan[2]`, and the simulation stops inside it. This lets a run start at any
+time, for example on the date of an observation.
+
 The result is the whole climate input a temperature-index model needs for a run, in plain
 `Vector`s. Slicing the raw `RasterStack` is done once here rather than once per callback,
 which is what lets mass balance live in the ice flow RHS: the RHS is called many times per
@@ -236,19 +240,25 @@ asserted in the test suite rather than assumed.
 
 # Throws
 
-  - `ArgumentError`: If `tspan` is not a whole number of `step`s. A partial trailing window
-    would need climate past `tspan[2]`, which the raw climate is not guaranteed to cover.
+  - `ArgumentError`: If `tspan` spans no step, if the first window starts before the climate
+    data, or if the last window ends after `tspan[2]` and after the end of the climate data.
+    When the last window ends on `tspan[2]`, the end of the climate data is not checked, as
+    before.
 """
 function precompute_climate_windows(
         climate::Climate2D, tspan, step::Sleipnir.Float,
         gradient_bounds = [-0.009, -0.003])
-    n_exact = (tspan[2] - tspan[1]) / step
-    n = round(Int, n_exact)
-    isapprox(n_exact, n; atol = 1e-6) || throw(ArgumentError(
-        "tspan $(tspan) is not a whole number of mass balance steps of $(step) " *
-        "($(n_exact) steps). A partial trailing window would require climate data " *
-        "past the end of the simulation."))
+    n = ceil(Int, (tspan[2] - tspan[1]) / step - 1e-6)
     n > 0 || throw(ArgumentError("tspan $(tspan) spans no mass balance step of $(step)."))
+    t_first = partial_year(Day, Sleipnir.Float(tspan[1]))
+    t_last = partial_year(Day, Sleipnir.Float(tspan[1] + n * step))
+    climate_start = Date(dims(climate.raw_climate, Ti)[begin])
+    climate_end = Date(dims(climate.raw_climate, Ti)[end])
+    (climate_start <= t_first &&
+     (t_last <= partial_year(Day, Sleipnir.Float(tspan[2])) ||
+      t_last <= climate_end)) ||
+        throw(ArgumentError("The mass balance windows go from $(t_first) to $(t_last), " *
+                            "outside of the climate data ($(climate_start) to $(climate_end))."))
 
     windows = Vector{ClimateWindow{Sleipnir.Float}}(undef, n)
     for k in 1:n

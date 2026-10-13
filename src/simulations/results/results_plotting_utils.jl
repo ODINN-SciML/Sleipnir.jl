@@ -8,7 +8,8 @@ export plot_glacier, plot_glacier_heatmaps, plot_glacier_quivers,
        plot_glacier_integrated_volume, plot_glacier_dem
 export plot_gridded_data, accumulate_gridded_data, plot_cumulative_gridded_data,
        plot_cumulative_mb, save_figure
-export plot_glacier_vs_observations, plot_field_histogram
+export plot_glacier_vs_observations, plot_field_histogram, plot_observations,
+       plot_observation_timeline
 
 using CairoMakie: Axis
 

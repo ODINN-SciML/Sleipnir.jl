@@ -3,7 +3,7 @@
 #
 # Layout:
 #   1. Numeric helpers:   lower_bound, finite_extrema, symmetric_finite_colorrange
-#   2. Internal helpers:  _resolve_gridded_snapshot, _dem_defaults
+#   2. Internal helpers:  _resolve_gridded_snapshot, _dem_defaults, _glacier_xy
 #   3. Core renderer:     _plot_gridded_data_core
 #   4. Public API:        plot_gridded_data, accumulate_gridded_data,
 #                         plot_cumulative_gridded_data, plot_cumulative_mb,
@@ -70,6 +70,21 @@ function _dem_defaults(glacier::Glacier2D)
         title = plot_title,
         colorbar_label = "Surface elevation (m a.s.l.)"
     )
+end
+
+"""
+    _glacier_xy(glacier) -> (x, y)
+
+Coordinates of the columns and rows of the glacier grid. They are the longitudes and
+latitudes if the glacier has them, otherwise the distance in meters from the first cell.
+Used by `reverseForHeatmap` to put north up.
+"""
+function _glacier_xy(glacier::Glacier2D)
+    has_lonlat = haskey(glacier.Coords, "lon") && haskey(glacier.Coords, "lat") &&
+                 !isempty(glacier.Coords["lon"]) && !isempty(glacier.Coords["lat"])
+    x = has_lonlat ? glacier.Coords["lon"] : glacier.Δx .* collect(1.0:1.0:glacier.nx)
+    y = has_lonlat ? glacier.Coords["lat"] : glacier.Δy .* collect(1.0:1.0:glacier.ny)
+    return x, y
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -425,10 +440,7 @@ function plot_glacier_dem(glacier::Glacier2D;
         logPlot::Bool = false)
     @assert !isempty(glacier.S) "The glacier DEM is empty."
 
-    has_lonlat = haskey(glacier.Coords, "lon") && haskey(glacier.Coords, "lat") &&
-                 !isempty(glacier.Coords["lon"]) && !isempty(glacier.Coords["lat"])
-    x = has_lonlat ? glacier.Coords["lon"] : glacier.Δx .* collect(1.0:1.0:glacier.nx)
-    y = has_lonlat ? glacier.Coords["lat"] : glacier.Δy .* collect(1.0:1.0:glacier.ny)
+    x, y = _glacier_xy(glacier)
 
     dem_size = size(glacier.S)
     if !isempty(glacier.H₀) && size(glacier.H₀) == dem_size

@@ -79,6 +79,48 @@ function glaciers2D_plots()
             @test plot_glacier_dem(glaciers[1]) isa Figure
         end
 
+        @testset "Observations" begin
+            # Zero means no observation in the thickness and velocity data
+            footprint = glaciers[1].H₀ .> 0
+            H_obs = [footprint .* (50.0 .+ 100.0 .* rand(size(footprint)...)) for _ in 1:2]
+            V_obs = [footprint .* (10.0 .+ 40.0 .* rand(size(footprint)...))]
+            glacier_obs = Glacier2D(
+                glaciers[1];
+                thicknessData = ThicknessData([2010.0, 2015.0], H_obs),
+                velocityData = SurfaceVelocityData(
+                    vabs = V_obs,
+                    date = [DateTime(2012, 7, 1)],
+                    date1 = [DateTime(2012, 1, 1)],
+                    date2 = [DateTime(2013, 1, 1)]
+                )
+            )
+
+            @test plot_observations(glacier_obs; tspan = (2009.0, 2016.0)) isa Figure
+            @test plot_observations(glacier_obs; max_points = 10) isa Figure
+            # No thickness or velocity data in this glacier
+            @test_throws ArgumentError plot_observations(glaciers[1])
+            @test plot_observation_timeline([glacier_obs, glaciers[1]];
+                tspan = (2008.0, 2017.0),
+                glacier_tspans = Dict(glacier_obs.rgi_id => (2009.0, 2016.0))) isa Figure
+
+            # Model against the thickness observations, at each date and averaged
+            results_t = Results(glaciers[1], ifm; H = results.H, t = [2010.0, 2015.0])
+            @test plot_glacier_vs_observations(results_t, glacier_obs, :H) isa Figure
+            @test plot_glacier_vs_observations(
+                results_t, glacier_obs, :H; aggregate = :mean) isa Figure
+            # No simulated velocity in these results
+            @test_throws ArgumentError plot_glacier_vs_observations(
+                results_t, glacier_obs, :V)
+            # Velocity with its reference, and a mask of the cells
+            results_v = Results(glaciers[1], ifm; H = results.H, V = results.H,
+                V_ref = [results.H[1]], date_Vref = [2012.5], t = [2010.0, 2015.0])
+            @test plot_glacier_vs_observations(results_v, glacier_obs, :V) isa Figure
+            plot_gridded_data(abs.(randn(size(glaciers[1].H₀)...)), results;
+                mask = glaciers[1].H₀ .> 0)
+            @test plot_field_histogram(results.H[1];
+                references = ["reference" => 1.0], logScale = true) isa Figure
+        end
+
         @testset "Save figure" begin
             fig = plot_glacier(results, "heatmaps", [:H])
             path = joinpath(mktempdir(), "heatmap.png")

@@ -84,7 +84,7 @@ function create_results(
         MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
         t_MB::Vector{F} = Vector{Sleipnir.Float}([])
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
-    tspan = simulation.parameters.simulation.tspan
+    tspan = Zygote.@ignore_derivatives glacier_tspan(simulation, glacier_idx)
 
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
@@ -131,9 +131,7 @@ function create_results(
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
         else
-            # NB: use Matrix(undef,0,0), not the `[;;]` literal: Zygote rewrites hvncat to
-            # cat(), which CommonDataModel (Rasters) type-pirates into an empty CatArray
-            # and the pullback then throws a BoundsError.
+            # Not `[;;]`: under Zygote it becomes a cat() that fails with Rasters loaded
             Vx_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
             Vy_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
             V_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]

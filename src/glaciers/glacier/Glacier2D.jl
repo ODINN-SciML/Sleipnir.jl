@@ -1,5 +1,5 @@
 
-export Glacier2D, AbstractGlacier, Climate2D
+export Glacier2D, AbstractGlacier, Climate2D, glacier_tspan
 
 """
     AbstractGlacier
@@ -262,6 +262,23 @@ function Glacier2D(
         glacier.cenlon, glacier.cenlat, glacier.params_projection,
         thicknessData, velocityData, dhdtData
     )
+end
+
+"""
+    glacier_tspan(simulation, glacier_idx)
+    glacier_tspan(params, glacier)
+
+Time window `(t_start, t_end)` simulated for a glacier: the one set for its RGI ID in
+`params.simulation.glacier_tspans`, otherwise the global `params.simulation.tspan`.
+"""
+function glacier_tspan(params::Parameters, glacier::AbstractGlacier)
+    get(
+        params.simulation.glacier_tspans, glacier.rgi_id, params.simulation.tspan)
+end
+function glacier_tspan(simulation, glacier_idx::Integer)
+    get(
+        simulation.parameters.simulation.glacier_tspans,
+        simulation.glaciers[glacier_idx].rgi_id, simulation.parameters.simulation.tspan)
 end
 
 ###############################################

@@ -244,12 +244,30 @@ function climate_windows_precompute()
     # Daily lapse rates come back clamped, as the discrete path expects them.
     @test all(all(-0.009 .<= w.gradient .<= -0.003) for w in windows)
 
-    # A trailing partial window would need climate past the end of the run, so it is
-    # refused rather than silently truncated or extended.
+    # A span that is not a whole number of steps keeps full windows: the last one ends after
+    # tspan[2], and the others are the same as for the whole-step span
+    partial = precompute_climate_windows(glacier.climate, (2010.0, 2010.95), step_MB)
+    @test partial == windows
+    # Past the end of the climate data, the window is refused, not shortened
+    t_climate = Sleipnir.datetime_to_floatyear(DateTime(dims(glacier.climate.raw_climate, Ti)[end]))
     @test_throws ArgumentError precompute_climate_windows(
-        glacier.climate, (2010.0, 2010.5), Sleipnir.Float(0.3))
+        glacier.climate, (2010.0, t_climate - 0.01), Sleipnir.Float(t_climate - 2010.0 +
+                                                                    1.0))
     @test_throws ArgumentError precompute_climate_windows(
         glacier.climate, (2010.0, 2010.0), Sleipnir.Float(step_MB))
+
+    # A start inside a month, as on a survey date: the windows start on it
+    t_start = 2010.55
+    shifted = precompute_climate_windows(glacier.climate, (t_start, 2010.95), step_MB)
+    @test length(shifted) == 5
+    get_cumulative_climate!(glacier.climate, Sleipnir.Float(t_start + step_MB),
+        Sleipnir.Float(step_MB))
+    @test shifted[1].t_end == Sleipnir.Float(t_start + step_MB)
+    @test shifted[1].temp == vec(glacier.climate.climate_raw_step.temp.data)
+    # Before the start of the climate data, the window is refused too
+    t_first = Sleipnir.datetime_to_floatyear(DateTime(dims(glacier.climate.raw_climate, Ti)[begin]))
+    @test_throws ArgumentError precompute_climate_windows(
+        glacier.climate, (t_first - 0.1, t_first + 0.5), step_MB)
 
     # The glacier accessor is a pass-through.
     @test precompute_climate_windows(glacier, tspan, step_MB) == windows

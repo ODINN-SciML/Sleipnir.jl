@@ -31,6 +31,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
+  - `glacier_tspans::Dict{String, Tuple{F, F}}`: Time window of the glaciers that do not use `tspan`, by RGI ID. It is empty by default, so all the glaciers use `tspan`. Each window must be inside `tspan`. See [`glacier_tspan`](@ref).
 """
 struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
        AbstractParameters
@@ -55,6 +56,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     mapping::VM
     gridScalingFactor::I
     catch_errors::Bool
+    glacier_tspans::Dict{String, Tuple{F, F}}
 end
 
 """
@@ -81,7 +83,8 @@ Constructor for `SimulationParameters` type, including default values.
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
-        catch_errors::Bool = false
+        catch_errors::Bool = false,
+        glacier_tspans = Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}()
     ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
 # Keyword arguments
@@ -112,6 +115,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
+  - `glacier_tspans`: Time window `(t_start, t_end)` by RGI ID of the glaciers that do not use `tspan` (default: empty). For example, to start an inversion on the first thickness survey of a glacier. Each window must be inside `tspan`, since the climate data is loaded for `tspan`. The last mass balance window can end up to one `step_MB` after the window. The raw climate file goes to the end of the climate dataset (30 September of its last year), and there is an error if the last window ends after it.
 
 # Returns
 
@@ -150,7 +154,8 @@ function SimulationParameters(;
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
-        catch_errors::Bool = false
+        catch_errors::Bool = false,
+        glacier_tspans = Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}()
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
     ice_thickness_source_sym = Symbol(ice_thickness_source)
     velocity_product_sym = Symbol(velocity_product)
@@ -167,7 +172,10 @@ function SimulationParameters(;
         multiprocessing, Sleipnir.Int(workers), working_dir,
         test_mode, rgi_paths, ice_thickness_source_sym, velocity_product_sym,
         climate_data_source, mapping,
-        gridScalingFactor, catch_errors
+        gridScalingFactor, catch_errors,
+        Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}(
+            id => (Sleipnir.Float(t[1]), Sleipnir.Float(t[2]))
+        for (id, t) in glacier_tspans)
     )
 
     if !ispath(working_dir)
@@ -198,7 +206,8 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.climate_data_source == b.climate_data_source &&
         a.mapping == b.mapping &&
         a.gridScalingFactor == b.gridScalingFactor &&
-        a.catch_errors == b.catch_errors
+        a.catch_errors == b.catch_errors &&
+        a.glacier_tspans == b.glacier_tspans
 end
 
 # Display setup
@@ -213,6 +222,8 @@ function Base.show(io::IO, params::SimulationParameters)
     field(io, "tspan");
     print(io, " = ");
     val(io, "$(params.tspan)")
+    isempty(params.glacier_tspans) ||
+        hint(io, " (own window for $(length(params.glacier_tspans)) glacier(s))")
     sep(io)
     field(io, "step_MB");
     print(io, " = ");

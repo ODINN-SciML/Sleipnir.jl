@@ -155,13 +155,15 @@ function get_glathida_glacier(glacier::Glacier2D, params::Parameters, force)
         end
     end
 
-    n = params.simulation.gridScalingFactor
-    if n > 1
-        gtd_grid = block_average_pad_edge_masked(
-            gtd_grid, gtd_grid .!= 0.0, n; empty_value = 0.0)
-    end
+    gtd_grid = _coarsen_glathida(gtd_grid, params.simulation.gridScalingFactor)
     @assert size(gtd_grid)==size(glacier.H₀) "The glathida grid of $(glacier.rgi_id) has size $(size(gtd_grid)) which does not match the size $(size(glacier.H₀)) of the ice thickness."
     return gtd_grid
+end
+
+# Average a glathida grid by blocks of `n` cells, ignoring the cells without measurement (zero)
+function _coarsen_glathida(grid, n)
+    n > 1 || return grid
+    return block_average_pad_edge_masked(grid, grid .!= 0.0, n; empty_value = 0.0)
 end
 
 """
@@ -169,9 +171,10 @@ end
 
 Assign each glathida measurement to a survey campaign.
 
-Two consecutive surveys belong to the same campaign when they are less than
+Two consecutive survey dates belong to the same campaign when they are at most
 `merge_window_days` apart, which groups the multi day field campaigns that are reported as
-separate dates in the raw dataset.
+separate dates in the raw dataset. The rule is applied date by date, so a series of surveys
+that are each less than `merge_window_days` apart is one campaign.
 
 # Arguments
 
@@ -183,6 +186,7 @@ separate dates in the raw dataset.
   - `index`: A vector of campaign indices, one per measurement, increasing with time.
 """
 function _glathida_campaign_index(dates::Vector{Date}, merge_window_days::Integer)
+    isempty(dates) && throw(ArgumentError("There are no dated glathida measurements."))
     unique_dates = sort(unique(dates))
     campaign_of_date = Dict{Date, Int}()
     campaign = 1
@@ -221,11 +225,11 @@ apart, which averages the observed thinning away.
 
 # Description
 
-This function checks if the glathida campaign file (`glathida_campaigns.h5`) exists in the
-specified path. If the file exists and `force` is `false`, it reads the campaigns from the
-file. Otherwise, it reads the glacier thickness data from a CSV file (`glathida_data.csv`),
-groups the measurements by campaign, computes the average thickness for each grid cell of
-each campaign, and saves the result to an HDF5 file (`glathida_campaigns.h5`).
+This function checks if the glathida campaign file (`glathida_campaigns_<merge_window_days>d.h5`)
+exists in the specified path. If the file exists and `force` is `false`, it reads the
+campaigns from the file. Otherwise, it reads the glacier thickness data from a CSV file
+(`glathida_data.csv`), groups the measurements by campaign, computes the average thickness
+for each grid cell of each campaign, and saves the result to this HDF5 file.
 The grids are built on the native glathida grid since the `i_grid` and `j_grid` indices of
 the dataset refer to it, irrespective of `gridScalingFactor`.
 """
@@ -236,7 +240,7 @@ function get_glathida_campaigns(
         merge_window_days::Integer = 30
 )
     rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id])
-    gtd_path = joinpath(rgi_path, "glathida_campaigns.h5")
+    gtd_path = joinpath(rgi_path, "glathida_campaigns_$(merge_window_days)d.h5")
     if isfile(gtd_path) && !force
         t = h5read(gtd_path, "t")
         gtd_grids = h5read(gtd_path, "gtd_grids")
@@ -303,12 +307,7 @@ function glathida_thickness_series(
     gtd_grids = get_glathida_campaigns(
         glacier, params, force; merge_window_days = merge_window_days)
 
-    n = params.simulation.gridScalingFactor
-    H = map(gtd_grids) do gtd_grid
-        n > 1 ?
-        block_average_pad_edge_masked(gtd_grid, gtd_grid .!= 0.0, n; empty_value = 0.0) :
-        gtd_grid
-    end
+    H = _coarsen_glathida.(gtd_grids, params.simulation.gridScalingFactor)
     @assert all(size.(H) .== Ref(size(glacier.H₀))) "The glathida grids of $(glacier.rgi_id) have size $(size(first(H))) which does not match the size $(size(glacier.H₀)) of the ice thickness."
 
     return ThicknessData(t = t, H = H)
