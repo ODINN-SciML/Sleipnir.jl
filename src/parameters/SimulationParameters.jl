@@ -115,7 +115,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
-  - `glacier_tspans`: Time window `(t_start, t_end)` by RGI ID of the glaciers that do not use `tspan` (default: empty). For example, to start an inversion on the first thickness survey of a glacier. Each window must be inside `tspan`, since the climate data is loaded for `tspan`. The last mass balance window can end up to one `step_MB` after the window. The raw climate file goes to the end of the climate dataset (30 September of its last year), and there is an error if the last window ends after it.
+  - `glacier_tspans`: Time window `(t_start, t_end)` by RGI ID of the glaciers that do not use `tspan` (default: empty). For example, to start an inversion on the first thickness survey of a glacier. Each window must be inside `tspan`, since the climate data is loaded for `tspan`. The last mass balance window can end up to one `step_MB` after the window. There is an error if the last window ends after the end of the climate data.
 
 # Returns
 
