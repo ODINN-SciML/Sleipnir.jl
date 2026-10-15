@@ -222,6 +222,9 @@ apart, which averages the observed thinning away.
 
   - `t`: A vector of decimal years, one per campaign, sorted chronologically.
   - `gtd_grids`: A vector of 2D arrays on the native glathida grid, with zeros where no measurement is available.
+  - `counts`: The number of measurements in each cell, one 2D array per campaign.
+  - `sumsqs`: The sum of the squared thicknesses in each cell, one 2D array per campaign. With
+    `counts`, it gives the spread of the measurements inside a cell.
 
 # Description
 
@@ -241,9 +244,13 @@ function get_glathida_campaigns(
 )
     rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[glacier.rgi_id])
     gtd_path = joinpath(rgi_path, "glathida_campaigns_$(merge_window_days)d.h5")
-    if isfile(gtd_path) && !force
+    # A file written before the counts were saved is built again
+    cached = isfile(gtd_path) && !force && h5open(f -> haskey(f, "counts"), gtd_path)
+    if cached
         t = h5read(gtd_path, "t")
         gtd_grids = h5read(gtd_path, "gtd_grids")
+        counts = h5read(gtd_path, "counts")
+        sumsqs = h5read(gtd_path, "sumsqs")
     else
         glathida = CSV.File(joinpath(rgi_path, "glathida_data.csv"))
         nx, ny = JSON.parsefile(joinpath(rgi_path, "glacier_grid.json"))["nxny"]
@@ -253,14 +260,16 @@ function get_glathida_campaigns(
         ncampaigns = maximum(campaign)
 
         gtd_grids = zeros(nx, ny, ncampaigns)
-        count = zeros(nx, ny, ncampaigns)
+        counts = zeros(nx, ny, ncampaigns)
+        sumsqs = zeros(nx, ny, ncampaigns)
         for (c, thick, i, j) in
             zip(campaign, glathida["thickness"], glathida["i_grid"], glathida["j_grid"])
-            count[i, j, c] += 1
+            counts[i, j, c] += 1
             gtd_grids[i, j, c] += thick
+            sumsqs[i, j, c] += thick^2
         end
 
-        gtd_grids .= ifelse.(count .> 0, gtd_grids ./ count, 0.0)
+        gtd_grids .= ifelse.(counts .> 0, gtd_grids ./ counts, 0.0)
 
         # Date of a campaign, weighted by the number of measurements of each survey
         t = [mean(datetime_to_floatyear.(DateTime.(dates[campaign .== c])))
@@ -270,9 +279,53 @@ function get_glathida_campaigns(
         h5open(gtd_path, "w") do file
             write(file, "t", t)
             write(file, "gtd_grids", gtd_grids)
+            write(file, "counts", counts)
+            write(file, "sumsqs", sumsqs)
         end
     end
-    return t, [gtd_grids[:, :, c] for c in axes(gtd_grids, 3)]
+    split(a) = [a[:, :, c] for c in axes(a, 3)]
+    return t, split(gtd_grids), split(counts), split(sumsqs)
+end
+
+"""
+    glathida_cell_σ(H, grid, count, sumsq, n)
+
+Uncertainty of each cell of a glathida campaign averaged by blocks of `n` cells, in m:
+
+``σ^2 = (5 + 0.03 H)^2 + (1.5 s)^2``
+
+The first part is the error of a radar measurement: a few metres for the picking of the
+reflection, and 3% of the thickness for the radio-wave velocity (Lapazaran et al., 2016; Grab
+et al., 2021). The second part is the representation error: the model cell is the mean over
+the whole cell, while a survey line only crosses it. `s` is the standard deviation of the
+measurements inside the cell, and the factor 1.5 is there because one line sees only part of
+the cell. It was measured on Aletsch with two independent campaigns, at 137, 274 and 548 m.
+Cells with fewer than 3 measurements take the median `s` of the campaign.
+
+`H` is the averaged grid. `grid` (mean of each cell), `count` and `sumsq` are on the native
+grid. The cells without measurement get 0.
+"""
+function glathida_cell_σ(H, grid, count, sumsq, n)
+    coarse(a) = n > 1 ? block_average_pad_edge(a, n) : a
+    # The block average divides the sums and the count by the same number, so the mean and
+    # the mean square of the measurements of a cell are their ratios
+    N = coarse(count)
+    mean_H = coarse(grid .* count) ./ N
+    mean_H² = coarse(sumsq) ./ N
+    npoints = round.(Int, N .* n^2)
+    observed = (H .!= 0.0) .& (N .> 0)
+    s = fill(NaN, size(H))
+    many = observed .& (npoints .>= 3)
+    s[many] .= sqrt.(max.(mean_H²[many] .- mean_H[many] .^ 2, 0.0) .*
+                     npoints[many] ./ (npoints[many] .- 1))
+    # With no cell of 3 measurements the spread is not known, and the radar error alone (5 to
+    # 10 m) would be too small: 12 m gives about 20 m for a cell of 140 m of ice, close to the
+    # 18 m measured on Aletsch
+    s[observed .& .!many] .= any(many) ? median(s[many]) : 12.0
+    σ = zeros(size(H))
+    σ[observed] .= sqrt.((5.0 .+ 0.03 .* H[observed]) .^ 2 .+
+                         (1.5 .* ifelse.(isnan.(s[observed]), 0.0, s[observed])) .^ 2)
+    return σ
 end
 
 """
@@ -295,7 +348,8 @@ to the border, otherwise the mask is eroded to nothing.
 
 # Returns
 
-  - `thicknessData`: A `ThicknessData` whose entries are the glathida campaigns, sorted chronologically.
+  - `thicknessData`: A `ThicknessData` whose entries are the glathida campaigns, sorted
+    chronologically, with the uncertainty of each cell from [`glathida_cell_σ`](@ref).
 """
 function glathida_thickness_series(
         glacier::Glacier2D,
@@ -303,12 +357,15 @@ function glathida_thickness_series(
         force = false,
         merge_window_days::Integer = 30
 )
-    t,
-    gtd_grids = get_glathida_campaigns(
+    t, gtd_grids,
+    counts,
+    sumsqs = get_glathida_campaigns(
         glacier, params, force; merge_window_days = merge_window_days)
 
-    H = _coarsen_glathida.(gtd_grids, params.simulation.gridScalingFactor)
+    n = params.simulation.gridScalingFactor
+    H = _coarsen_glathida.(gtd_grids, n)
     @assert all(size.(H) .== Ref(size(glacier.H₀))) "The glathida grids of $(glacier.rgi_id) have size $(size(first(H))) which does not match the size $(size(glacier.H₀)) of the ice thickness."
+    σ = [glathida_cell_σ(H[c], gtd_grids[c], counts[c], sumsqs[c], n) for c in eachindex(H)]
 
-    return ThicknessData(t = t, H = H)
+    return ThicknessData(t = t, H = H, σ = σ)
 end

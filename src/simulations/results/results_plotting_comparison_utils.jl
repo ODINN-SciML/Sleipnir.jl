@@ -3,7 +3,7 @@
 #
 # Layout:
 #   1. Internal helpers:  _finite_stats, _nearest_time_index, _observation_series,
-#                         _observed_pixels
+#                         _observed_pixels, _mask_outline
 #   2. Public API:        plot_glacier_vs_observations, plot_field_histogram,
 #                         plot_observations, plot_observation_timeline
 ###############################################################################
@@ -92,6 +92,28 @@ function _observed_pixels(glacier::Glacier2D, fields, times; max_points = 20_000
     return map(a -> a[keep], px)
 end
 
+"""
+    _mask_outline(mask) -> Vector{Point2f}
+
+Line segments (two points each) along the borders of the `true` cells of `mask`, in the
+index coordinates of a `heatmap!` of the same matrix: the cell `(i, j)` spans `i ± 0.5`
+and `j ± 0.5`. Use them with `linesegments!`.
+"""
+function _mask_outline(mask::AbstractMatrix{Bool})
+    nx, ny = size(mask)
+    on(i, j) = 1 <= i <= nx && 1 <= j <= ny && mask[i, j]
+    pts = Point2f[]
+    for j in 1:ny, i in 1:nx
+
+        mask[i, j] || continue
+        on(i - 1, j) || push!(pts, Point2f(i - 0.5, j - 0.5), Point2f(i - 0.5, j + 0.5))
+        on(i + 1, j) || push!(pts, Point2f(i + 0.5, j - 0.5), Point2f(i + 0.5, j + 0.5))
+        on(i, j - 1) || push!(pts, Point2f(i - 0.5, j - 0.5), Point2f(i + 0.5, j - 0.5))
+        on(i, j + 1) || push!(pts, Point2f(i - 0.5, j + 0.5), Point2f(i + 0.5, j + 0.5))
+    end
+    return pts
+end
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 2. Public API
 # ─────────────────────────────────────────────────────────────────────────────
@@ -136,8 +158,14 @@ the saved time closest to the observation, not the last time step.
 
 # Notes
 
+  - The modelled panel shows the whole simulated glacier, with a thin black line around the
+    cells that have an observation. The observed and difference panels only have these cells.
+    The cells of the glacier outline (`glacier.H₀ > 0`) with no modelled ice are grey, and
+    their number is in the title.
   - Modelled and observed panels share a colour range so the two are directly comparable;
-    the difference (model minus observation) panel is symmetric about zero.
+    it ends at the largest observation or the 99th percentile of the modelled glacier, and
+    the cells above it are magenta. The difference (model minus observation) panel is
+    symmetric about zero.
   - Each difference panel is titled with its RMSE and mean bias over the masked cells.
   - The observations more than 0.1 yr outside the simulated period are not plotted.
 """
@@ -176,8 +204,10 @@ function plot_glacier_vs_observations(
 
     # Pair each observation with the simulated state at the nearest saved time
     idxs = [_nearest_time_index(results.t, tᵢ) for tᵢ in t_obs]
+    # Each row: time, modelled field, observed field, and the modelled field of the whole glacier
     rows = if isnothing(aggregate)
-        [(t_obs[i], modelled_series[idxs[i]], obs[i]) for i in eachindex(t_obs)]
+        [(t_obs[i], modelled_series[idxs[i]], obs[i], modelled_series[idxs[i]])
+         for i in eachindex(t_obs)]
     else
         # Average both sides cell by cell, over the times where the cell is observed
         seen = [o .> 0 for o in obs]
@@ -185,7 +215,10 @@ function plot_glacier_vs_observations(
         obs_mean = sum(ifelse.(s, o, 0.0) for (o, s) in zip(obs, seen)) ./ n
         mod_mean = sum(ifelse.(s, modelled_series[i], 0.0) for (i, s) in zip(idxs, seen)) ./
                    n
-        [(sum(t_obs) / length(t_obs), mod_mean, obs_mean)]
+        # Outside of the observed cells, the mean over all the matched times
+        mod_all = ifelse.(sum(seen) .> 0, mod_mean,
+            sum(modelled_series[i] for i in idxs) ./ length(idxs))
+        [(sum(t_obs) / length(t_obs), mod_mean, obs_mean, mod_all)]
     end
 
     base_mask = isnothing(mask) ? trues(size(first(rows)[3])) : mask
@@ -194,7 +227,7 @@ function plot_glacier_vs_observations(
                 Dict{Symbol, Any}(:size => figsize)
     fig = Figure(; figKwargs...)
 
-    for (row, (tᵢ, mod_raw, obs_raw)) in enumerate(rows)
+    for (row, (tᵢ, mod_raw, obs_raw, mod_all)) in enumerate(rows)
         # Zero (and NaN) means no observation, so the mask is per row
         cells = base_mask .& (obs_raw .> 0)
         modelled = float.(mod_raw)
@@ -204,20 +237,34 @@ function plot_glacier_vs_observations(
         difference = modelled .- observed
         stats = _finite_stats(difference)
 
-        shared = filter(isfinite, vcat(vec(modelled), vec(observed)))
-        if isempty(shared)
+        if !any(isfinite, observed)
             @warn "plot_glacier_vs_observations: no observed cell left in the mask at $(round(tᵢ; digits = 2)), this row is not plotted."
             continue
         end
-        lo, hi = extrema(shared)
+        # The modelled panel shows the whole glacier (zero is no ice), not only the observed cells
+        everywhere = float.(mod_all)
+        everywhere[.!(everywhere .> 0)] .= NaN
+        # A few extreme cells of the model must not set the scale of the observations: the
+        # range ends at the largest observation or the 99th percentile of the glacier, and
+        # the cells above it are drawn in magenta
+        shared = filter(isfinite, vcat(vec(everywhere), vec(observed)))
+        lo = minimum(shared)
+        # The model can have no ice left, so there can be no finite cell of the model
+        modelled_cells = filter(isfinite, vec(everywhere))
+        hi = max(maximum(filter(isfinite, vec(observed))),
+            isempty(modelled_cells) ? -Inf : quantile(modelled_cells, 0.99))
         hi > lo || (hi = lo + 1)
         dmax = maximum(abs, filter(isfinite, vec(difference)); init = 0.0)
         dmax = dmax > 0 ? dmax : 1.0
 
         when = isnothing(aggregate) ? "$(round(tᵢ; digits = 2))" :
                "mean over $(length(idxs)) obs"
+        # Cells of the glacier outline (`glacier.H₀ > 0`) with no modelled ice are drawn in grey
+        empty_cells = (glacier.H₀ .> 0) .& .!isfinite.(everywhere)
         panels = (
-            ("Modelled ($when)", modelled, colormap, (lo, hi)),
+            (
+                "Modelled ($when)\n$(count(empty_cells)) cells of the outline without ice",
+                everywhere, colormap, (lo, hi)),
             ("Observed ($when)", observed, colormap, (lo, hi)),
             (
                 @sprintf("Difference\nRMSE %.3g, bias %+.3g %s", stats.rmse, stats.bias,
@@ -232,9 +279,17 @@ function plot_glacier_vs_observations(
             w, h = panel_size .* (nx, ny) ./ max(nx, ny)
             ax = Axis(fig[row, 2col - 1], aspect = DataAspect(), width = w, height = h,
                 title = paneltitle, titlesize = 13)
+            col == 1 && heatmap!(ax,
+                reverseForHeatmap(ifelse.(empty_cells, 1.0, NaN), results.x, results.y),
+                colormap = [:lightgray, :lightgray], colorrange = (0, 1), interpolate = false)
             hm = heatmap!(ax, reverseForHeatmap(data, results.x, results.y),
-                colormap = cmap, colorrange = crange, interpolate = false)
+                colormap = cmap, colorrange = crange, interpolate = false,
+                highclip = col == 3 ? nothing : :magenta)
             Colorbar(fig[row, 2col], hm; label = col == 3 ? "Δ $unit" : unit, height = h)
+            # A thin line around the cells that have an observation, to find them in the map
+            col == 1 && linesegments!(ax,
+                _mask_outline(reverseForHeatmap(float.(cells), results.x, results.y) .> 0);
+                color = :black, linewidth = 0.5)
             plotContour && _overlay_contour!(ax, meta.contour)
             _decorate_geo_axis!(ax, nx, ny, meta.lon, meta.lat, meta.Δx;
                 scale_text_size = something(scale_text_size, 12.0), num_vars = 3)

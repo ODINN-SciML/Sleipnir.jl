@@ -115,6 +115,14 @@ function glaciers2D_plots()
             results_v = Results(glaciers[1], ifm; H = results.H, V = results.H,
                 V_ref = [results.H[1]], date_Vref = [2012.5], t = [2010.0, 2015.0])
             @test plot_glacier_vs_observations(results_v, glacier_obs, :V) isa Figure
+            # The outline of the observed cells: one cell has 4 sides, two neighbours share one
+            single = falses(5, 5)
+            single[2, 3] = true
+            @test length(Sleipnir._mask_outline(single)) == 2 * 4
+            pair = copy(single)
+            pair[3, 3] = true
+            @test length(Sleipnir._mask_outline(pair)) == 2 * 6
+            @test isempty(Sleipnir._mask_outline(falses(5, 5)))
             plot_gridded_data(abs.(randn(size(glaciers[1].H₀)...)), results;
                 mask = glaciers[1].H₀ .> 0)
             @test plot_field_histogram(results.H[1];

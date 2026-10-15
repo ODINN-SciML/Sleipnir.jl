@@ -235,6 +235,37 @@ function _process_Millan22_velocities(params, glacier_gd)
     return V, Vx, Vy
 end
 
+# Dated DEMs of `gridded_data.nc` (see Gungnir): `topo` when its date is known, and the
+# Copernicus DEM on the cells measured by TanDEM-X (the other cells have no error, nor date)
+function _surface_data(params, glacier_gd)
+    n = params.simulation.gridScalingFactor
+    # The cells without value (NaN) must not make NaN the whole block: average the valid ones
+    function grid(a)
+        n > 1 || return a
+        valid = BitMatrix(isfinite.(a))
+        return block_average_pad_edge_masked(ifelse.(valid, a, zero(eltype(a))), valid, n)
+    end
+    layer(name) = Matrix{Sleipnir.Float}(replace(glacier_gd[name].data, missing => NaN))
+    t, S, σ = Sleipnir.Float[], Matrix{Sleipnir.Float}[], Matrix{Sleipnir.Float}[]
+    date = get(metadata(glacier_gd[:topo]), "date", nothing)
+    if !isnothing(date)
+        push!(t, Sleipnir.Float(date))
+        push!(S, grid(layer(:topo)))
+        push!(σ, zero(S[end]))
+    end
+    if :topo_copdem90_date in keys(glacier_gd)
+        dates = layer(:topo_copdem90_date)
+        on_glacier = (glacier_gd.glacier_mask.data .== 1) .& isfinite.(dates)
+        if any(on_glacier)
+            σ_copdem = layer(:topo_copdem90_err)
+            push!(t, mean(dates[on_glacier]))
+            push!(S, grid(ifelse.(isfinite.(σ_copdem), layer(:topo_copdem90), NaN)))
+            push!(σ, grid(σ_copdem))
+        end
+    end
+    return isempty(t) ? nothing : SurfaceData(; t, S, σ)
+end
+
 function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
     # We filter glacier borders in high elevations to avoid overflow problems
     dist_border::Matrix{Sleipnir.Float} = glacier_gd.dis_from_border.data
@@ -361,7 +392,8 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         cenlon = cenlon, cenlat = cenlat,
         params_projection = params_projection,
         velocityData = velocityData,
-        dhdtData = dhdt_data
+        dhdtData = dhdt_data,
+        surfaceData = _surface_data(params, glacier_gd)
     )
 end
 
@@ -720,8 +752,8 @@ const Observation = @NamedTuple{rgi_id::String, kind::Symbol, t::Float64,
 All the observations available for one or several glaciers, one row per observation and
 sorted in time for each glacier. Each row is a named tuple `(rgi_id, kind, t, t_start, t_end, npixels)`:
 
-  - `kind`: `:H` for an ice thickness survey, `:V` for a surface velocity map and `:dhdt` for
-    the glacier-wide surface elevation change.
+  - `kind`: `:H` for an ice thickness survey, `:V` for a surface velocity map, `:S` for a
+    DEM and `:dhdt` for the glacier-wide surface elevation change.
   - `t`: Date of the observation, in decimal years. For the velocity it is the middle of the
     acquisition window `(t_start, t_end)`, and for `:dhdt` the middle of its period.
   - `npixels`: Number of observed pixels (0 for glacier-wide values).
@@ -746,6 +778,13 @@ function observations(glacier::Glacier2D)
             t_end = isnothing(velocity.date2) ? t : datetime_to_floatyear(velocity.date2[i])
             npixels = isnothing(velocity.vabs) ? 0 : count(velocity.vabs[i] .> 0)
             push!(rows, (; rgi_id = glacier.rgi_id, kind = :V, t, t_start, t_end, npixels))
+        end
+    end
+    if !isnothing(glacier.surfaceData)
+        for (t, S) in zip(glacier.surfaceData.t, glacier.surfaceData.S)
+            push!(rows,
+                (; rgi_id = glacier.rgi_id, kind = :S, t, t_start = t, t_end = t,
+                    npixels = count(isfinite, S[glacier.H₀ .> 0])))
         end
     end
     if !isnothing(glacier.dhdtData)

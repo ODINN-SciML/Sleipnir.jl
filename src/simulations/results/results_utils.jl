@@ -55,7 +55,10 @@ end
         solution,
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
-    ) where {SIM <: Simulation, I <: Integer}
+        MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([]),
+        B::Matrix{F} = simulation.glaciers[glacier_idx].B,
+    ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
 
 Create a `Results` object from a given simulation and solution.
 
@@ -66,6 +69,9 @@ Create a `Results` object from a given simulation and solution.
   - `solution`: The solution object containing all the steps including intermediate ones.
   - `tstops::Vector{F}`: The list of time steps to use to construct the results.
   - `processVelocity::Union{Nothing, Function}`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+  - `MB::Vector{Matrix{F}}`: Surface mass balance maps saved during the simulation.
+  - `t_MB::Vector{F}`: Times of the surface mass balance maps.
+  - `B::Matrix{F}`: Bed of the glacier. Defaults to `glacier.B`; pass the inverted bed when the bed is trained.
 
 # Returns
 
@@ -82,7 +88,8 @@ function create_results(
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
         MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
-        t_MB::Vector{F} = Vector{Sleipnir.Float}([])
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([]),
+        B::Matrix{F} = simulation.glaciers[glacier_idx].B
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
     tspan = Zygote.@ignore_derivatives glacier_tspan(simulation, glacier_idx)
 
@@ -163,7 +170,7 @@ function create_results(
         H = H,
         H_ref = H_ref,
         S = iceflow_cache.S,
-        B = glacier.B,
+        B = B,
         V = V,
         Vx = Vx,
         Vy = Vy,
