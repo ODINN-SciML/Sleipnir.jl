@@ -187,5 +187,8 @@ function glaciers2D_thickness_source(ice_thickness_source::Symbol)
         elseif ice_thickness_source==:Millan22
             millan22_thickness(rgi_id, params)
         end
+        # The date of the outline is `nothing` for prepro data made before Gungnir writes it
+        date = outline_date(rgi_id, params)
+        @test isnothing(date) || (date isa Sleipnir.Float && 1900 < date < 2100)
     end
 end

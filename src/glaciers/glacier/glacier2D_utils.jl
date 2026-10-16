@@ -1,7 +1,7 @@
 
 export initialize_glaciers
 export glacierName
-export farinotti19_thickness, millan22_thickness
+export farinotti19_thickness, millan22_thickness, outline_date
 export observations, align_start!, check_glacier_tspans
 
 ###############################################################
@@ -420,6 +420,19 @@ end
 function millan22_thickness(glacier_gd::RasterStack)
     return Sleipnir.Float.(ifelse.(
         glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_ice_thickness.data, missing => 0.0), 0.0))
+end
+
+"""
+    outline_date(rgi_id::String, params::Parameters)
+
+Date (decimal year) of the RGI outline of a glacier, or `nothing` if it is not known. Gungnir
+writes it as the attribute `date` of `glacier_mask` in `gridded_data.nc`.
+"""
+function outline_date(rgi_id::String, params::Parameters)
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
+    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    date = get(metadata(glacier_gd[:glacier_mask]), "date", nothing)
+    return isnothing(date) ? nothing : Sleipnir.Float(date)
 end
 
 """
