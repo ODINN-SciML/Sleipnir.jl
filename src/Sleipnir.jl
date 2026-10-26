@@ -26,8 +26,8 @@ using Unitful: m, rad, °
 using CoordRefSystems
 using Dates, DateFormats
 using DataStructures
-using ImageInTerminal
 using ImageCore
+import XTermColors # Draws the glacier preview without pushing a display (as ImageInTerminal does)
 using Printf
 using CFTime
 using MLStyle

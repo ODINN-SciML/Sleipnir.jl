@@ -344,9 +344,12 @@ end
 Base.show(io::IO, type::MIME"text/plain", glacier::Glacier2D) = Base.show(io, glacier)
 function Base.show(io::IO, glacier::Glacier2D)
     validGrid = !isnothing(glacier.H₀) && length(glacier.H₀) > 0
-    if validGrid
+    # Draw an image of the glacier, only in terminals with colors
+    if validGrid && get(io, :color, false)
         H = round.(255 * glacier.H₀ / maximum(glacier.H₀))
-        display(Gray.(Int.(H') / 255))
+        colordepth = lowercase(get(ENV, "COLORTERM", "")) in ("24bit", "truecolor") ?
+                     XTermColors.TermColor24bit() : XTermColors.TermColor8bit()
+        XTermColors.ascii_show(io, Gray.(Int.(H') / 255), colordepth)
     end
 
     print(io, "Glacier2D ")
