@@ -26,8 +26,8 @@ using Unitful: m, rad, °
 using CoordRefSystems
 using Dates, DateFormats
 using DataStructures
-using ImageInTerminal
 using ImageCore
+import XTermColors # Draws the glacier image in the terminal (we do not use ImageInTerminal, it breaks the Makie display)
 using Printf
 using CFTime
 using MLStyle

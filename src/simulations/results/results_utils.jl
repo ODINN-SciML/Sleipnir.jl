@@ -200,7 +200,7 @@ Save the results of a simulation to a file.
 
 # Description
 
-This function saves the results of a simulation to a file in JLD2 format. If the `path` argument is not provided, the function will create a default path based on the current project directory. The results are saved in a file named `prediction_<nglaciers>glaciers_<tspan>.jld2`, where `<nglaciers>` is the number of glaciers in the simulation and `<tspan>` is the simulation time span.
+This function saves the results of a simulation to a file in JLD2 format. If the `path` argument is not provided, the function will save the file in `data/results/predictions` inside the `working_dir` of the simulation parameters. The results are saved in a file named `prediction_<nglaciers>glaciers_<tspan>.jld2`, where `<nglaciers>` is the number of glaciers in the simulation and `<tspan>` is the simulation time span.
 """
 function save_results_file!(results_list::Vector{Results{F, I}},
         simulation::SIM;
@@ -209,7 +209,7 @@ function save_results_file!(results_list::Vector{Results{F, I}},
     # Create path for simulation results
     if isnothing(path)
         predictions_path = joinpath(
-            dirname(Base.current_project()), "data/results/predictions")
+            simulation.parameters.simulation.working_dir, "data/results/predictions")
     else
         predictions_path = path
     end
