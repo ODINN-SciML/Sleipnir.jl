@@ -5,7 +5,7 @@ export SurfaceData
 
 Dated maps of the surface elevation, for example DEMs, used as observations of the surface.
 
-  - `t::Vector{F}`: Date of each map, in decimal years.
+  - `t::Vector{F}`: Date of each map, in decimal years. The constructor also accepts `Date`s and `DateTime`s.
   - `S::Vector{Matrix{F}}`: Surface elevation (m) of each map on the glacier grid. `NaN` on the
     cells that must not be used.
   - `σ::Vector{Matrix{F}}`: Uncertainty (m, one standard deviation) of each cell given by the
@@ -19,11 +19,11 @@ mutable struct SurfaceData{F <: AbstractFloat} <: AbstractData
 end
 
 function SurfaceData(;
-        t::Vector{F},
+        t::Vector{<:Union{Real, Date, DateTime}},
         S::Vector{Matrix{F}},
         σ::Vector{Matrix{F}}
 ) where {F <: AbstractFloat}
-    return SurfaceData{Sleipnir.Float}(t, S, σ)
+    return SurfaceData{Sleipnir.Float}(to_floatyear.(t), S, σ)
 end
 
 # The maps have `NaN` on the cells that are not used

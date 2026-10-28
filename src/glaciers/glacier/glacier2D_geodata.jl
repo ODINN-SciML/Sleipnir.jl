@@ -205,11 +205,11 @@ end
 
 Retrieve or generate the per campaign glathida grids for a given glacier.
 
-Contrary to [`get_glathida_glacier`](@ref) which averages every measurement of a cell into a
-single dateless grid, this function keeps the survey campaigns separate so that they can be
-used as distinct observations of a transient inversion. On a glacier surveyed twice, the
-cells visited in both campaigns otherwise hold the mean of two measurements that are years
-apart, which averages the observed thinning away.
+[`get_glathida_glacier`](@ref) averages all the measurements of a cell into one dateless
+grid. This function does not: it returns one grid for each survey campaign, so that each
+campaign is a separate observation of a transient inversion. A cell measured in two campaigns
+has two values, one in each grid. Only the measurements of the same cell and the same
+campaign are averaged. Surveys at most `merge_window_days` apart are one campaign.
 
 # Arguments
 
@@ -271,7 +271,7 @@ function get_glathida_campaigns(
 
         gtd_grids .= ifelse.(counts .> 0, gtd_grids ./ counts, 0.0)
 
-        # Date of a campaign, weighted by the number of measurements of each survey
+        # Date of a campaign: the mean date of its measurements
         t = [mean(datetime_to_floatyear.(DateTime.(dates[campaign .== c])))
              for c in 1:ncampaigns]
 
@@ -288,24 +288,45 @@ function get_glathida_campaigns(
 end
 
 """
-    glathida_cell_σ(H, grid, count, sumsq, n)
+    glathida_cell_σ(H, grid, count, sumsq, n; σ_picking = 5.0, σ_velocity = 0.03,
+        representation_factor = 1.5, σ_spread = 12.0, min_points = 3)
 
 Uncertainty of each cell of a glathida campaign averaged by blocks of `n` cells, in m:
 
-``σ^2 = (5 + 0.03 H)^2 + (1.5 s)^2``
+``σ^2 = σ_{picking}^2 + (σ_{velocity} H)^2 + (f s)^2``
 
-The first part is the error of a radar measurement: a few metres for the picking of the
-reflection, and 3% of the thickness for the radio-wave velocity (Lapazaran et al., 2016; Grab
-et al., 2021). The second part is the representation error: the model cell is the mean over
-the whole cell, while a survey line only crosses it. `s` is the standard deviation of the
-measurements inside the cell, and the factor 1.5 is there because one line sees only part of
-the cell. It was measured on Aletsch with two independent campaigns, at 137, 274 and 548 m.
-Cells with fewer than 3 measurements take the median `s` of the campaign.
+The first two parts are the error of a radar measurement. They come from the picking of the
+bed reflection (`σ_picking`, in m) and from the radio-wave velocity (`σ_velocity`, as a
+fraction of the thickness). The two errors are independent, so they add in quadrature
+(Lapazaran et al., 2016, Eq. 5). The defaults are those of Grab et al. (2021): ±5 m for the
+picking on average (±3 m for a well defined reflection, ±7 m for a poorly defined one) and
+0.169 ± 0.005 m ns⁻¹ for the velocity in temperate ice, which is 3%. Lapazaran et al. (2016)
+give 1 to 5% for the velocity, and a timing error that depends on the frequency of the radar
+(4.2 m at 20 MHz, 0.42 m at 200 MHz).
+
+The last part is the representation error: the model cell is the mean over the whole cell,
+while a survey line only crosses it. `s` is the standard deviation of the measurements inside
+the cell, and the factor `f = representation_factor` is there because one line sees only part
+of the cell. Its default was measured on Aletsch with two independent campaigns, at 137, 274
+and 548 m. Cells with fewer than `min_points` measurements take the median `s` of the
+campaign, or `σ_spread` (in m) if no cell of the campaign has `min_points` measurements.
 
 `H` is the averaged grid. `grid` (mean of each cell), `count` and `sumsq` are on the native
 grid. The cells without measurement get 0.
+
+# References
+
+  - Lapazaran, J. J., Otero, J., Martín-Español, A. and Navarro, F. J. (2016). On the errors
+    involved in ice-thickness estimates I: ground-penetrating radar measurement errors.
+    Journal of Glaciology, 62(236), 1008-1020.
+  - Grab, M. et al. (2021). Ice thickness distribution of all Swiss glaciers based on extended
+    ground-penetrating radar data and glaciological modeling. Journal of Glaciology, 67(266),
+    1074-1092.
 """
-function glathida_cell_σ(H, grid, count, sumsq, n)
+function glathida_cell_σ(H, grid, count, sumsq, n; σ_picking::Real = 5.0,
+        σ_velocity::Real = 0.03, representation_factor::Real = 1.5, σ_spread::Real = 12.0,
+        min_points::Integer = 3)
+    min_points >= 2 || throw(ArgumentError("min_points must be at least 2 to have a spread."))
     coarse(a) = n > 1 ? block_average_pad_edge(a, n) : a
     # The block average divides the sums and the count by the same number, so the mean and
     # the mean square of the measurements of a cell are their ratios
@@ -315,21 +336,22 @@ function glathida_cell_σ(H, grid, count, sumsq, n)
     npoints = round.(Int, N .* n^2)
     observed = (H .!= 0.0) .& (N .> 0)
     s = fill(NaN, size(H))
-    many = observed .& (npoints .>= 3)
+    many = observed .& (npoints .>= min_points)
     s[many] .= sqrt.(max.(mean_H²[many] .- mean_H[many] .^ 2, 0.0) .*
                      npoints[many] ./ (npoints[many] .- 1))
-    # With no cell of 3 measurements the spread is not known, and the radar error alone (5 to
-    # 10 m) would be too small: 12 m gives about 20 m for a cell of 140 m of ice, close to the
-    # 18 m measured on Aletsch
-    s[observed .& .!many] .= any(many) ? median(s[many]) : 12.0
+    # With no cell of `min_points` measurements the spread is not known, and the radar error
+    # alone (5 to 10 m) would be too small: 12 m gives about 19 m for a cell of 140 m of ice,
+    # close to the 18 m measured on Aletsch
+    s[observed .& .!many] .= any(many) ? median(s[many]) : σ_spread
     σ = zeros(size(H))
-    σ[observed] .= sqrt.((5.0 .+ 0.03 .* H[observed]) .^ 2 .+
-                         (1.5 .* ifelse.(isnan.(s[observed]), 0.0, s[observed])) .^ 2)
+    σ[observed] .= sqrt.(σ_picking^2 .+ (σ_velocity .* H[observed]) .^ 2 .+
+                         (representation_factor .*
+                          ifelse.(isnan.(s[observed]), 0.0, s[observed])) .^ 2)
     return σ
 end
 
 """
-    glathida_thickness_series(glacier::Glacier2D, params::Parameters; force = false, merge_window_days::Integer = 30)
+    glathida_thickness_series(glacier::Glacier2D, params::Parameters; force = false, merge_window_days::Integer = 30, kwargs...)
 
 Build the ice thickness time series of the glathida survey campaigns of a glacier.
 
@@ -345,6 +367,8 @@ to the border, otherwise the mask is eroded to nothing.
   - `params::Parameters`: The parameters object containing simulation settings.
   - `force`: A boolean flag indicating whether to force regeneration of the campaigns even if they already exist.
   - `merge_window_days::Integer`: Maximum number of days between two surveys of a campaign.
+  - `kwargs...`: The keywords of [`glathida_cell_σ`](@ref) (`σ_picking`, `σ_velocity`,
+    `representation_factor`, `σ_spread` and `min_points`), to change the uncertainty of the cells.
 
 # Returns
 
@@ -355,7 +379,8 @@ function glathida_thickness_series(
         glacier::Glacier2D,
         params::Parameters;
         force = false,
-        merge_window_days::Integer = 30
+        merge_window_days::Integer = 30,
+        kwargs...
 )
     t, gtd_grids,
     counts,
@@ -365,7 +390,8 @@ function glathida_thickness_series(
     n = params.simulation.gridScalingFactor
     H = _coarsen_glathida.(gtd_grids, n)
     @assert all(size.(H) .== Ref(size(glacier.H₀))) "The glathida grids of $(glacier.rgi_id) have size $(size(first(H))) which does not match the size $(size(glacier.H₀)) of the ice thickness."
-    σ = [glathida_cell_σ(H[c], gtd_grids[c], counts[c], sumsqs[c], n) for c in eachindex(H)]
+    σ = [glathida_cell_σ(H[c], gtd_grids[c], counts[c], sumsqs[c], n; kwargs...)
+         for c in eachindex(H)]
 
     return ThicknessData(t = t, H = H, σ = σ)
 end

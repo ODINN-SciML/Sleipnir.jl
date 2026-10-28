@@ -35,7 +35,7 @@ This function performs the following steps:
  2. Filters out missing glaciers from the provided RGI IDs.
  3. Generates raw climate data for the glaciers if necessary.
  4. Initializes the glaciers using the provided RGI IDs and parameters.
- 5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers: the averaged map in `H_glathida` and the dated survey campaigns as `thicknessData`.
+ 5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers: the dated survey campaigns as `thicknessData` (one map and one date for each campaign) and, for older code, the map of all the dates averaged in `H_glathida`.
 
 # Errors
 
@@ -424,13 +424,17 @@ end
 
 """
     outline_date(rgi_id::String, params::Parameters)
+    outline_date(glacier_gd::RasterStack)
 
 Date (decimal year) of the RGI outline of a glacier, or `nothing` if it is not known. Gungnir
-writes it as the attribute `date` of `glacier_mask` in `gridded_data.nc`.
+writes it as the attribute `date` of `glacier_mask` in `gridded_data.nc`. The RGI ID must be in
+`params.simulation.rgi_paths`.
 """
 function outline_date(rgi_id::String, params::Parameters)
     rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
-    glacier_gd = RasterStack(joinpath(rgi_path, "gridded_data.nc"))
+    return outline_date(RasterStack(joinpath(rgi_path, "gridded_data.nc")))
+end
+function outline_date(glacier_gd::RasterStack)
     date = get(metadata(glacier_gd[:glacier_mask]), "date", nothing)
     return isnothing(date) ? nothing : Sleipnir.Float(date)
 end
@@ -815,26 +819,35 @@ end
 """
     align_start!(params, glaciers; within = Inf, apply = true)
 
-Start each glacier on its first ice thickness survey, so that the survey is compared with the
-initial state of the simulation. The new windows are written in
-`params.simulation.glacier_tspans`, and the end of each window is kept. Only the surveys
-inside the time window of the glacier (a survey at its end is not used), and at most `within`
-years after its start, are considered.
+Start each glacier on its first observation, so that the trajectory is as long as possible and
+the initial state of the simulation is compared with an observation. The first observation is the
+earliest of the ice thickness surveys, the DEMs and the surface velocity maps (the start of their
+period) of the glacier, see [`observations`](@ref). The glacier-wide `:dhdt` is not one of them.
+The new windows are written in `params.simulation.glacier_tspans`, and the end of each window is
+kept.
+
+Only the observations inside the time window of the glacier (one at its end is not used), and at
+most `within` years after its start, are considered. An observation before the window cannot be
+used, because the climate data is loaded for `tspan`. By default `within = Inf`: the start moves to
+the first observation however late it is.
 
 With `apply = false`, nothing is changed and a warning is shown for each glacier whose
-first survey is not on the start.
+first observation is not on the start.
 """
 function align_start!(params::Parameters, glaciers; within = Inf, apply = true)
+    kind_names = Dict(:H => "ice thickness survey", :S => "DEM", :V => "surface velocity map")
     for glacier in glaciers
         t₀, t₁ = glacier_tspan(params, glacier)
-        t_obs = filter(t -> t₀ <= t < t₁ && t - t₀ <= within, tdata(glacier.thicknessData))
-        (isempty(t_obs) || minimum(t_obs) == t₀) && continue
-        t_first = minimum(t_obs)
+        candidates = [(o.t_start, o.kind) for o in observations(glacier)
+                      if haskey(kind_names, o.kind) && t₀ <= o.t_start < t₁ &&
+                         o.t_start - t₀ <= within]
+        (isempty(candidates) || minimum(first, candidates) == t₀) && continue
+        t_first, kind = first(sort(candidates; by = first))
         if apply
             params.simulation.glacier_tspans[glacier.rgi_id] = (t_first, t₁)
-            @info "$(glacier.rgi_id) starts on its first ice thickness survey, at $(t_first) instead of $(t₀)."
+            @info "$(glacier.rgi_id) starts on its first observation ($(kind_names[kind])), at $(t_first) instead of $(t₀)."
         else
-            @warn "$(glacier.rgi_id): the first ice thickness survey is at $(t_first) and the start at $(t₀). Use `align_start!(params, glaciers; within = $(within))` to start on the survey."
+            @warn "$(glacier.rgi_id): the first observation ($(kind_names[kind])) is at $(t_first) and the start at $(t₀). Use `align_start!(params, glaciers; within = $(within))` to start on it."
         end
     end
     return params

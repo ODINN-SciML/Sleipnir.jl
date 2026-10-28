@@ -68,6 +68,8 @@ ENV["GKSwstype"]="nul"
             use_glathida_data = true, save_refs = false)
         @testset "Glaciers 2D constructors Farinotti19 ice thickness source" glaciers2D_thickness_source(:Farinotti19)
         @testset "Glaciers 2D constructors Millan22 ice thickness source" glaciers2D_thickness_source(:Millan22)
+        @testset "Date of the RGI outline" outline_date_test()
+        @testset "Dated DEMs of the glacier" surface_data_test()
         @testset "Surface velocity datacube" surface_velocity_data()
         @testset "Thickness data constructor" thickness_construction()
         @testset "Uncertainty of a glathida cell" glathida_sigma()
