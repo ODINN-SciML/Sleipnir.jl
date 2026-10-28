@@ -11,6 +11,17 @@ function datetime_to_floatyear(dt::DateTime)
     return y + seconds_since_start / seconds_in_year
 end
 
+"""
+    to_floatyear(t)
+
+A time in decimal years. A number is kept, and a `Date` or a `DateTime` is converted with
+`datetime_to_floatyear`. The times of the parameters and of the observations accept all
+three; they are decimal years inside.
+"""
+to_floatyear(t::Real) = Sleipnir.Float(t)
+to_floatyear(t::DateTime) = Sleipnir.Float(datetime_to_floatyear(t))
+to_floatyear(t::Date) = to_floatyear(DateTime(t))
+
 function yearfrac(p::Period)
     # Convert the period to days
     days = Dates.value(convert(Day, p))

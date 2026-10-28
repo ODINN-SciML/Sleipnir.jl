@@ -3,7 +3,7 @@
 #
 # Layout:
 #   1. Internal helpers:  _finite_stats, _nearest_time_index, _observation_series,
-#                         _observed_pixels, _mask_outline
+#                         _date_label, _observed_pixels, _mask_outline
 #   2. Public API:        plot_glacier_vs_observations, plot_field_histogram,
 #                         plot_observations, plot_observation_timeline
 ###############################################################################
@@ -67,6 +67,20 @@ function _observation_series(results::Results, glacier, variable::Symbol)
 end
 
 """
+    _date_label(t) -> String
+
+A date for the titles and legends of the figures, for example `"28 Mar 2009"`, from a decimal
+year (`2009.24`) or a `DateTime`. The figures never show a decimal year.
+"""
+function _date_label(t::Real)
+    year = floor(Int, t)
+    start = DateTime(year, 1, 1)
+    length_ms = Dates.value(DateTime(year + 1, 1, 1) - start)
+    return _date_label(start + Millisecond(round(Int, (t - year) * length_ms)))
+end
+_date_label(d::DateTime) = Dates.format(d, "d u yyyy")
+
+"""
     _observed_pixels(glacier, fields, times; max_points) -> (; x, y, v, t)
 
 Position in km, value and time of the cells with an observation (zero or NaN means none).
@@ -77,7 +91,7 @@ function _observed_pixels(glacier::Glacier2D, fields, times; max_points = 20_000
     px = (; x = Float64[], y = Float64[], v = Float64[], t = Float64[])
     for (t, field) in zip(times, fields)
         if size(field) != (glacier.nx, glacier.ny)
-            @warn "plot_observations: an observation at $(round(t; digits = 2)) is not on the grid of the glacier and is not plotted."
+            @warn "plot_observations: an observation of $(_date_label(t)) is not on the grid of the glacier and is not plotted."
             continue
         end
         data = reverseForHeatmap(field, x, y)
@@ -133,7 +147,9 @@ end
         title::Union{Nothing, String} = nothing,
     )
 
-Compare a simulated field with its observations: modelled, observed and difference.
+Compare a simulated field with its observations: modelled, observed and difference. For the
+thickness surveys, the velocity map and the DEMs of an inversion in one figure, see
+[`plot_fit_to_observations`](@ref).
 
 One row of three panels per observation time. The modelled panel is the simulated state at
 the saved time closest to the observation, not the last time step.
@@ -162,10 +178,9 @@ the saved time closest to the observation, not the last time step.
     cells that have an observation. The observed and difference panels only have these cells.
     The cells of the glacier outline (`glacier.H₀ > 0`) with no modelled ice are grey, and
     their number is in the title.
-  - Modelled and observed panels share a colour range so the two are directly comparable;
-    it ends at the largest observation or the 99th percentile of the modelled glacier, and
-    the cells above it are magenta. The difference (model minus observation) panel is
-    symmetric about zero.
+  - Modelled and observed panels share a colour range so the two are directly comparable.
+    It is the full range of the two panels, with no clipped colour. The difference (model
+    minus observation) panel is symmetric about zero.
   - Each difference panel is titled with its RMSE and mean bias over the masked cells.
   - The observations more than 0.1 yr outside the simulated period are not plotted.
 """
@@ -238,26 +253,20 @@ function plot_glacier_vs_observations(
         stats = _finite_stats(difference)
 
         if !any(isfinite, observed)
-            @warn "plot_glacier_vs_observations: no observed cell left in the mask at $(round(tᵢ; digits = 2)), this row is not plotted."
+            @warn "plot_glacier_vs_observations: no observed cell left in the mask on $(_date_label(tᵢ)), this row is not plotted."
             continue
         end
         # The modelled panel shows the whole glacier (zero is no ice), not only the observed cells
         everywhere = float.(mod_all)
         everywhere[.!(everywhere .> 0)] .= NaN
-        # A few extreme cells of the model must not set the scale of the observations: the
-        # range ends at the largest observation or the 99th percentile of the glacier, and
-        # the cells above it are drawn in magenta
+        # The full range of the two panels: a clipped colour would look like an error
         shared = filter(isfinite, vcat(vec(everywhere), vec(observed)))
-        lo = minimum(shared)
-        # The model can have no ice left, so there can be no finite cell of the model
-        modelled_cells = filter(isfinite, vec(everywhere))
-        hi = max(maximum(filter(isfinite, vec(observed))),
-            isempty(modelled_cells) ? -Inf : quantile(modelled_cells, 0.99))
+        lo, hi = extrema(shared)
         hi > lo || (hi = lo + 1)
         dmax = maximum(abs, filter(isfinite, vec(difference)); init = 0.0)
         dmax = dmax > 0 ? dmax : 1.0
 
-        when = isnothing(aggregate) ? "$(round(tᵢ; digits = 2))" :
+        when = isnothing(aggregate) ? _date_label(tᵢ) :
                "mean over $(length(idxs)) obs"
         # Cells of the glacier outline (`glacier.H₀ > 0`) with no modelled ice are drawn in grey
         empty_cells = (glacier.H₀ .> 0) .& .!isfinite.(everywhere)
@@ -283,8 +292,7 @@ function plot_glacier_vs_observations(
                 reverseForHeatmap(ifelse.(empty_cells, 1.0, NaN), results.x, results.y),
                 colormap = [:lightgray, :lightgray], colorrange = (0, 1), interpolate = false)
             hm = heatmap!(ax, reverseForHeatmap(data, results.x, results.y),
-                colormap = cmap, colorrange = crange, interpolate = false,
-                highclip = col == 3 ? nothing : :magenta)
+                colormap = cmap, colorrange = crange, interpolate = false)
             Colorbar(fig[row, 2col], hm; label = col == 3 ? "Δ $unit" : unit, height = h)
             # A thin line around the cells that have an observation, to find them in the map
             col == 1 && linesegments!(ax,
@@ -385,45 +393,125 @@ function plot_field_histogram(
 end
 
 """
-    plot_observations(glacier::Glacier2D; tspan = nothing, max_points = 20_000)
+    plot_observations(glacier::Glacier2D; tspan = nothing, max_points = 20_000, title = glacier.rgi_id)
 
 Make a 3D figure of where and when a glacier has observations: x and y are in km (north up)
-and z is the time in decimal years. Ice thickness surveys and surface velocity maps are
-drawn at their dates, coloured by value. Zero means no observation, so those cells are not
-drawn. The glacier-wide `:dhdt` is only in [`plot_observation_timeline`](@ref).
+and z is the time. Ice thickness surveys, surface velocity maps and the dated DEMs
+(`glacier.surfaceData`, on the cells of the glacier) are drawn at their dates, coloured by value
+(one thin colour bar for each). Zero or NaN means no observation, so those cells are not drawn.
+To the right of the box, outside it, a text gives the name and the exact date of each observation
+(a velocity map also its period), at the height of its date, with a small triangle that points to
+the date on the edge of the box; labels that are close in time are moved up a little so that they
+do not overlap. The glacier-wide `:dhdt` is only in [`plot_observation_timeline`](@ref).
 
-  - `tspan`: Time window, drawn as two red rectangles, for example `glacier_tspan(params, glacier)`.
+  - `tspan`: Time window, drawn as two dashed red rectangles and labelled in red, for example
+    `glacier_tspan(params, glacier)`.
   - `max_points`: Maximum pixels drawn for each kind. If there are more, every k-th is drawn.
+  - `title`: Small title along the top back edge of the box. `nothing` for none.
 """
 function plot_observations(
-        glacier::Glacier2D; tspan = nothing, max_points::Int = 20_000)
-    td, vd = glacier.thicknessData, glacier.velocityData
+        glacier::Glacier2D; tspan = nothing, max_points::Int = 20_000,
+        title::Union{Nothing, AbstractString} = glacier.rgi_id)
+    td, vd, sd = glacier.thicknessData, glacier.velocityData, glacier.surfaceData
     H = _observed_pixels(glacier, isnothing(td) ? [] : something(td.H, []), tdata(td);
         max_points)
     V = _observed_pixels(glacier, isnothing(vd) ? [] : something(vd.vabs, []),
         tdata(vd, MeanDateVelocityMapping()); max_points)
-    (isempty(H.v) && isempty(V.v)) && throw(ArgumentError(
+    S = _observed_pixels(glacier,
+        isnothing(sd) ? [] : [ifelse.(glacier.H₀ .> 0, s, NaN) for s in sd.S],
+        isnothing(sd) ? [] : sd.t; max_points)
+    kinds = [(px, colormap, label)
+             for (px, colormap, label) in (
+        (H, :YlGnBu, "Ice thickness (m)"), (V, :viridis, "Surface velocity (m yr⁻¹)"),
+        (S, :magma, "Surface elevation, DEM (m)")) if !isempty(px.v)]
+    isempty(kinds) && throw(ArgumentError(
         "plot_observations: glacier $(glacier.rgi_id) has no observed pixels."))
 
     x_km = (glacier.nx - 1) * glacier.Δx / 1000
     y_km = (glacier.ny - 1) * glacier.Δy / 1000
-    fig = Figure(size = (900, 650))
-    ax = Axis3(fig[1, 1]; xlabel = "x (km)", ylabel = "y (km)", zlabel = "Time (year)",
-        title = "Observations — $(glacier.rgi_id)", aspect = (x_km, y_km, max(x_km, y_km)),
-        azimuth = 1.4π, elevation = π / 8)
-    for (px, colormap, label) in (
-        (H, :YlGnBu, "Ice thickness (m)"), (V, :viridis, "Surface velocity (m yr⁻¹)"))
-        isempty(px.v) && continue
-        sc = scatter!(ax, px.x, px.y, px.t; color = px.v, colormap, markersize = 6)
-        Colorbar(fig[1, end + 1], sc; label)
+    window = isnothing(tspan) ? () : Tuple(Float64.(tspan))
+    kind_names = Dict(:H => "Thickness survey", :V => "Velocity map", :S => "DEM")
+    obs = filter(o -> haskey(kind_names, o.kind), observations(glacier))
+
+    # One label for each observation (name and exact date, a velocity map also its period) and
+    # for the ends of the window, to the right of the box at the height of its date
+    label_of(o) = o.kind === :V && o.t_end > o.t_start ?
+                  "$(kind_names[o.kind]), $(_date_label(o.t))\n($(_date_label(o.t_start)) to $(_date_label(o.t_end)))" :
+                  "$(kind_names[o.kind]), $(_date_label(o.t))"
+    items = [(; t = o.t, text = label_of(o), color = :black) for o in obs]
+    for (t, name) in zip(window, ("Start of the window", "End of the window"))
+        push!(items, (; t, text = "$(name), $(_date_label(t))", color = :firebrick))
+    end
+    sort!(items; by = item -> item.t)
+    # The time axis spans the labels, with a margin, and nothing else: the box is the data
+    t_lo, t_hi = extrema(item.t for item in items)
+    margin = 0.04 * max(t_hi - t_lo, 1.0)
+    t_lo, t_hi = t_lo - margin, t_hi + margin
+
+    # Labels that are close in time are moved up a little so that they do not overlap (the date is in
+    # the text); if the last one ends above the box, they are all moved down
+    n_lines = [count(==('\n'), item.text) + 1 for item in items]
+    t_text = [item.t for item in items]
+    line_t = (t_hi - t_lo) / 34
+    for k in 2:length(t_text)
+        t_text[k] = max(t_text[k], t_text[k - 1] + line_t * (n_lines[k - 1] + n_lines[k]) / 2)
+    end
+    t_text[end] = min(t_text[end], t_hi)
+    for k in (length(t_text) - 1):-1:1
+        t_text[k] = min(t_text[k], t_text[k + 1] - line_t * (n_lines[k] + n_lines[k + 1]) / 2)
     end
 
-    # Rectangles at the start and the end of the time window
-    foreach(
-        z -> lines!(ax, Point3f.([0, x_km, x_km, 0, 0], [0, 0, y_km, y_km, 0], z);
-            color = :firebrick),
-        something(tspan, ()))
-    return fig
+    return with_theme(paper_theme()) do
+        # The box is as high as the figure; the labels are in the margin to the right of it and are
+        # clipped at the edge of the axis, so the axis must be wide enough for them
+        # The box is centred in the axis, so the axis is as wide as the box (estimated from the view
+        # angle, in px) plus the room of the labels on both sides; a colour bar takes about 57 px
+        az, el = 1.4π, π / 8
+        box_w = abs(x_km * sin(az)) + abs(y_km * cos(az))
+        box_h = max(x_km, y_km) * cos(el) +
+                (abs(x_km * cos(az)) + abs(y_km * sin(az))) * sin(el)
+        axis_w = 1.05 * 435 * box_w / box_h + 330
+        # Padding is (left, right, bottom, top); the x label hangs below the box
+        fig = Figure(size = (round(Int, axis_w + 57 * length(kinds) + 30), 600),
+            figure_padding = (12, 12, 24, 30))
+        grid = (:black, 0.08)
+        ax = Axis3(fig[1, 1]; xlabel = "x (km)", ylabel = "y (km)", zlabel = "Time (year)",
+            aspect = (x_km, y_km, max(x_km, y_km)), azimuth = az, elevation = el,
+            limits = (0, x_km, 0, y_km, t_lo, t_hi),
+            xlabelsize = 10, ylabelsize = 10, zlabelsize = 10,
+            xticklabelsize = 9, yticklabelsize = 9, zticklabelsize = 9,
+            xspinewidth = 0.6, yspinewidth = 0.6, zspinewidth = 0.6,
+            xtickwidth = 0.6, ytickwidth = 0.6, ztickwidth = 0.6,
+            xgridcolor = grid, ygridcolor = grid, zgridcolor = grid,
+            xgridwidth = 0.5, ygridwidth = 0.5, zgridwidth = 0.5)
+        # The title lies on the top back edge of the box, with the slope of the edge on the screen
+        isnothing(title) || text!(ax, [Point3f(0, y_km, t_hi)]; text = [title], fontsize = 12,
+            font = :bold, align = (:left, :bottom), offset = (0, 5),
+            rotation = atan(-cos(az) * sin(el), -sin(az)))
+
+        # The colour bars, thin, in a group on the right
+        bars = GridLayout(fig[1, 2])
+        for (k, (px, colormap, label)) in enumerate(kinds)
+            sc = scatter!(ax, px.x, px.y, px.t; color = px.v, colormap, markersize = 4)
+            Colorbar(bars[1, k], sc; label, height = Relative(0.62))
+        end
+        colgap!(bars, 14)
+
+        # Rectangles at the start and the end of the time window
+        foreach(
+            z -> lines!(ax, Point3f.([0, x_km, x_km, 0, 0], [0, 0, y_km, y_km, 0], z);
+                color = (:firebrick, 0.85), linewidth = 1, linestyle = :dash),
+            window)
+
+        # A small triangle outside the box, on the edge, at the height of each date, then its text
+        points = Point3f.(x_km, 0, t_text)
+        colors = [item.color for item in items]
+        scatter!(ax, points; marker = :ltriangle, color = colors, markersize = 8,
+            marker_offset = (7, 0))
+        text!(ax, points; text = [item.text for item in items], color = colors,
+            align = (:left, :center), fontsize = 9, offset = (15, 0))
+        fig
+    end
 end
 
 """
@@ -431,7 +519,7 @@ end
 
 Plot when each glacier has observations, one row per glacier. The marks come from
 [`observations`](@ref): a dot at the date of each observation (`:H` blue, `:V` orange,
-`:dhdt` red) and a line for its time span, if it has one. `glacier_tspans` is a grey bar for
+`:S` green for the DEMs, `:dhdt` red) and a line for its time span, if it has one. `glacier_tspans` is a grey bar for
 each glacier that has an entry by RGI ID, for example `params.simulation.glacier_tspans`.
 `tspan` is drawn as two vertical dashed lines. Returns a `CairoMakie.Figure`.
 """
@@ -439,7 +527,7 @@ function plot_observation_timeline(
         glaciers::Vector{<:Glacier2D}; tspan = nothing, glacier_tspans = Dict())
     @assert !isempty(glaciers) "plot_observation_timeline: no glaciers to plot."
     n = length(glaciers)
-    colors = Dict(:H => :steelblue, :V => :darkorange, :dhdt => :firebrick)
+    colors = Dict(:H => :steelblue, :V => :darkorange, :S => :seagreen, :dhdt => :firebrick)
     obs = [(; o..., row = i) for (i, g) in enumerate(glaciers) for o in observations(g)]
     spans = filter(o -> o.t_end > o.t_start, obs)
     windows = [Rect(t[1], i - 0.4, t[2] - t[1], 0.8)
@@ -447,7 +535,7 @@ function plot_observation_timeline(
                for t in (glacier_tspans[g.rgi_id],)]
 
     fig = Figure(size = (900, 150 + 35n))
-    ax = Axis(fig[1, 1]; title = "Observations (H blue, V orange, dhdt red)",
+    ax = Axis(fig[1, 1]; title = "Observations (H blue, V orange, DEM green, dhdt red)",
         xlabel = "Time (year)", yticks = (1:n, [g.rgi_id for g in glaciers]),
         yreversed = true, limits = (nothing, nothing, 0.4, n + 0.6))
     isempty(windows) || poly!(ax, windows; color = (:grey, 0.25))
