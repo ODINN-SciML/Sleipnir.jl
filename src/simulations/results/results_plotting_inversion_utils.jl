@@ -103,13 +103,15 @@ function _map_panel!(pos, panel::MapPanel, results::Results, outline)
     nx, ny = size(panel.data)
     ax = Axis(pos[1, 1]; title = panel.title, aspect = DataAspect())
     hidedecorations!(ax)
-    isnothing(panel.nodata) || heatmap!(ax, _orient(ifelse.(panel.nodata, 1.0, NaN), results);
-        colormap = [:lightgray, :lightgray], colorrange = (0, 1), interpolate = false)
+    isnothing(panel.nodata) ||
+        heatmap!(ax, _orient(ifelse.(panel.nodata, 1.0, NaN), results);
+            colormap = [:lightgray, :lightgray], colorrange = (0, 1), interpolate = false)
     hm = heatmap!(ax, _orient(panel.data, results); colormap = panel.cmap,
         colorrange = _panel_limits(panel), interpolate = false)
     Colorbar(pos[1, 2], hm; label = panel.label)
-    isnothing(outline) || linesegments!(ax, _mask_outline(_orient(float.(outline), results) .> 0);
-        color = :black, linewidth = 0.6)
+    isnothing(outline) ||
+        linesegments!(ax, _mask_outline(_orient(float.(outline), results) .> 0);
+            color = :black, linewidth = 0.6)
     _scalebar!(ax, nx, ny, results.Δx)
     return ax
 end
@@ -140,11 +142,13 @@ function plot_field_maps(
         nrows = cld(n, ncols)
         nx, ny = size(first(panels).data)
         height_map = 280 * ny / nx + 30
-        fig = Figure(size = (ncols * 330, nrows * height_map + (isnothing(title) ? 10 : 40)))
+        fig = Figure(size = (
+            ncols * 330, nrows * height_map + (isnothing(title) ? 10 : 40)))
         isnothing(title) || Label(fig[0, 1:ncols], title; fontsize = 12, font = :bold)
         for (k, panel) in enumerate(panels)
             row, col = fld1(k, ncols), mod1(k, ncols)
-            lettered = MapPanel(; data = panel.data, title = "($('a' + k - 1)) $(panel.title)",
+            lettered = MapPanel(;
+                data = panel.data, title = "($('a' + k - 1)) $(panel.title)",
                 cmap = panel.cmap, label = panel.label, symmetric = panel.symmetric,
                 limits = panel.limits, nodata = panel.nodata)
             _map_panel!(fig[row, col], lettered, results, outline)
@@ -206,7 +210,8 @@ function plot_surface_change(
     when = "$(_date_label(ta)) → $(_date_label(tb))"
     panels = [
         MapPanel(dem, "DEMs, $(when)"; cmap, label = "surface change (m)", limits, nodata),
-        MapPanel(model, "Model, $(when)"; cmap, label = "surface change (m)", limits, nodata),
+        MapPanel(
+            model, "Model, $(when)"; cmap, label = "surface change (m)", limits, nodata),
         MapPanel(model .- dem, "Model − DEMs"; cmap, label = "difference (m)",
             symmetric = true, nodata)
     ]
@@ -218,9 +223,11 @@ end
 function _local_mean(A, valid, r::Integer)
     out = fill(NaN, size(A))
     for j in axes(A, 2), i in axes(A, 1)
+
         valid[i, j] || continue
         s, n = 0.0, 0
         for dj in (-r):r, di in (-r):r
+
             ii, jj = i + di, j + dj
             (1 <= ii <= size(A, 1) && 1 <= jj <= size(A, 2) && valid[ii, jj]) || continue
             s += A[ii, jj]
@@ -280,7 +287,8 @@ function plot_bed_maps(
     panels = [
         MapPanel(masked(B, free), "Bed elevation"; cmap = :terrain, label = "m a.s.l."),
         MapPanel(masked(H₀, outline), "Ice thickness at the start"; label = "m"),
-        MapPanel(masked(_gradient_norm(B, results.Δx, results.Δy), free), "Slope of the bed";
+        MapPanel(
+            masked(_gradient_norm(B, results.Δx, results.Δy), free), "Slope of the bed";
             cmap = :magma, label = "m/m"),
         MapPanel(masked(relief, outline), "Bed relief at the cell scale (3 × 3)";
             cmap = :balance, label = "m", symmetric = true)
@@ -295,7 +303,8 @@ end
 
 _rmse_bias(d) = (sqrt(mean(abs2, d)), mean(d))
 
-function _scatter_fit!(pos, observed, modelled, title; xlabel, ylabel, color = (:black, 0.45),
+function _scatter_fit!(
+        pos, observed, modelled, title; xlabel, ylabel, color = (:black, 0.45),
         colormap = :viridis, colorrange = nothing)
     ax = Axis(pos; title, xlabel, ylabel, aspect = 1)
     kw = isnothing(colorrange) ? (;) : (; colorrange)
@@ -354,7 +363,8 @@ function plot_fit_to_observations(
                 H = results.H[nearest(t)]
                 cells = Hobs .> 0
                 r, b = _rmse_bias(H[cells] .- Hobs[cells])
-                ax, _ = _scatter_fit!(fig[row, k], Hobs[cells], H[cells],
+                ax,
+                _ = _scatter_fit!(fig[row, k], Hobs[cells], H[cells],
                     lettered("Thickness survey, $(_date_label(t))");
                     xlabel = "observed thickness (m)", ylabel = "modelled thickness (m)")
                 _stats_note!(ax, "$(count(cells)) cells", "RMSE $(round(r; digits = 1)) m",
@@ -389,7 +399,8 @@ function plot_fit_to_observations(
             r, b = _rmse_bias(V̄[cells] .- Vref[cells])
             gl = GridLayout()
             fig[row, 1] = gl
-            ax, sc = _scatter_fit!(gl[1, 1], Vref[cells], V̄[cells],
+            ax,
+            sc = _scatter_fit!(gl[1, 1], Vref[cells], V̄[cells],
                 lettered("Surface speed, $(_date_label(date1)) – $(_date_label(date2))");
                 xlabel = "observed speed (m/yr)", ylabel = "modelled speed (m/yr)",
                 color = glacier.S[cells], colormap = :viridis)
@@ -414,9 +425,12 @@ function plot_fit_to_observations(
             errorbars!(ax2, mid, mean_d, std_d; whiskerwidth = 4, color = :gray40)
             scatter!(ax2, mid, mean_d; color = :black, markersize = 5)
             diff_map = ifelse.(cells, V̄ .- Vref, NaN)
-            _map_panel!(fig[row, 3], MapPanel(diff_map, lettered("Speed: model − observation");
+            _map_panel!(fig[row, 3],
+                MapPanel(diff_map, lettered("Speed: model − observation");
                     cmap = Reverse(:balance), label = "m/yr", symmetric = true,
-                    nodata = BitMatrix(outline .& .!cells)), results, outline)
+                    nodata = BitMatrix(outline .& .!cells)),
+                results,
+                outline)
         end
         # Surface
         if !isnothing(sd)
@@ -431,11 +445,14 @@ function plot_fit_to_observations(
                     ok = isfinite.(sd.S[k]) .& free
                     res_k = ifelse.(ok, _model_surface(results, B, sd.t[k]) .- sd.S[k], NaN)
                     r, b = _rmse_bias(res_k[ok])
-                    _map_panel!(fig[row, c], MapPanel(res_k,
+                    _map_panel!(fig[row, c],
+                        MapPanel(res_k,
                             lettered("Surface, model − DEM, $(_date_label(sd.t[k]))\n" *
                                      "RMSE $(round(r; digits = 1)) m, bias $(round(b; digits = 1)) m");
                             cmap = Reverse(:balance), label = "m", symmetric = true,
-                            nodata = BitMatrix(free .& .!ok)), results, outline)
+                            nodata = BitMatrix(free .& .!ok)),
+                        results,
+                        outline)
                     push!(residuals, res_k[ok])
                     push!(labels, _date_label(sd.t[k]))
                 end
@@ -453,4 +470,3 @@ function plot_fit_to_observations(
         fig
     end
 end
-

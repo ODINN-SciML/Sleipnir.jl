@@ -838,7 +838,8 @@ function align_start!(params::Parameters, glaciers; within = Inf, apply = true)
     kind_names = Dict(:H => "ice thickness survey", :S => "DEM", :V => "surface velocity map")
     for glacier in glaciers
         t₀, t₁ = glacier_tspan(params, glacier)
-        candidates = [(o.t_start, o.kind) for o in observations(glacier)
+        candidates = [(o.t_start, o.kind)
+                      for o in observations(glacier)
                       if haskey(kind_names, o.kind) && t₀ <= o.t_start < t₁ &&
                          o.t_start - t₀ <= within]
         (isempty(candidates) || minimum(first, candidates) == t₀) && continue

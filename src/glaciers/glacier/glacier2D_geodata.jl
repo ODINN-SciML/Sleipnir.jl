@@ -326,7 +326,8 @@ grid. The cells without measurement get 0.
 function glathida_cell_σ(H, grid, count, sumsq, n; σ_picking::Real = 5.0,
         σ_velocity::Real = 0.03, representation_factor::Real = 1.5, σ_spread::Real = 12.0,
         min_points::Integer = 3)
-    min_points >= 2 || throw(ArgumentError("min_points must be at least 2 to have a spread."))
+    min_points >= 2 ||
+        throw(ArgumentError("min_points must be at least 2 to have a spread."))
     coarse(a) = n > 1 ? block_average_pad_edge(a, n) : a
     # The block average divides the sums and the count by the same number, so the mean and
     # the mean square of the measurements of a cell are their ratios

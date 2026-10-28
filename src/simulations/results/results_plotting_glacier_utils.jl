@@ -884,7 +884,8 @@ function plot_glacier(
     elseif plot_type_s in ("fit", "surface change", "bed")
         haskey(kwargs, :glacier) || throw(ArgumentError(
             "plot_glacier(results, \"$(plot_type_s)\", ...) needs the keyword `glacier`, the Glacier2D."))
-        plot = Dict("fit" => plot_fit_to_observations, "surface change" => plot_surface_change,
+        plot = Dict(
+            "fit" => plot_fit_to_observations, "surface change" => plot_surface_change,
             "bed" => plot_bed_maps)[plot_type_s]
         return plot(results, kwargs[:glacier];
             (k => v for (k, v) in kwargs if k != :glacier)...)

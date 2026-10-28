@@ -152,10 +152,13 @@ function glaciers2D_plots()
                 title = "Bed") isa Figure
             @test_throws ArgumentError plot_glacier(results_i, "fit", Symbol[])
             # A symbol is in camel case and is the string with spaces; an unknown type lists the valid ones
-            @test plot_glacier(results_i, :surfaceChange, Symbol[]; glacier = glacier_i) isa Figure
-            @test plot_glacier(results_i, "surface change", Symbol[]; glacier = glacier_i) isa Figure
+            @test plot_glacier(results_i, :surfaceChange, Symbol[]; glacier = glacier_i) isa
+                  Figure
+            @test plot_glacier(results_i, "surface change", Symbol[]; glacier = glacier_i) isa
+                  Figure
             @test plot_glacier(results_i, :heatmaps, [:H]) isa Figure
-            @test plot_glacier(results_i, :integratedVolume, [:H]; tspan = (2010.0, 2015.0)) isa Figure
+            @test plot_glacier(results_i, :integratedVolume, [:H]; tspan = (
+                2010.0, 2015.0)) isa Figure
             @test_throws ArgumentError plot_glacier(results_i, "not a plot", [:H])
             @test_throws ArgumentError plot_glacier(results_i, :surface_change, Symbol[]; glacier = glacier_i)
             # A glacier without dated DEMs cannot have a surface change

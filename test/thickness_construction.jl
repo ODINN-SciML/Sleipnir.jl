@@ -135,6 +135,7 @@ function surface_construction()
     surface_dates = SurfaceData(t = dem_dates, S = [glacier.S, S₂],
         σ = [zero(glacier.S), fill(2.0, size(S₂))])
     @test tdata(surface_dates) == Sleipnir.to_floatyear.(dem_dates)
-    JET.@test_opt target_modules=(Sleipnir,) SurfaceData(t = dem_dates, S = [glacier.S, S₂],
+    JET.@test_opt target_modules=(Sleipnir,) SurfaceData(
+        t = dem_dates, S = [glacier.S, S₂],
         σ = [zero(glacier.S), fill(2.0, size(S₂))])
 end

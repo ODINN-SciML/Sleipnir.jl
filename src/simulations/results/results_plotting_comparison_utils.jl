@@ -422,8 +422,9 @@ function plot_observations(
         isnothing(sd) ? [] : sd.t; max_points)
     kinds = [(px, colormap, label)
              for (px, colormap, label) in (
-        (H, :YlGnBu, "Ice thickness (m)"), (V, :viridis, "Surface velocity (m yr⁻¹)"),
-        (S, :magma, "Surface elevation, DEM (m)")) if !isempty(px.v)]
+                     (H, :YlGnBu, "Ice thickness (m)"), (
+                         V, :viridis, "Surface velocity (m yr⁻¹)"),
+                     (S, :magma, "Surface elevation, DEM (m)")) if !isempty(px.v)]
     isempty(kinds) && throw(ArgumentError(
         "plot_observations: glacier $(glacier.rgi_id) has no observed pixels."))
 
@@ -454,11 +455,13 @@ function plot_observations(
     t_text = [item.t for item in items]
     line_t = (t_hi - t_lo) / 34
     for k in 2:length(t_text)
-        t_text[k] = max(t_text[k], t_text[k - 1] + line_t * (n_lines[k - 1] + n_lines[k]) / 2)
+        t_text[k] = max(t_text[k], t_text[k - 1] +
+                                   line_t * (n_lines[k - 1] + n_lines[k]) / 2)
     end
     t_text[end] = min(t_text[end], t_hi)
     for k in (length(t_text) - 1):-1:1
-        t_text[k] = min(t_text[k], t_text[k + 1] - line_t * (n_lines[k] + n_lines[k + 1]) / 2)
+        t_text[k] = min(t_text[k], t_text[k + 1] -
+                                   line_t * (n_lines[k] + n_lines[k + 1]) / 2)
     end
 
     return with_theme(paper_theme()) do
@@ -485,9 +488,10 @@ function plot_observations(
             xgridcolor = grid, ygridcolor = grid, zgridcolor = grid,
             xgridwidth = 0.5, ygridwidth = 0.5, zgridwidth = 0.5)
         # The title lies on the top back edge of the box, with the slope of the edge on the screen
-        isnothing(title) || text!(ax, [Point3f(0, y_km, t_hi)]; text = [title], fontsize = 12,
-            font = :bold, align = (:left, :bottom), offset = (0, 5),
-            rotation = atan(-cos(az) * sin(el), -sin(az)))
+        isnothing(title) ||
+            text!(ax, [Point3f(0, y_km, t_hi)]; text = [title], fontsize = 12,
+                font = :bold, align = (:left, :bottom), offset = (0, 5),
+                rotation = atan(-cos(az) * sin(el), -sin(az)))
 
         # The colour bars, thin, in a group on the right
         bars = GridLayout(fig[1, 2])
