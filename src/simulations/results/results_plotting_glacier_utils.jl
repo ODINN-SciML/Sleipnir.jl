@@ -821,15 +821,24 @@ end
     plot_glacier(results, plot_type, variables; kwargs...) -> Figure
 
 High-level entry point that dispatches to specific glacier plotting functions
-based on `plot_type`:
+based on `plot_type`. Use a symbol in camel case, like the other options of the packages. The
+string with spaces is the same and it still works: `:evolutionStatistics` is
+`"evolution statistics"`.
 
-  - `"heatmaps"` → `plot_glacier_heatmaps`
-  - `"quivers"` → `plot_glacier_quivers`
-  - `"evolution difference"` → `plot_glacier_difference_evolution`
-  - `"evolution statistics"` → `plot_glacier_statistics_evolution`
-  - `"integrated volume"` → `plot_glacier_integrated_volume`
-  - `"bias"` → `plot_bias`
-  - `"dem"` → `plot_glacier_dem`
+  - `:heatmaps` → `plot_glacier_heatmaps`
+  - `:quivers` → `plot_glacier_quivers`
+  - `:evolutionDifference` → `plot_glacier_difference_evolution`
+  - `:evolutionStatistics` → `plot_glacier_statistics_evolution`
+  - `:integratedVolume` → `plot_glacier_integrated_volume`
+  - `:bias` → `plot_bias`
+  - `:dem` → `plot_glacier_dem`
+
+The plots to inspect an inversion against the observations also need the `Glacier2D`, in the
+keyword `glacier` (`variables` is not used, pass `Symbol[]`):
+
+  - `:fit` → `plot_fit_to_observations`
+  - `:surfaceChange` → `plot_surface_change`
+  - `:bed` → `plot_bed_maps`
 """
 function plot_glacier(
         results::Results,
@@ -851,7 +860,10 @@ function plot_glacier(
         "V_diff" => ("Ice surface velocity difference", "m/y", :RdBu)
     )
 
-    plot_type_s = plot_type isa Symbol ? String(plot_type) : plot_type
+    # A symbol is in camel case, and it is the string with spaces: `:surfaceChange` is `"surface change"`
+    plot_type_s = plot_type isa Symbol ?
+                  lowercase(replace(String(plot_type), r"([a-z])([A-Z])" => s"\1 \2")) :
+                  plot_type
 
     if plot_type_s == "heatmaps"
         return plot_glacier_heatmaps(results, variables, title_mapping; kwargs...)
@@ -869,7 +881,18 @@ function plot_glacier(
         return plot_bias(results, variables; kwargs...)
     elseif plot_type_s == "dem"
         return plot_glacier_dem(results; kwargs...)
+    elseif plot_type_s in ("fit", "surface change", "bed")
+        haskey(kwargs, :glacier) || throw(ArgumentError(
+            "plot_glacier(results, \"$(plot_type_s)\", ...) needs the keyword `glacier`, the Glacier2D."))
+        plot = Dict(
+            "fit" => plot_fit_to_observations, "surface change" => plot_surface_change,
+            "bed" => plot_bed_maps)[plot_type_s]
+        return plot(results, kwargs[:glacier];
+            (k => v for (k, v) in kwargs if k != :glacier)...)
     else
-        error("Invalid plot_type: $plot_type_s")
+        throw(ArgumentError("Invalid plot_type \"$(plot_type_s)\". Use one of: :heatmaps, " *
+                            ":quivers, :evolutionDifference, :evolutionStatistics, " *
+                            ":integratedVolume, :bias, :dem, :fit, :surfaceChange, :bed " *
+                            "(or the string with spaces, \"surface change\")."))
     end
 end

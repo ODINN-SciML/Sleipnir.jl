@@ -3,7 +3,7 @@
 #
 # Layout:
 #   1. Numeric helpers:   lower_bound, finite_extrema, symmetric_finite_colorrange
-#   2. Internal helpers:  _resolve_gridded_snapshot, _dem_defaults
+#   2. Internal helpers:  _resolve_gridded_snapshot, _dem_defaults, _glacier_xy
 #   3. Core renderer:     _plot_gridded_data_core
 #   4. Public API:        plot_gridded_data, accumulate_gridded_data,
 #                         plot_cumulative_gridded_data, plot_cumulative_mb,
@@ -70,6 +70,21 @@ function _dem_defaults(glacier::Glacier2D)
         title = plot_title,
         colorbar_label = "Surface elevation (m a.s.l.)"
     )
+end
+
+"""
+    _glacier_xy(glacier) -> (x, y)
+
+Coordinates of the columns and rows of the glacier grid. They are the longitudes and
+latitudes if the glacier has them, otherwise the distance in meters from the first cell.
+Used by `reverseForHeatmap` to put north up.
+"""
+function _glacier_xy(glacier::Glacier2D)
+    has_lonlat = haskey(glacier.Coords, "lon") && haskey(glacier.Coords, "lat") &&
+                 !isempty(glacier.Coords["lon"]) && !isempty(glacier.Coords["lat"])
+    x = has_lonlat ? glacier.Coords["lon"] : glacier.Δx .* collect(1.0:1.0:glacier.nx)
+    y = has_lonlat ? glacier.Coords["lat"] : glacier.Δy .* collect(1.0:1.0:glacier.ny)
+    return x, y
 end
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -179,10 +194,13 @@ Plot a gridded matrix (or a time series of matrices) as a heatmap using metadata
   - `timeIdx::Union{Nothing,Int64}`: Select timestep when `gridded_data` is a vector.
   - `plotContour::Bool`: overlay glacier-mask contour from results.H.
   - `logPlot::Bool`: Use log10 colorscale (positive non-NaN values determine range).
+  - `mask::Union{Nothing,BitMatrix}`: Cells to keep. Defaults to `results.H[begin] .> 0`.
+    Pass it explicitly for staggered fields such as `C`, which are `(nx-1, ny-1)` and so
+    do not match the default mask.
 
 # Behavior
 
-  - Masks out cells where `results.H[begin] .<= 0` (set to NaN).
+  - Masks out cells where `results.H[begin] .<= 0` (set to NaN), unless `mask` is given.
   - Adds colorbar, central lon/lat tick, and a Δx-based scale bar in km.
   - If `plotContour`, draws mask boundary lines.
   - Returns a `CairoMakie.Figure`.
@@ -203,9 +221,10 @@ function plot_gridded_data(
         colorscale = nothing,
         logPlot = false,
         title::Union{Nothing, String} = nothing,
-        colorbar_label::Union{Nothing, String} = nothing
+        colorbar_label::Union{Nothing, String} = nothing,
+        mask::Union{Nothing, BitMatrix} = nothing
 ) where {F <: AbstractFloat}
-    mask = results.H[begin] .> 0.0
+    mask = isnothing(mask) ? results.H[begin] .> 0.0 : mask
     return _plot_gridded_data_core(gridded_data;
         lon = results.lon,
         lat = results.lat,
@@ -421,10 +440,7 @@ function plot_glacier_dem(glacier::Glacier2D;
         logPlot::Bool = false)
     @assert !isempty(glacier.S) "The glacier DEM is empty."
 
-    has_lonlat = haskey(glacier.Coords, "lon") && haskey(glacier.Coords, "lat") &&
-                 !isempty(glacier.Coords["lon"]) && !isempty(glacier.Coords["lat"])
-    x = has_lonlat ? glacier.Coords["lon"] : glacier.Δx .* collect(1.0:1.0:glacier.nx)
-    y = has_lonlat ? glacier.Coords["lat"] : glacier.Δy .* collect(1.0:1.0:glacier.ny)
+    x, y = _glacier_xy(glacier)
 
     dem_size = size(glacier.S)
     if !isempty(glacier.H₀) && size(glacier.H₀) == dem_size

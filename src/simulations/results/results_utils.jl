@@ -11,6 +11,17 @@ function datetime_to_floatyear(dt::DateTime)
     return y + seconds_since_start / seconds_in_year
 end
 
+"""
+    to_floatyear(t)
+
+A time in decimal years. A number is kept, and a `Date` or a `DateTime` is converted with
+`datetime_to_floatyear`. The times of the parameters and of the observations accept all
+three; they are decimal years inside.
+"""
+to_floatyear(t::Real) = Sleipnir.Float(t)
+to_floatyear(t::DateTime) = Sleipnir.Float(datetime_to_floatyear(t))
+to_floatyear(t::Date) = to_floatyear(DateTime(t))
+
 function yearfrac(p::Period)
     # Convert the period to days
     days = Dates.value(convert(Day, p))
@@ -55,7 +66,10 @@ end
         solution,
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
-    ) where {SIM <: Simulation, I <: Integer}
+        MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([]),
+        B::Matrix{F} = simulation.glaciers[glacier_idx].B,
+    ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
 
 Create a `Results` object from a given simulation and solution.
 
@@ -66,6 +80,9 @@ Create a `Results` object from a given simulation and solution.
   - `solution`: The solution object containing all the steps including intermediate ones.
   - `tstops::Vector{F}`: The list of time steps to use to construct the results.
   - `processVelocity::Union{Nothing, Function}`: Post processing function to map the ice thickness to the surface velocity. It is called before creating the results. It takes as inputs simulation, ice thickness (matrix) and the associated time and returns 3 variables Vx, Vy, V which are all matrix. Defaults is nothing which means no post processing is applied.
+  - `MB::Vector{Matrix{F}}`: Surface mass balance maps saved during the simulation.
+  - `t_MB::Vector{F}`: Times of the surface mass balance maps.
+  - `B::Matrix{F}`: Bed of the glacier. Defaults to `glacier.B`; pass the inverted bed when the bed is trained.
 
 # Returns
 
@@ -81,10 +98,11 @@ function create_results(
         solution,
         tstops::Vector{F};
         processVelocity::Union{Nothing, Function} = nothing,
-        MB::Vector{Matrix{F}} = Vector{Matrix{Sleipnir.Float}}([[;;]]),
-        t_MB::Vector{F} = Vector{Sleipnir.Float}([])
+        MB::Vector{Matrix{F}} = [Matrix{Sleipnir.Float}(undef, 0, 0)],
+        t_MB::Vector{F} = Vector{Sleipnir.Float}([]),
+        B::Matrix{F} = simulation.glaciers[glacier_idx].B
 ) where {SIM <: Simulation, I <: Integer, F <: AbstractFloat}
-    tspan = simulation.parameters.simulation.tspan
+    tspan = Zygote.@ignore_derivatives glacier_tspan(simulation, glacier_idx)
 
     # The solution contains all the steps including the intermediate ones
     # This results in solution having multiple values for a given time step, we select the last one of each time step
@@ -131,9 +149,10 @@ function create_results(
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
         else
-            Vx_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            Vy_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
-            V_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+            # Not `[;;]`: under Zygote it becomes a cat() that fails with Rasters loaded
+            Vx_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            Vy_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
+            V_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
             date_Vref = Vector{Sleipnir.Float}([])
             date1_Vref = Vector{Sleipnir.Float}([])
             date2_Vref = Vector{Sleipnir.Float}([])
@@ -153,7 +172,7 @@ function create_results(
     if !isnothing(glacier.thicknessData)
         H_ref = glacier.thicknessData.H
     else
-        H_ref = Vector{Matrix{Sleipnir.Float}}([[;;]])
+        H_ref = [Matrix{Sleipnir.Float}(undef, 0, 0)]
     end
 
     results = Results(
@@ -162,7 +181,7 @@ function create_results(
         H = H,
         H_ref = H_ref,
         S = iceflow_cache.S,
-        B = glacier.B,
+        B = B,
         V = V,
         Vx = Vx,
         Vy = Vy,

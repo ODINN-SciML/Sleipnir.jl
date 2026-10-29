@@ -64,6 +64,7 @@ function glacier_grid_downscaling()
     params = Parameters(
         simulation = SimulationParameters(
         test_mode = true,
+        use_glathida_data = true,
         rgi_paths = get_rgi_paths(),
         gridScalingFactor = 4
     )
@@ -75,4 +76,8 @@ function glacier_grid_downscaling()
     @test size(glacier.V) == expected_size
     @test size(glacier.Vx) == expected_size
     @test size(glacier.Vy) == expected_size
+    # The glathida data is coarsened to the grid of the glacier
+    @test size(glacier.H_glathida) == expected_size
+    @test any(glacier.H_glathida .> 0)
+    @test all(size(H) == expected_size for H in glacier.thicknessData.H)
 end

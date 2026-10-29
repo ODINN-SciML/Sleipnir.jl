@@ -1,7 +1,8 @@
 
 export initialize_glaciers
 export glacierName
-export farinotti19_thickness, millan22_thickness
+export farinotti19_thickness, millan22_thickness, outline_date
+export observations, align_start!, check_glacier_tspans
 
 ###############################################################
 ########  GLACIER INITIALIZATION  ############################
@@ -34,7 +35,7 @@ This function performs the following steps:
  2. Filters out missing glaciers from the provided RGI IDs.
  3. Generates raw climate data for the glaciers if necessary.
  4. Initializes the glaciers using the provided RGI IDs and parameters.
- 5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers.
+ 5. If `use_glathida_data` is enabled in the simulation parameters, assigns GlaThiDa data to the glaciers: the dated survey campaigns as `thicknessData` (one map and one date for each campaign) and, for older code, the map of all the dates averaged in `H_glathida`.
 
 # Errors
 
@@ -120,6 +121,9 @@ function initialize_glaciers(
                 glacier.H_glathida = rgi_to_H_glathida[glacier.rgi_id]
             end
         end
+        # The dated survey campaigns are the thickness observations used by the losses
+        glaciers = map(
+            g -> Glacier2D(g; thicknessData = glathida_thickness_series(g, params)), glaciers)
     end
 
     return glaciers
@@ -204,28 +208,62 @@ function convertRasterStackToFloat64(rs::RasterStack)
     )
 end
 
+# Millan22 layer on the glacier grid: masked to the glacier, and averaged by blocks when
+# `gridScalingFactor > 1`
+function _process_Millan22_layer(params, glacier_gd, layer::Symbol)
+    data = replace(glacier_gd[layer].data, missing => 0.0)
+    mask = glacier_gd.glacier_mask.data .== 1
+    n = params.simulation.gridScalingFactor
+    n > 1 && return block_average_pad_edge_masked(data, mask, n; empty_value = 0.0)
+    data = ifelse.(mask, data, 0.0)
+    fillNaN!(data)
+    return data
+end
+
 function _process_Millan22_velocities(params, glacier_gd)
-    if params.simulation.gridScalingFactor > 1
-        Vx = block_average_pad_edge_masked(
-            replace(glacier_gd.millan_vx.data, missing => 0.0), glacier_gd.glacier_mask.data .==
-                                                                1,
-            (params.simulation.gridScalingFactor); empty_value = 0.0)
-        Vy = block_average_pad_edge_masked(
-            replace(glacier_gd.millan_vy.data, missing => 0.0), glacier_gd.glacier_mask.data .==
-                                                                1,
-            params.simulation.gridScalingFactor; empty_value = 0.0)
-        V = (Vx .^ 2+Vy .^ 2) .^ (0.5)
-    else
-        V = ifelse.(glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_v.data, missing => 0.0), 0.0)
-        Vx = ifelse.(
-            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vx.data, missing => 0.0), 0.0)
-        Vy = ifelse.(
-            glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_vy.data, missing => 0.0), 0.0)
-        fillNaN!(V)
-        fillNaN!(Vx)
-        fillNaN!(Vy)
+    Vx = _process_Millan22_layer(params, glacier_gd, :millan_vx)
+    Vy = _process_Millan22_layer(params, glacier_gd, :millan_vy)
+    V = params.simulation.gridScalingFactor > 1 ? (Vx .^ 2 + Vy .^ 2) .^ (0.5) :
+        _process_Millan22_layer(params, glacier_gd, :millan_v)
+    # Positive `vy` goes along the increasing matrix index (see `SurfaceVelocityData`), while
+    # Millan22 is positive to the north: flip it when the y axis of the grid points south
+    # (the x axis of the OGGM grids always increases, so `vx` needs no flip)
+    y = dims(glacier_gd, 2).val
+    if first(y) > last(y)
+        Vy = .-Vy
     end
     return V, Vx, Vy
+end
+
+# Dated DEMs of `gridded_data.nc` (see Gungnir): `topo` when its date is known, and the
+# Copernicus DEM on the cells measured by TanDEM-X (the other cells have no error, nor date)
+function _surface_data(params, glacier_gd)
+    n = params.simulation.gridScalingFactor
+    # The cells without value (NaN) must not make NaN the whole block: average the valid ones
+    function grid(a)
+        n > 1 || return a
+        valid = BitMatrix(isfinite.(a))
+        return block_average_pad_edge_masked(ifelse.(valid, a, zero(eltype(a))), valid, n)
+    end
+    layer(name) = Matrix{Sleipnir.Float}(replace(glacier_gd[name].data, missing => NaN))
+    t, S, σ = Sleipnir.Float[], Matrix{Sleipnir.Float}[], Matrix{Sleipnir.Float}[]
+    date = get(metadata(glacier_gd[:topo]), "date", nothing)
+    if !isnothing(date)
+        push!(t, Sleipnir.Float(date))
+        push!(S, grid(layer(:topo)))
+        push!(σ, zero(S[end]))
+    end
+    if :topo_copdem90_date in keys(glacier_gd)
+        dates = layer(:topo_copdem90_date)
+        on_glacier = (glacier_gd.glacier_mask.data .== 1) .& isfinite.(dates)
+        if any(on_glacier)
+            σ_copdem = layer(:topo_copdem90_err)
+            push!(t, mean(dates[on_glacier]))
+            push!(S, grid(ifelse.(isfinite.(σ_copdem), layer(:topo_copdem90), NaN)))
+            push!(σ, grid(σ_copdem))
+        end
+    end
+    return isempty(t) ? nothing : SurfaceData(; t, S, σ)
 end
 
 function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid, H₀, rgi_id)
@@ -301,6 +339,19 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         delta = MILLAN22_DATE2 - MILLAN22_DATE1
         date_mean = MILLAN22_DATE1 + Dates.Millisecond(div(Dates.value(delta), 2))
 
+        # `vabs_error` has one value per acquisition: the mean error over the ice. The error
+        # layers are only in `gridded_data.nc` files made with `add_error = True`
+        has_error = params.simulation.use_velocities &&
+                    :millan_err_vx in keys(glacier_gd) &&
+                    :millan_err_vy in keys(glacier_gd)
+        vabs_error = if has_error
+            err_V = hypot.(_process_Millan22_layer(params, glacier_gd, :millan_err_vx),
+                _process_Millan22_layer(params, glacier_gd, :millan_err_vy))
+            [mean(filter(isfinite, err_V[H₀ .> 0]))]
+        else
+            nothing
+        end
+
         velocityData = SurfaceVelocityData(
             date = [date_mean],
             date1 = [MILLAN22_DATE1],
@@ -308,6 +359,7 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
             vx = [Vx],
             vy = [Vy],
             vabs = [V],
+            vabs_error = vabs_error,
             isGridGlacierAligned = true
         )
     else
@@ -340,7 +392,8 @@ function _build_glacier(params, glacier_gd, masking, masking_loss, glacier_grid,
         cenlon = cenlon, cenlat = cenlat,
         params_projection = params_projection,
         velocityData = velocityData,
-        dhdtData = dhdt_data
+        dhdtData = dhdt_data,
+        surfaceData = _surface_data(params, glacier_gd)
     )
 end
 
@@ -367,6 +420,23 @@ end
 function millan22_thickness(glacier_gd::RasterStack)
     return Sleipnir.Float.(ifelse.(
         glacier_gd.glacier_mask.data .== 1, replace(glacier_gd.millan_ice_thickness.data, missing => 0.0), 0.0))
+end
+
+"""
+    outline_date(rgi_id::String, params::Parameters)
+    outline_date(glacier_gd::RasterStack)
+
+Date (decimal year) of the RGI outline of a glacier, or `nothing` if it is not known. Gungnir
+writes it as the attribute `date` of `glacier_mask` in `gridded_data.nc`. The RGI ID must be in
+`params.simulation.rgi_paths`.
+"""
+function outline_date(rgi_id::String, params::Parameters)
+    rgi_path = joinpath(prepro_dir(), params.simulation.rgi_paths[rgi_id])
+    return outline_date(RasterStack(joinpath(rgi_path, "gridded_data.nc")))
+end
+function outline_date(glacier_gd::RasterStack)
+    date = get(metadata(glacier_gd[:glacier_mask]), "date", nothing)
+    return isnothing(date) ? nothing : Sleipnir.Float(date)
 end
 
 """
@@ -687,4 +757,116 @@ function block_average_pad_edge_masked(
     out[valid_frac .== 0] .= empty_value
 
     return out
+end
+
+const Observation = @NamedTuple{rgi_id::String, kind::Symbol, t::Float64,
+    t_start::Float64, t_end::Float64, npixels::Int}
+
+"""
+    observations(glacier::Glacier2D)
+    observations(glaciers::Vector{<:Glacier2D})
+
+All the observations available for one or several glaciers, one row per observation and
+sorted in time for each glacier. Each row is a named tuple `(rgi_id, kind, t, t_start, t_end, npixels)`:
+
+  - `kind`: `:H` for an ice thickness survey, `:V` for a surface velocity map, `:S` for a
+    DEM and `:dhdt` for the glacier-wide surface elevation change.
+  - `t`: Date of the observation, in decimal years. For the velocity it is the middle of the
+    acquisition window `(t_start, t_end)`, and for `:dhdt` the middle of its period.
+  - `npixels`: Number of observed pixels (0 for glacier-wide values).
+
+Use it to choose the time window of a simulation, for example to start an inversion on the
+first ice thickness survey. The rows can be turned into a `DataFrame`.
+"""
+function observations(glacier::Glacier2D)
+    rows = Observation[]
+    H_obs = isnothing(glacier.thicknessData) ? [] : something(glacier.thicknessData.H, [])
+    for (t, H) in zip(tdata(glacier.thicknessData), H_obs)
+        push!(rows,
+            (; rgi_id = glacier.rgi_id, kind = :H, t, t_start = t, t_end = t,
+                npixels = count(H .> 0)))
+    end
+    velocity = glacier.velocityData
+    if !isnothing(velocity) && !isnothing(velocity.date)
+        for (i, date) in enumerate(velocity.date)
+            t = datetime_to_floatyear(date)
+            t_start = isnothing(velocity.date1) ? t :
+                      datetime_to_floatyear(velocity.date1[i])
+            t_end = isnothing(velocity.date2) ? t : datetime_to_floatyear(velocity.date2[i])
+            npixels = isnothing(velocity.vabs) ? 0 : count(velocity.vabs[i] .> 0)
+            push!(rows, (; rgi_id = glacier.rgi_id, kind = :V, t, t_start, t_end, npixels))
+        end
+    end
+    if !isnothing(glacier.surfaceData)
+        for (t, S) in zip(glacier.surfaceData.t, glacier.surfaceData.S)
+            push!(rows,
+                (; rgi_id = glacier.rgi_id, kind = :S, t, t_start = t, t_end = t,
+                    npixels = count(isfinite, S[glacier.H₀ .> 0])))
+        end
+    end
+    if !isnothing(glacier.dhdtData)
+        t_start, t_end = glacier.dhdtData.t
+        push!(rows,
+            (; rgi_id = glacier.rgi_id, kind = :dhdt, t = (t_start + t_end) / 2,
+                t_start, t_end, npixels = 0))
+    end
+    return sort(rows; by = row -> row.t)
+end
+function observations(glaciers::Vector{<:Glacier2D})
+    return reduce(vcat, observations.(glaciers); init = Observation[])
+end
+
+"""
+    align_start!(params, glaciers; within = Inf, apply = true)
+
+Start each glacier on its first observation, so that the trajectory is as long as possible and
+the initial state of the simulation is compared with an observation. The first observation is the
+earliest of the ice thickness surveys, the DEMs and the surface velocity maps (the start of their
+period) of the glacier, see [`observations`](@ref). The glacier-wide `:dhdt` is not one of them.
+The new windows are written in `params.simulation.glacier_tspans`, and the end of each window is
+kept.
+
+Only the observations inside the time window of the glacier (one at its end is not used), and at
+most `within` years after its start, are considered. An observation before the window cannot be
+used, because the climate data is loaded for `tspan`. By default `within = Inf`: the start moves to
+the first observation however late it is.
+
+With `apply = false`, nothing is changed and a warning is shown for each glacier whose
+first observation is not on the start.
+"""
+function align_start!(params::Parameters, glaciers; within = Inf, apply = true)
+    kind_names = Dict(:H => "ice thickness survey", :S => "DEM", :V => "surface velocity map")
+    for glacier in glaciers
+        t₀, t₁ = glacier_tspan(params, glacier)
+        candidates = [(o.t_start, o.kind)
+                      for o in observations(glacier)
+                      if haskey(kind_names, o.kind) && t₀ <= o.t_start < t₁ &&
+                         o.t_start - t₀ <= within]
+        (isempty(candidates) || minimum(first, candidates) == t₀) && continue
+        t_first, kind = first(sort(candidates; by = first))
+        if apply
+            params.simulation.glacier_tspans[glacier.rgi_id] = (t_first, t₁)
+            @info "$(glacier.rgi_id) starts on its first observation ($(kind_names[kind])), at $(t_first) instead of $(t₀)."
+        else
+            @warn "$(glacier.rgi_id): the first observation ($(kind_names[kind])) is at $(t_first) and the start at $(t₀). Use `align_start!(params, glaciers; within = $(within))` to start on it."
+        end
+    end
+    return params
+end
+
+"""
+    check_glacier_tspans(params, glaciers)
+
+Check the windows in `params.simulation.glacier_tspans`: they must be inside the global
+`tspan` (the climate data is loaded for it), and there must be a glacier for each RGI ID.
+"""
+function check_glacier_tspans(params::Parameters, glaciers)
+    t₀, t₁ = params.simulation.tspan
+    rgi_ids = [glacier.rgi_id for glacier in glaciers]
+    for (id, t) in params.simulation.glacier_tspans
+        id in rgi_ids ||
+            @warn "There is a time window for $(id) but no glacier with this RGI ID."
+        t₀ <= t[1] < t[2] <= t₁ || throw(ArgumentError(
+            "The time window $(t) of $(id) is not inside tspan = $((t₀, t₁))."))
+    end
 end

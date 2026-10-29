@@ -31,6 +31,7 @@ A structure to hold simulation parameters for a simulation in ODINN.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
+  - `glacier_tspans::Dict{String, Tuple{F, F}}`: Time window of the glaciers that do not use `tspan`, by RGI ID. It is empty by default, so all the glaciers use `tspan`. Each window must be inside `tspan`. See [`glacier_tspan`](@ref).
 """
 struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapping} <:
        AbstractParameters
@@ -55,6 +56,7 @@ struct SimulationParameters{I <: Integer, F <: AbstractFloat, VM <: VelocityMapp
     mapping::VM
     gridScalingFactor::I
     catch_errors::Bool
+    glacier_tspans::Dict{String, Tuple{F, F}}
 end
 
 """
@@ -69,7 +71,7 @@ Constructor for `SimulationParameters` type, including default values.
         f_surface_velocity_factor::F = 1.0,
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
-        tspan::Tuple{F, F} = (2010.0, 2015.0),
+        tspan = (2010.0, 2015.0),
         step_MB::F = 1/12,
         multiprocessing::Bool = true,
         workers::I = 4,
@@ -81,7 +83,8 @@ Constructor for `SimulationParameters` type, including default values.
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
-        catch_errors::Bool = false
+        catch_errors::Bool = false,
+        glacier_tspans = Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}()
     ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
 
 # Keyword arguments
@@ -98,7 +101,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `velocity_product::Symbol`: Source of velocity product data (default: `:Millan22`).
   - `float_type::DataType`: Data type for floating point numbers (default: `Float64`).
   - `int_type::DataType`: Data type for integers (default: `Int64`).
-  - `tspan::Tuple{F, F}`: Time span for the simulation (default: `(2010.0, 2015.0)`).
+  - `tspan`: Time span `(t_start, t_end)` for the simulation (default: `(2010.0, 2015.0)`). The times are decimal years, `Date`s or `DateTime`s, for example `(Date(2010, 1, 1), Date(2015, 1, 1))`; they are converted to decimal years.
   - `step_MB::F`: Time step for the MB simulation (default: `1/12`).
   - `multiprocessing::Bool`: Whether to use multiprocessing (default: `true`).
   - `workers::I`: Number of workers for multiprocessing (default: `4`).
@@ -112,6 +115,7 @@ Constructor for `SimulationParameters` type, including default values.
   - `gridScalingFactor::I`: Grid downscaling factor, used to speed-up the tests.
     Default value is 1 which means no downscaling is applied.
   - `catch_errors::Bool`: Whether to catch errors during glacier initialization and write the glaciers to discard in a `missing_glaciers.jld2`.
+  - `glacier_tspans`: Time window `(t_start, t_end)` by RGI ID of the glaciers that do not use `tspan` (default: empty), in decimal years, `Date`s or `DateTime`s like `tspan`. For example, to start an inversion on the first thickness survey of a glacier. Each window must be inside `tspan`, since the climate data is loaded for `tspan`. The last mass balance window can end up to one `step_MB` after the window. There is an error if the last window ends after the end of the climate data.
 
 # Returns
 
@@ -138,7 +142,7 @@ function SimulationParameters(;
         f_surface_velocity_factor::F = 1.0,
         overwrite_climate::Bool = false,
         use_glathida_data::Bool = false,
-        tspan::Tuple{F, F} = (2010.0, 2015.0),
+        tspan = (2010.0, 2015.0),
         step_MB::F = 1/12,
         multiprocessing::Bool = true,
         workers::I = 4,
@@ -150,7 +154,8 @@ function SimulationParameters(;
         climate_data_source::Symbol = :W5E5,
         mapping::VM = MeanDateVelocityMapping(),
         gridScalingFactor::I = 1,
-        catch_errors::Bool = false
+        catch_errors::Bool = false,
+        glacier_tspans = Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}()
 ) where {I <: Integer, F <: AbstractFloat, VM <: VelocityMapping}
     ice_thickness_source_sym = Symbol(ice_thickness_source)
     velocity_product_sym = Symbol(velocity_product)
@@ -163,11 +168,14 @@ function SimulationParameters(;
         use_MB, calibrate_MB, use_iceflow, plots,
         use_velocities, f_surface_velocity_factor,
         overwrite_climate, use_glathida_data,
-        Sleipnir.Float.(tspan), Sleipnir.Float(step_MB),
+        to_floatyear.(tspan), Sleipnir.Float(step_MB),
         multiprocessing, Sleipnir.Int(workers), working_dir,
         test_mode, rgi_paths, ice_thickness_source_sym, velocity_product_sym,
         climate_data_source, mapping,
-        gridScalingFactor, catch_errors
+        gridScalingFactor, catch_errors,
+        Dict{String, Tuple{Sleipnir.Float, Sleipnir.Float}}(
+            id => (to_floatyear(t[1]), to_floatyear(t[2]))
+        for (id, t) in glacier_tspans)
     )
 
     if !ispath(working_dir)
@@ -198,7 +206,8 @@ function Base.:(==)(a::SimulationParameters, b::SimulationParameters)
         a.climate_data_source == b.climate_data_source &&
         a.mapping == b.mapping &&
         a.gridScalingFactor == b.gridScalingFactor &&
-        a.catch_errors == b.catch_errors
+        a.catch_errors == b.catch_errors &&
+        a.glacier_tspans == b.glacier_tspans
 end
 
 # Display setup
@@ -213,6 +222,8 @@ function Base.show(io::IO, params::SimulationParameters)
     field(io, "tspan");
     print(io, " = ");
     val(io, "$(params.tspan)")
+    isempty(params.glacier_tspans) ||
+        hint(io, " (own window for $(length(params.glacier_tspans)) glacier(s))")
     sep(io)
     field(io, "step_MB");
     print(io, " = ");
