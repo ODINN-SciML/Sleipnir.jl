@@ -28,18 +28,49 @@ Concrete subtypes must implement:
   - `apply_law_in_model(::ConcreteLaw)`
 """
 abstract type AbstractLaw end
+"""
+    apply_law!(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
+
+Apply the `law` in-place on `cache` for glacier `glacier_idx` at time `t` with
+parameters `θ` in the given `simulation`. Concrete subtypes of `AbstractLaw` must
+implement this method.
+"""
 function apply_law!(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
     throw(error("Concrete subtypes of AbstractLaw must implement apply_law!. Please provide an implementation for $(typeof(law))."))
 end
 function init_cache(law::AbstractLaw, simulation, glacier_idx, θ)
     throw(error("Concrete subtypes of AbstractLaw must implement init_cache. Please provide an implementation for $(typeof(law))."))
 end
+"""
+    law_VJP_input(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
+
+Compute the vector-Jacobian product (VJP) of the `law` with respect to its inputs,
+for glacier `glacier_idx` at time `t` with parameters `θ`, and store it in `cache`.
+Called during the adjoint solve. Concrete subtypes of `AbstractLaw` must implement
+this method.
+"""
 function law_VJP_input(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
     throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_input. Please provide an implementation for $(typeof(law))."))
 end
+"""
+    law_VJP_θ(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
+
+Compute the vector-Jacobian product (VJP) of the `law` with respect to the
+parameters `θ`, for glacier `glacier_idx` at time `t`, and store it in `cache`.
+Called during the adjoint solve. Concrete subtypes of `AbstractLaw` must implement
+this method.
+"""
 function law_VJP_θ(law::AbstractLaw, cache, simulation, glacier_idx, t, θ)
     throw(error("Concrete subtypes of AbstractLaw must implement law_VJP_θ. Please provide an implementation for $(typeof(law))."))
 end
+"""
+    precompute_law_VJP(law::AbstractLaw, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)
+
+Precompute VJP-related artifacts of the `law` before the adjoint PDE is solved,
+using the preparation object `vjpsPrepLaw` (an `AbstractPrepVJP`), and store the
+results in `cache`. Called before the adjoint solve. Concrete subtypes of
+`AbstractLaw` must implement this method.
+"""
 function precompute_law_VJP(
         law::AbstractLaw, cache, vjpsPrepLaw, simulation, glacier_idx, t, θ)
     throw(error("Concrete subtypes of AbstractLaw must implement precompute_law_VJP. Please provide an implementation for $(typeof(law))."))
