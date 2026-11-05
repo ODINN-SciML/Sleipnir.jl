@@ -26,6 +26,13 @@ function enable_multiprocessing(procs::Int)
     return nworkers()
 end
 
+"""
+    get_rgi_paths()
+
+Return a `Dict{String, String}` mapping each RGI ID to the path of its preprocessed
+glacier files, read from the `rgi_paths.json` file of the ODINN preprocessed data
+artifact. Used to locate the input data of each glacier in simulations.
+"""
 function get_rgi_paths()
     rgi_paths = JSON.parsefile(joinpath(prepro_dir(), "rgi_paths.json"))
     # Convert Dict{String, Any} to Dict{String, String} and explicitely define type

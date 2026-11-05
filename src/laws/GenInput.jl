@@ -12,13 +12,33 @@ Concrete subtypes must implement:
 """
 abstract type AbstractInput end
 
+"""
+    default_name(inp::AbstractInput)
+
+Return the default field name (as a `Symbol`) under which the input `inp` is stored
+in the `NamedTuple` of law inputs. Concrete subtypes of `AbstractInput` must
+implement this method.
+"""
 function default_name(inp::AbstractInput)
     throw(error("Concrete subtypes of AbstractInput must implement default_name. Please provide an implementation for $(typeof(inp))."))
 end
+
+"""
+    get_input(inp::AbstractInput, simulation, glacier_idx, t)
+
+Return the value of the input `inp` for glacier `glacier_idx` at time `t` in the
+given `simulation`. Concrete subtypes of `AbstractInput` must implement this method.
+"""
 function get_input(inp::AbstractInput, simulation, glacier_idx, t)
     throw(error("Concrete subtypes of AbstractInput must implement get_input. Please provide an implementation for $(typeof(inp))."))
 end
 
+"""
+    generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
+
+Evaluate each `AbstractInput` in the `NamedTuple` `inputs` with `get_input` and
+return the resulting `NamedTuple` of input values, keyed by their `default_name`.
+"""
 function generate_inputs(inputs::NamedTuple, simulation, glacier_idx, t)
     map(inputs) do input
         get_input(input, simulation, glacier_idx, t)
