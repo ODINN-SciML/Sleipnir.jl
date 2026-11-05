@@ -46,6 +46,18 @@ function glaciers2D_constructor(; save_refs::Bool = false, use_glathida_data::Bo
     println(glaciers[1].climate)
     println(glaciers[1].climate.climate_2D_step)
 
+    # Test the image of the glacier, shown only in terminals with colors.
+    # The number of rows of the image depends on the size of the terminal, so we try several sizes.
+    for glacier in glaciers,
+        dsize in [(20, 80), (21, 80), (24, 100), (25, 100), (30, 120), (31, 120)]
+
+        out_color = sprint(show, glacier; context = (:color => true, :displaysize => dsize))
+        @test occursin("\e[", out_color)
+        # The text must start at the beginning of a line, after the image
+        @test occursin(r"(^|\n)Glacier2D ", out_color)
+    end
+    @test !occursin("\e[", sprint(show, glaciers[1]))
+
     if save_refs
         jldsave(
             joinpath(Sleipnir.root_dir,
